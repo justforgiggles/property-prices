@@ -1,0 +1,11 @@
+{
+  "name": "@property-prices/model",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:onnx": "node tests/verify-onnx.cjs --model-dir models"
+  },
+  "dependencies": {
+    "onnxruntime-node": "^1.26.0"
+  }
+}

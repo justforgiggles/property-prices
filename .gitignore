@@ -1,0 +1,9 @@
+node_modules/
+packages/*/dist/
+packages/model/.venv/
+packages/model/build/
+packages/model/models/
+packages/function/models/
+__pycache__/
+*.egg-info/
+:memory:.ses

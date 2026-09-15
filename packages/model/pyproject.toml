@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "property-prices-model"
+version = "0.1.0"
+requires-python = ">=3.10,<3.13"
+dependencies = [
+  "catboost==1.2.8",
+  "numpy==2.2.6",
+  "pandas==2.2.3",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]

@@ -1,0 +1,19 @@
+{
+  "name": "@property-prices/data",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "scrape": "node --import tsx src/cli.ts scrape",
+    "import": "node --import tsx src/cli.ts import",
+    "test": "node --import tsx --test test/*.test.ts",
+    "build": "tsc --noEmit"
+  },
+  "dependencies": {
+    "cheerio": "^1.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.3",
+    "tsx": "^4.23.0",
+    "typescript": "~6.0.2"
+  }
+}
