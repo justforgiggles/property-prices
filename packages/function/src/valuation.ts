@@ -37,7 +37,9 @@ function parseText(value: unknown, maximumLength: number): string | null {
 }
 
 function parsePositiveInteger(value: unknown, maximum: number): number | null {
-  return typeof value === "number" && Number.isInteger(value) && value > 0 && value <= maximum ? value : null;
+  const number = typeof value === "string" && /^\d+$/.test(value.trim()) ? Number(value) : value;
+
+  return typeof number === "number" && Number.isInteger(number) && number > 0 && number <= maximum ? number : null;
 }
 
 function parseSubmission(body: unknown): ValuationSubmission | null {

@@ -8,6 +8,11 @@ start:
   description: "It takes about two minutes, and we will email your estimated value and range. This is an indicative estimate, not a formal valuation."
   button: "Get my free estimate"
 
+measurements:
+  posthog:
+    token: "phc_PG5OhDQIzFkoQxel2QjLVC85JPW0hHBB8gJkruofkrS"
+    api_host: "https://eu.i.posthog.com"
+
 sections:
   - id: province
     title: "Which province is the property in?"
@@ -543,4 +548,12 @@ completion:
 connections:
   - type: webhook
     url: "https://property-prices-valuation-1008115912104.europe-west3.run.app"
+    trigger_on: completed
+    delay_minutes: 2
+
+  - type: email
+    to: "hirebarend@gmail.com"
+    subject: "New property valuation submission"
+    body: "A completed property valuation form was submitted."
+    include_responses: true
     trigger_on: completed

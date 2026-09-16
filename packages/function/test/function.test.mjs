@@ -72,12 +72,12 @@ test("function inference matches the independently verified model bundle", async
 const submission = {
   created_at: "2026-09-16T12:00:00.000Z",
   data: {
-    bathrooms: 2,
-    bedrooms: 3,
+    bathrooms: "2",
+    bedrooms: "3",
     city: "Cape Town",
     email: "thandi@example.com",
     first_name: "Thandi <Test>",
-    floor_area: 120,
+    floor_area: "120",
     property_type: "House",
     province: "Western Cape",
     suburb: "Sea Point",
@@ -101,7 +101,7 @@ test("valuation webhook validates completed form submissions", async () => {
     { ...submission, data: { ...submission.data, province: "Eastern Cape" } },
     { ...submission, data: { ...submission.data, city: "Durban" } },
     { ...submission, data: { ...submission.data, suburb: "" } },
-    { ...submission, data: { ...submission.data, bedrooms: 1.5 } },
+    { ...submission, data: { ...submission.data, bedrooms: "1.5" } },
   ]) {
     const invalid = response();
     await valuation({ method: "POST", body }, invalid);
