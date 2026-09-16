@@ -5,8 +5,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { crawlSearch, parseDetailPage, parseSearchPage } from "../src/property24.js";
-import { captureListing, findPublicationDate, readCapturedIds, readListingIdCheckpoint, updateListingIdCheckpoint } from "../src/storage.js";
+import { ListingPage, SearchPage } from "../src/property24.js";
+import { crawlSearch } from "../src/scraper.js";
+import { Storage } from "../src/storage.js";
 
 function raw(id: number, date: string): { id: number; jsonld: Array<unknown> } {
   return { id, jsonld: [{ "@graph": [{ datePosted: date, about: {}, offers: {} }] }] };
@@ -14,31 +15,40 @@ function raw(id: number, date: string): { id: number; jsonld: Array<unknown> } {
 
 test("daily raw files preserve schema and prevent duplicate reruns", async () => {
   const directory = await mkdtemp(join(tmpdir(), "property-data-"));
-  const ids = await readCapturedIds(directory);
-  assert.equal(findPublicationDate(raw(1, "2026-09-01")), "2026-09-01");
-  assert.equal(findPublicationDate(raw(3, "2026-02-30")), null);
-  assert.equal(await captureListing(directory, ids, raw(1, "2026-09-01"), "2026-08-16"), true);
-  assert.equal(await captureListing(directory, ids, raw(1, "2026-09-01"), "2026-08-16"), false);
-  assert.equal(await captureListing(directory, ids, raw(2, "2026-08-01"), "2026-08-16"), false);
-  assert.equal(await captureListing(directory, ids, raw(3, "2026-09-02"), "2026-08-16"), true);
+  const storage = new Storage(directory);
+  assert.equal(storage.findListingPublicationDate(raw(1, "2026-09-01")), "2026-09-01");
+  assert.equal(storage.findListingPublicationDate(raw(3, "2026-02-30")), null);
+  assert.equal(await storage.insertListing(raw(1, "2026-09-01")), true);
+  assert.equal(await storage.insertListing(raw(1, "2026-09-01")), false);
+  assert.equal(await storage.insertListing(raw(2, "2026-02-30")), false);
+  assert.equal(await storage.insertListing(raw(3, "2026-09-02")), true);
   assert.deepEqual((await readdir(directory)).sort(), ["2026-09-01.jsonl", "2026-09-02.jsonl"]);
   assert.deepEqual(JSON.parse(await readFile(join(directory, "2026-09-01.jsonl"), "utf8")), raw(1, "2026-09-01"));
-  assert.deepEqual(await readCapturedIds(directory), new Set([1, 3]));
+  assert.equal(await new Storage(directory).hasListing(1), true);
+  assert.equal(await new Storage(directory).hasListing(4), false);
 });
 
-test("plain HTML crawl stops at javascript pagination and captures only new IDs", async () => {
+test("page objects cache search HTML and crawl captures only new IDs", async () => {
   const root = await mkdtemp(join(tmpdir(), "property-crawl-"));
   const directory = join(root, "raw");
+  const requests = new Map<string, number>();
   const server = createServer((request, response) => {
+    const path = request.url ?? "";
+    requests.set(path, (requests.get(path) ?? 0) + 1);
     response.setHeader("Content-Type", "text/html");
 
-    if (request.url === "/search") {
+    if (path === "/search") {
       response.end('<title>Property for sale</title><div class="p24_tileContainer js_resultTile"><a href="/for-sale/example/123">Home</a></div><div class="p24_pager"><a href="javascript:;">Next</a></div>');
       return;
     }
 
-    if (request.url === "/repeat") {
+    if (path === "/repeat") {
       response.end('<title>Property for sale</title><div class="p24_pager"><a href="/repeat">Next</a></div>');
+      return;
+    }
+
+    if (path === "/denied") {
+      response.end("<title>Access denied</title>");
       return;
     }
 
@@ -50,33 +60,37 @@ test("plain HTML crawl stops at javascript pagination and captures only new IDs"
     const address = server.address();
     assert.ok(address && typeof address !== "string");
     const url = `http://127.0.0.1:${address.port}/search`;
-    const ids = await readCapturedIds(directory);
-    assert.equal(await crawlSearch(url, directory, ids, "2026-08-16", 0), 1);
-    assert.equal(await crawlSearch(url, directory, ids, "2026-08-16", 0), 0);
-    assert.equal(parseSearchPage('<title>Property for sale</title><div class="p24_pager"><a href="javascript:;">Next</a></div>', url).next, null);
-    assert.throws(() => parseSearchPage("<title>Access denied</title>", url), /did not return a sale results page/);
-    await assert.rejects(crawlSearch(`http://127.0.0.1:${address.port}/repeat`, directory, ids, "2026-08-16", 0), /repeated a pagination URL/);
-    assert.equal(parseDetailPage('<script type="application/ld+json">{"@graph":[]}</script>', `http://127.0.0.1:${address.port}/for-sale/example/123`).id, 123);
+    const searchPage = new SearchPage(url);
+    assert.deepEqual(await searchPage.parseAll(), [`http://127.0.0.1:${address.port}/for-sale/example/123`]);
+    assert.equal(await searchPage.next(), null);
+    assert.equal(requests.get("/search"), 1);
+
+    const storage = new Storage(directory);
+    assert.equal(await crawlSearch(url, storage, "2026-08-16", 0), 1);
+    assert.equal(await crawlSearch(url, storage, "2026-08-16", 0), 0);
+    await assert.rejects(new SearchPage(`http://127.0.0.1:${address.port}/denied`).parseAll(), /did not return a sale results page/);
+    await assert.rejects(crawlSearch(`http://127.0.0.1:${address.port}/repeat`, storage, "2026-08-16", 0), /repeated a pagination URL/);
+    assert.equal((await new ListingPage(`http://127.0.0.1:${address.port}/for-sale/example/123`).parse()).id, 123);
   } finally {
-    server.close();
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
 
 test("listing ID checkpoints persist the newest applicable threshold", async () => {
   const root = await mkdtemp(join(tmpdir(), "property-checkpoint-"));
-  const directory = join(root, "raw");
-  assert.equal(await readListingIdCheckpoint(directory, "2026-08-16"), null);
-  await updateListingIdCheckpoint(directory, "2026-08-01", 100);
-  await updateListingIdCheckpoint(directory, "2026-08-01", 90);
-  await updateListingIdCheckpoint(directory, "2026-09-01", 300);
-  assert.deepEqual(await readListingIdCheckpoint(directory, "2026-08-16"), { date: "2026-08-01", id: 100 });
-  assert.deepEqual(await readListingIdCheckpoint(directory, "2026-09-01"), { date: "2026-09-01", id: 300 });
+  const storage = new Storage(join(root, "raw"));
+  assert.equal(await storage.findListingIdCheckpoint("2026-08-16"), null);
+  await storage.updateListingIdCheckpoint("2026-08-01", 100);
+  await storage.updateListingIdCheckpoint("2026-08-01", 90);
+  await storage.updateListingIdCheckpoint("2026-09-01", 300);
+  assert.equal(await storage.findListingIdCheckpoint("2026-08-16"), 100);
+  assert.equal(await storage.findListingIdCheckpoint("2026-09-01"), 300);
   assert.equal(await readFile(join(root, "checkpoints.csv"), "utf8"), "date,id\n2026-08-01,100\n2026-09-01,300\n");
 });
 
 test("crawl skips checkpointed IDs and advances the threshold from old details", async () => {
   const root = await mkdtemp(join(tmpdir(), "property-checkpoint-crawl-"));
-  const directory = join(root, "raw");
+  const storage = new Storage(join(root, "raw"));
   const requests = new Map<string, number>();
   const server = createServer((request, response) => {
     const path = request.url ?? "";
@@ -97,17 +111,16 @@ test("crawl skips checkpointed IDs and advances the threshold from old details",
     const address = server.address();
     assert.ok(address && typeof address !== "string");
     const url = `http://127.0.0.1:${address.port}/search`;
-    const ids = await readCapturedIds(directory);
-    await updateListingIdCheckpoint(directory, "2026-08-01", 100);
-    assert.equal(await crawlSearch(url, directory, ids, "2026-08-16", 0), 1);
+    await storage.updateListingIdCheckpoint("2026-08-01", 100);
+    assert.equal(await crawlSearch(url, storage, "2026-08-16", 0), 1);
     assert.equal(requests.get("/for-sale/example/200"), 1);
     assert.equal(requests.get("/for-sale/example/150"), undefined);
     assert.equal(requests.get("/for-sale/example/201"), 1);
-    assert.deepEqual(await readListingIdCheckpoint(directory, "2026-08-16"), { date: "2026-08-16", id: 200 });
-    assert.equal(await crawlSearch(url, directory, ids, "2026-08-16", 0), 0);
+    assert.equal(await storage.findListingIdCheckpoint("2026-08-16"), 200);
+    assert.equal(await crawlSearch(url, storage, "2026-08-16", 0), 0);
     assert.equal(requests.get("/for-sale/example/200"), 1);
     assert.equal(requests.get("/for-sale/example/201"), 1);
   } finally {
-    server.close();
+    await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });

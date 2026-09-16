@@ -4,25 +4,14 @@ import { createInterface } from "node:readline";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { crawlSearch, getCitySearchUrls } from "./property24.js";
-import { captureListing, readCapturedIds, type RawListing } from "./storage.js";
-
-function getAfterDate(arguments_: Array<string>): string {
-  const index = arguments_.indexOf("--after");
-  const date = index < 0 ? new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10) : arguments_[index + 1];
-  const parsedDate = new Date(`${date}T00:00:00Z`);
-
-  if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
-    throw new Error("--after must be a valid YYYY-MM-DD date");
-  }
-
-  return date;
-}
+import { Autocomplete, type RawListing } from "./property24.js";
+import { crawlSearch } from "./scraper.js";
+import { Storage } from "./storage.js";
 
 async function main(): Promise<void> {
   const [command, ...arguments_] = process.argv.slice(2);
   const directory = resolve(dirname(fileURLToPath(import.meta.url)), "../../../data/raw");
-  const ids = await readCapturedIds(directory);
+  const storage = new Storage(directory);
 
   if (command === "import") {
     if (arguments_.length !== 1) {
@@ -43,7 +32,7 @@ async function main(): Promise<void> {
         throw new Error("Import accepts only raw {id, jsonld} listings");
       }
 
-      if (await captureListing(directory, ids, listing, "0000-01-01")) {
+      if (await storage.insertListing(listing)) {
         captured += 1;
       }
     }
@@ -52,18 +41,18 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (command !== "scrape" || !(arguments_.length === 0 || (arguments_.length === 2 && arguments_[0] === "--after"))) {
-    throw new Error("Usage: npm run scrape -- [--after YYYY-MM-DD]");
+  if (command !== "scrape" || arguments_.length !== 0) {
+    throw new Error("Usage: npm run scrape");
   }
 
-  const after = getAfterDate(arguments_);
-  const cities = await getCitySearchUrls();
+  const cutoffDate = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10);
+  const cities = await Autocomplete.findAll();
   let captured = 0;
   let failed = 0;
 
   for (const [index, url] of cities.entries()) {
     try {
-      captured += await crawlSearch(url, directory, ids, after, 10_000);
+      captured += await crawlSearch(url, storage, cutoffDate, 10_000);
       console.log(`${index + 1}/${cities.length} cities, ${captured} new listings`);
     } catch (error: unknown) {
       failed += 1;
