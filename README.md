@@ -57,3 +57,26 @@ gcloud run deploy property-prices-predict \
 ```
 
 The cloud build checks for all four nonempty model artifacts before compiling. `packages/function/.gcloudignore` excludes local dependencies and includes the prepared models despite Git ignoring them. No cloud deployment is performed automatically.
+
+## Valuation form and email
+
+[`forms/property-valuation.yaml`](./forms/property-valuation.yaml) is a frms.dev form for residential properties in Gauteng, KwaZulu-Natal, and the Western Cape. After pushing it to the default branch, its form URL is:
+
+```text
+https://frms.dev/justforgiggles/property-prices/forms/property-valuation
+```
+
+The form's webhook URL is intentionally set to the reserved `.invalid` domain. Deploy the email handler, then replace that placeholder with the URL returned by Google Cloud before publishing the form:
+
+```bash
+gcloud run deploy property-prices-valuation \
+  --source packages/function \
+  --function valuation \
+  --base-image nodejs22 \
+  --region YOUR_REGION \
+  --allow-unauthenticated \
+  --set-env-vars RESEND_FROM_EMAIL=YOUR_VERIFIED_SENDER \
+  --set-secrets RESEND_API_KEY=YOUR_SECRET_NAME:latest
+```
+
+The handler accepts completed frms.dev submission envelopes, runs the existing model, and sends the respondent the HTML and plain-text valuation email. It returns `204` only after Resend accepts the message. Keep `RESEND_API_KEY` in Google Secret Manager; never add the value from the core project's `.env.production` to this repository or the form YAML.

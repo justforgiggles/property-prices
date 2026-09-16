@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { predict } from "../dist/index.js";
+import { valuation } from "../dist/valuation.js";
 
 function response() {
   return {
@@ -13,6 +14,7 @@ function response() {
     set(name, value) { this.headers[name] = value; return this; },
     status(code) { this.code = code; return this; },
     json(body) { this.body = body; return this; },
+    send(body) { this.body = body; return this; },
   };
 }
 
@@ -63,6 +65,110 @@ test("function inference matches the independently verified model bundle", async
 
     for (const field of ["low", "recommended", "high"]) {
       assert.ok(Math.abs(result.body[field] - expected[index][field]) <= 1);
+    }
+  }
+});
+
+const submission = {
+  created_at: "2026-09-16T12:00:00.000Z",
+  data: {
+    bathrooms: 2,
+    bedrooms: 3,
+    city: "Cape Town",
+    email: "thandi@example.com",
+    first_name: "Thandi <Test>",
+    floor_area: 120,
+    property_type: "House",
+    province: "Western Cape",
+    suburb: "Sea Point",
+  },
+  form_id: "property-valuation",
+  id: "submission-123",
+  metadata: { ip_address: "127.0.0.1", user_agent: "test" },
+  status: "completed",
+  updated_at: "2026-09-16T12:00:00.000Z",
+};
+
+test("valuation webhook validates completed form submissions", async () => {
+  const method = response();
+  await valuation({ method: "GET", body: submission }, method);
+  assert.equal(method.code, 405);
+  assert.equal(method.headers.Allow, "POST");
+
+  for (const body of [null, { ...submission, status: "partial" }, { ...submission, data: { ...submission.data, province: "Eastern Cape" } }, { ...submission, data: { ...submission.data, bedrooms: 1.5 } }]) {
+    const invalid = response();
+    await valuation({ method: "POST", body }, invalid);
+    assert.equal(invalid.code, 400);
+  }
+});
+
+test("valuation webhook emails an escaped estimate once", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.RESEND_API_KEY;
+  const originalFrom = process.env.RESEND_FROM_EMAIL;
+  let request;
+  globalThis.fetch = async (url, options) => {
+    request = { url, options };
+    return { ok: true, status: 200 };
+  };
+  process.env.RESEND_API_KEY = "test-key";
+  process.env.RESEND_FROM_EMAIL = "estimates@example.com";
+
+  try {
+    const result = response();
+    await valuation({ method: "POST", body: submission }, result);
+    assert.equal(result.code, 204);
+    assert.equal(request.url, "https://api.resend.com/emails");
+    assert.equal(request.options.headers["Idempotency-Key"], "property-valuation/submission-123");
+
+    const email = JSON.parse(request.options.body);
+    assert.deepEqual(email.to, ["thandi@example.com"]);
+    assert.match(email.html, /Hi Thandi &lt;Test&gt;,/);
+    assert.doesNotMatch(email.html, /\{\{[A-Z_]+\}\}/);
+    assert.match(email.html, /Likely range:/);
+    assert.match(email.text, /Floor area: 120 m²/);
+  } finally {
+    globalThis.fetch = originalFetch;
+
+    if (originalApiKey === undefined) {
+      delete process.env.RESEND_API_KEY;
+    } else {
+      process.env.RESEND_API_KEY = originalApiKey;
+    }
+
+    if (originalFrom === undefined) {
+      delete process.env.RESEND_FROM_EMAIL;
+    } else {
+      process.env.RESEND_FROM_EMAIL = originalFrom;
+    }
+  }
+});
+
+test("valuation webhook reports Resend failures", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalApiKey = process.env.RESEND_API_KEY;
+  const originalFrom = process.env.RESEND_FROM_EMAIL;
+  globalThis.fetch = async () => ({ ok: false, status: 429 });
+  process.env.RESEND_API_KEY = "test-key";
+  process.env.RESEND_FROM_EMAIL = "estimates@example.com";
+
+  try {
+    const result = response();
+    await valuation({ method: "POST", body: submission }, result);
+    assert.equal(result.code, 502);
+  } finally {
+    globalThis.fetch = originalFetch;
+
+    if (originalApiKey === undefined) {
+      delete process.env.RESEND_API_KEY;
+    } else {
+      process.env.RESEND_API_KEY = originalApiKey;
+    }
+
+    if (originalFrom === undefined) {
+      delete process.env.RESEND_FROM_EMAIL;
+    } else {
+      process.env.RESEND_FROM_EMAIL = originalFrom;
     }
   }
 });

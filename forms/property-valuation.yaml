@@ -1,0 +1,546 @@
+# yaml-language-server: $schema=https://frms.dev/schema.json
+version: 1
+title: "South African property value estimate"
+description: "Get an instant, data-driven estimate based on recent South African property listings."
+
+start:
+  title: "Know what your property could be worth"
+  description: "It takes about two minutes, and we will email your estimated value and range. This is an indicative estimate, not a formal valuation."
+  button: "Get my free estimate"
+
+sections:
+  - id: province
+    title: "Which province is the property in?"
+    description: "We currently cover Gauteng, KwaZulu-Natal and the Western Cape."
+    fields:
+      - id: province
+        type: single_select
+        label: "Province"
+        options:
+          - label: "Gauteng"
+            value: "Gauteng"
+          - label: "KwaZulu-Natal"
+            value: "KwaZulu Natal"
+          - label: "Western Cape"
+            value: "Western Cape"
+        validators:
+          - required
+    next:
+      - when: "data.province === 'Gauteng'"
+        go: city_gauteng
+      - when: "data.province === 'KwaZulu Natal'"
+        go: city_kwazulu_natal
+      - else: city_western_cape
+
+  - id: city_gauteng
+    title: "Which city or town is the property in?"
+    description: "Choose a supported area in Gauteng."
+    fields:
+      - id: city
+        type: dropdown
+        label: "City or town"
+        searchable: true
+        options:
+          - "Johannesburg"
+          - "Sandton"
+        validators:
+          - required
+    next:
+      - when: "data.city === 'Johannesburg'"
+        go: suburb_johannesburg
+      - else: suburb_sandton
+
+  - id: city_kwazulu_natal
+    title: "Which city or town is the property in?"
+    description: "Choose a supported area in KwaZulu-Natal."
+    fields:
+      - id: city
+        type: dropdown
+        label: "City or town"
+        searchable: true
+        options:
+          - "Durban"
+        validators:
+          - required
+    next: suburb_durban
+
+  - id: city_western_cape
+    title: "Which city or town is the property in?"
+    description: "Choose a supported area in Western Cape."
+    fields:
+      - id: city
+        type: dropdown
+        label: "City or town"
+        searchable: true
+        options:
+          - "Blouberg"
+          - "Cape Town"
+          - "Durbanville"
+        validators:
+          - required
+    next:
+      - when: "data.city === 'Blouberg'"
+        go: suburb_blouberg
+      - when: "data.city === 'Cape Town'"
+        go: suburb_cape_town
+      - else: suburb_durbanville
+
+  - id: suburb_johannesburg
+    title: "Which suburb is the property in?"
+    description: "Search for the suburb in Johannesburg."
+    fields:
+      - id: suburb
+        type: dropdown
+        label: "Suburb"
+        searchable: true
+        options:
+          - "Aeroton"
+          - "Alan Manor"
+          - "Albertville"
+          - "Alveda"
+          - "Aspen Hills"
+          - "Auckland Park"
+          - "Bassonia"
+          - "Bassonia Estate"
+          - "Bassonia Rock"
+          - "Bellevue"
+          - "Berea"
+          - "Bezuidenhout Valley"
+          - "Bosmont"
+          - "Braamfontein"
+          - "Braamfontein Werf"
+          - "Bramley View"
+          - "Brixton"
+          - "Bruma"
+          - "Chrisville"
+          - "Corlett Gardens"
+          - "Coronationville"
+          - "Craighall"
+          - "Craighall Park"
+          - "Crosby"
+          - "Crown Gardens"
+          - "Cyrildene"
+          - "Dunkeld"
+          - "Dunkeld West"
+          - "Eastcliff"
+          - "Elandspark"
+          - "Emmarentia"
+          - "Ennerdale"
+          - "Fairwood"
+          - "Forest Hill"
+          - "Forest Town"
+          - "Glenanda"
+          - "Gleneagles"
+          - "Glenesk"
+          - "Glenhazel"
+          - "Glenvista"
+          - "Greenside"
+          - "Gresswold"
+          - "Greymont"
+          - "Haddon"
+          - "Highlands North"
+          - "Hillbrow"
+          - "Houghton Estate"
+          - "Jeppestown"
+          - "Jeppestown South"
+          - "Johannesburg Central"
+          - "Joubert Park"
+          - "Kenilworth"
+          - "Kensington"
+          - "Kew"
+          - "Kibler Park"
+          - "Killarney"
+          - "La Rochelle"
+          - "Lehae"
+          - "Lenasia"
+          - "Lenasia Ext 1"
+          - "Lenasia Ext 10"
+          - "Lenasia Ext 5"
+          - "Lenasia Ext 6"
+          - "Lenasia South"
+          - "Liefde En Vrede"
+          - "Linksfield"
+          - "Linmeyer"
+          - "Lombardy East"
+          - "Lombardy West"
+          - "Lyndhurst"
+          - "Maboneng"
+          - "Malvern"
+          - "Marshalltown"
+          - "Mayfair West"
+          - "Mayfield Park"
+          - "Melrose"
+          - "Melrose Arch"
+          - "Melville"
+          - "Meredale"
+          - "Mid Ennerdale"
+          - "Mondeor"
+          - "Montgomery Park"
+          - "Mulbarton"
+          - "Nasrec"
+          - "Naturena"
+          - "Newlands"
+          - "Newtown"
+          - "Norwood"
+          - "Oakdene"
+          - "Oaklands"
+          - "Observatory"
+          - "Olifantsvlei"
+          - "Orange Grove"
+          - "Orchards"
+          - "Ormonde"
+          - "Ormonde View"
+          - "Paarlshoop"
+          - "Parkhurst"
+          - "Parktown"
+          - "Parkview"
+          - "Parkwood"
+          - "Regents Park"
+          - "Rembrandt Park"
+          - "Ridgeway"
+          - "Riverlea"
+          - "Riviera"
+          - "Robertsham"
+          - "Roodepoort"
+          - "Roseacre"
+          - "Rosebank"
+          - "Rosettenville"
+          - "Sandringham"
+          - "Silvamonte"
+          - "Sophiatown"
+          - "South Hills"
+          - "South Kensington"
+          - "Southdale"
+          - "Suideroord"
+          - "Sunningdale"
+          - "Sydenham"
+          - "The Hill"
+          - "Townsview"
+          - "Troyeville"
+          - "Tulisa Park"
+          - "Turffontein"
+          - "Unigray"
+          - "Victoria"
+          - "Vrededorp"
+          - "Waterval Estate"
+          - "Waverley"
+          - "West Turffontein"
+          - "Westdene"
+          - "Whitney Gardens"
+          - "Winchester Hills"
+          - "Yeoville"
+          - "Zakariyya Park"
+        validators:
+          - required
+    next: property
+
+  - id: suburb_sandton
+    title: "Which suburb is the property in?"
+    description: "Search for the suburb in Sandton."
+    fields:
+      - id: suburb
+        type: dropdown
+        label: "Suburb"
+        searchable: true
+        options:
+          - "Hyde Park"
+          - "Rivonia"
+        validators:
+          - required
+    next: property
+
+  - id: suburb_durban
+    title: "Which suburb is the property in?"
+    description: "Search for the suburb in Durban."
+    fields:
+      - id: suburb
+        type: dropdown
+        label: "Suburb"
+        searchable: true
+        options:
+          - "Atholl Heights"
+          - "Austerville"
+          - "Avoca"
+          - "Bellair"
+          - "Berea West"
+          - "Beverley Hills"
+          - "Bluff"
+          - "Bonela"
+          - "Bridge City"
+          - "Brighton Beach"
+          - "Bulwer"
+          - "Chiltern Hills"
+          - "Clare Hills"
+          - "Congella"
+          - "Dawncrest"
+          - "Durban Central"
+          - "Esplanade"
+          - "Essenwood"
+          - "Glenmore"
+          - "Glenwood"
+          - "Greenwood Park"
+          - "Grosvenor"
+          - "Hillary"
+          - "Manor Gardens"
+          - "Montclair"
+          - "Morningside"
+          - "Musgrave"
+          - "Newlands East"
+          - "North Beach"
+          - "Ocean View"
+          - "Overport"
+          - "Palmiet"
+          - "Point"
+          - "Point Waterfront"
+          - "Reservoir Hills"
+          - "Sherwood"
+          - "South Beach"
+          - "Sydenham"
+          - "Umbilo"
+          - "Wentworth"
+          - "Westridge"
+          - "Westville"
+          - "Windermere"
+          - "Woodlands"
+          - "Yellowwood Park"
+        validators:
+          - required
+    next: property
+
+  - id: suburb_blouberg
+    title: "Which suburb is the property in?"
+    description: "Search for the suburb in Blouberg."
+    fields:
+      - id: suburb
+        type: dropdown
+        label: "Suburb"
+        searchable: true
+        options:
+          - "Beachfront"
+          - "Big Bay"
+          - "Blouberg Rise"
+          - "Blouberg Sands"
+          - "Bloubergrant"
+          - "Bloubergstrand"
+          - "Flamingo Vlei"
+          - "Parklands"
+          - "Parklands East"
+          - "Parklands North"
+          - "Sagewood"
+          - "Sandown"
+          - "Sunningdale"
+          - "Table View"
+          - "Waves Edge"
+          - "West Beach"
+        validators:
+          - required
+    next: property
+
+  - id: suburb_cape_town
+    title: "Which suburb is the property in?"
+    description: "Search for the suburb in Cape Town."
+    fields:
+      - id: suburb
+        type: dropdown
+        label: "Suburb"
+        searchable: true
+        options:
+          - "Bakoven"
+          - "Bantry Bay"
+          - "Belgravia"
+          - "Belhar"
+          - "Bergvliet"
+          - "Bo Kaap"
+          - "Bridgetown"
+          - "Camps Bay"
+          - "Cape Farms"
+          - "Cape Town City Centre"
+          - "Claremont"
+          - "Claremont Upper"
+          - "Constantia"
+          - "Costa Da Gama"
+          - "De Waterkant"
+          - "Devils Peak Estate"
+          - "Diep River"
+          - "Fairways"
+          - "Foreshore"
+          - "Fresnaye"
+          - "Gardens"
+          - "Gatesville"
+          - "Grassy Park"
+          - "Green Point"
+          - "Guguletu"
+          - "Harfield Village"
+          - "Hazendal"
+          - "Heathfield"
+          - "Higgovale"
+          - "Kalk Bay"
+          - "Kenilworth"
+          - "Kenilworth Upper"
+          - "Kensington"
+          - "Kirstenhof"
+          - "Lakeside"
+          - "Lansdowne"
+          - "Lotus River"
+          - "Marina Da Gama"
+          - "Meadowridge"
+          - "Montana"
+          - "Mouille Point"
+          - "Mowbray"
+          - "Muizenberg"
+          - "Ndabeni"
+          - "Newlands"
+          - "Observatory"
+          - "Oranjezicht"
+          - "Ottery"
+          - "Paarden Eiland"
+          - "Pelican Heights"
+          - "Philippi"
+          - "Pinelands"
+          - "Plumstead"
+          - "Retreat"
+          - "Rondebosch"
+          - "Rondebosch East"
+          - "Rondebosch Village"
+          - "Rosebank"
+          - "Rylands"
+          - "Salt River"
+          - "Sea Point"
+          - "Southfield"
+          - "Steenberg"
+          - "Surrey Estate"
+          - "Tamboerskloof"
+          - "Thornton"
+          - "Three Anchor Bay"
+          - "Tokai"
+          - "Valhalla Park"
+          - "Vredehoek"
+          - "Walmer Estate"
+          - "Waterfront"
+          - "Wetton"
+          - "Woodstock"
+          - "Wynberg"
+          - "Wynberg Upper"
+          - "Zonnebloem"
+        validators:
+          - required
+    next: property
+
+  - id: suburb_durbanville
+    title: "Which suburb is the property in?"
+    description: "Search for the suburb in Durbanville."
+    fields:
+      - id: suburb
+        type: dropdown
+        label: "Suburb"
+        searchable: true
+        options:
+          - "Aurora"
+          - "Avalon Estate"
+          - "Clara Anna Fontein"
+          - "Durbanville Central"
+          - "Goedemoed"
+          - "Graanendal"
+          - "Groot Phesantekraal Estate"
+          - "Pinehurst"
+          - "Sonstraal"
+          - "Sonstraal Heights"
+          - "Tara"
+          - "The Crest"
+          - "Uitzicht"
+          - "Valmary Park"
+          - "Wellway Park East"
+        validators:
+          - required
+    next: property
+
+  - id: property
+    title: "Tell us about the property"
+    description: "Use your best estimate if you do not know an exact figure."
+    fields:
+      - id: property_type
+        type: single_select
+        label: "Property type"
+        options:
+          - "House"
+          - "Apartment / Flat"
+          - "Townhouse"
+        validators:
+          - required
+
+      - id: bedrooms
+        type: number
+        label: "Bedrooms"
+        validators:
+          - required
+          - type: min
+            value: 1
+            message: "Enter at least 1 bedroom."
+          - type: max
+            value: 20
+            message: "Enter 20 bedrooms or fewer."
+
+      - id: bathrooms
+        type: number
+        label: "Bathrooms"
+        validators:
+          - required
+          - type: min
+            value: 1
+            message: "Enter at least 1 bathroom."
+          - type: max
+            value: 20
+            message: "Enter 20 bathrooms or fewer."
+
+      - id: floor_area
+        type: number
+        label: "Floor area (m²)"
+        validators:
+          - required
+          - type: min
+            value: 1
+            message: "Enter a floor area of at least 1 m²."
+          - type: max
+            value: 5000
+            message: "Enter a floor area of 5,000 m² or less."
+    next: delivery
+
+  - id: delivery
+    title: "Where should we send your estimate?"
+    description: "We will email your indicative valuation as soon as it is ready."
+    fields:
+      - id: first_name
+        type: short_text
+        label: "First name (optional)"
+        placeholder: "Thandi"
+        validators:
+          - type: max_length
+            value: 80
+
+      - id: email
+        type: email
+        label: "Email address"
+        placeholder: "thandi@example.com"
+        validators:
+          - required
+          - type: pattern
+            regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
+            message: "Enter a valid email address."
+
+      - id: privacy_note
+        type: text_block
+        content: "We will use your email only to send this valuation. No marketing messages."
+
+      - id: valuation_note
+        type: text_block
+        content: "This estimate uses recent property listing data and is indicative only. It is not a formal valuation or a record of completed sale prices."
+    next: done
+
+completion:
+  title: "Your estimate is on its way"
+  message: "We are calculating it now and will email it to {{data.email}} shortly. If it does not arrive, check your spam folder."
+
+connections:
+  - type: webhook
+    url: "https://property-prices-valuation.invalid"
+    trigger_on: completed

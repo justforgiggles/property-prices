@@ -2,6 +2,7 @@ import { http } from "@google-cloud/functions-framework";
 import type { Request, Response } from "@google-cloud/functions-framework";
 
 import { predictValuation, type Property } from "./inference.js";
+import { valuation } from "./valuation.js";
 
 function parseProperty(body: unknown): Property | null {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
@@ -58,3 +59,4 @@ export async function predict(request: Request, response: Response): Promise<voi
 }
 
 http("predict", predict);
+http("valuation", valuation);
