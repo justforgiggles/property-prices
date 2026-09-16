@@ -9,13 +9,14 @@ const PROVINCES = new Set(["Western Cape", "Gauteng", "KwaZulu Natal"]);
 
 type City = { id: number; name: string; parentName: string; type: number };
 export type RawListing = { id: number; jsonld: Array<unknown> };
+export type SearchListing = { url: string; promoted: boolean };
 
 export class SearchPage {
   private page: Promise<cheerio.CheerioAPI> | null = null;
 
   public constructor(private readonly url: string) {}
 
-  public async parseAll(): Promise<Array<string>> {
+  public async parseAll(): Promise<Array<SearchListing>> {
     const $ = await this.load();
     const hiddenClasses = new Set<string>();
 
@@ -30,10 +31,21 @@ export class SearchPage {
     return $(".p24_tileContainer.js_resultTile, .js_groupedResultTile.p24_tileContainer")
       .toArray()
       .filter((element) => !($(element).attr("class") ?? "").split(/\s+/).some((name) => hiddenClasses.has(name)))
-      .map((element) => $(element).find("a[href*='/for-sale/']").first().attr("href"))
-      .filter((href): href is string => typeof href === "string")
-      .map((href) => new URL(href, this.url).href)
-      .filter((url) => parseListingId(url) !== null);
+      .map((element) => {
+        const tile = $(element);
+        const href = tile.find("a[href*='/for-sale/']").first().attr("href");
+
+        if (href === undefined) {
+          return null;
+        }
+
+        const url = new URL(href, this.url).href;
+
+        return parseListingId(url) === null
+          ? null
+          : { url, promoted: tile.closest(".p24_topTile").length > 0 || tile.find(".p24_proTile").length > 0 };
+      })
+      .filter((listing): listing is SearchListing => listing !== null);
   }
 
   public async next(): Promise<string | null> {
@@ -120,6 +132,7 @@ export class Autocomplete {
       const provinceSlug = city.parentName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       const url = new URL(`https://www.property24.com/for-sale/${citySlug}/${provinceSlug}/${city.id}`);
       url.searchParams.set("PropertyCategory", "House,ApartmentOrFlat,Townhouse");
+      url.searchParams.set("sp", "so=Newest");
       return url.href;
     }))].sort();
   }

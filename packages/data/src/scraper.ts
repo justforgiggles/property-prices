@@ -15,11 +15,17 @@ export async function crawlSearch(url: string, storage: Storage, cutoffDate: str
     visited.add(next);
     await new Promise<void>((resolve) => setTimeout(resolve, Math.min(detailDelayMs, 1_000)));
     const searchPage: SearchPage = new SearchPage(next);
+    let hasUnseenOrganicListing = false;
 
-    for (const listingUrl of await searchPage.parseAll()) {
-      const listingPage = new ListingPage(listingUrl);
+    for (const searchListing of await searchPage.parseAll()) {
+      const listingPage = new ListingPage(searchListing.url);
+      const known = (checkpointId !== null && listingPage.id <= checkpointId) || await storage.hasListing(listingPage.id);
 
-      if ((checkpointId !== null && listingPage.id <= checkpointId) || await storage.hasListing(listingPage.id)) {
+      if (!searchListing.promoted && !known) {
+        hasUnseenOrganicListing = true;
+      }
+
+      if (known) {
         continue;
       }
 
@@ -38,7 +44,7 @@ export async function crawlSearch(url: string, storage: Storage, cutoffDate: str
       }
     }
 
-    next = await searchPage.next();
+    next = hasUnseenOrganicListing ? await searchPage.next() : null;
   }
 
   return captured;
