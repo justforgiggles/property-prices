@@ -27,6 +27,8 @@ npm test
 
 Each previously unseen listing ID is appended once to `data/raw/YYYY-MM-DD.jsonl`, based on its publication date. Dated raw files are versionable and are never rewritten by scraper reruns; review and commit new files after a crawl. Training reads all dated files, skips listings missing required model features, writes metrics to `packages/model/build/metrics.json`, and promotes a four-file bundle only after quality gates and Python/Node ONNX parity pass. Models are generated and ignored by Git; a clean checkout can train from the migrated raw history.
 
+The scraper persists date-to-ID thresholds in `data/checkpoints.csv`. Listing IDs at or below the threshold for the requested cutoff are skipped without opening their detail pages. This intentionally treats Property24 IDs as a publication-order proxy, so a republished property with an older ID may be omitted.
+
 ## Prediction API
 
 Send JSON to the public function with `POST`:

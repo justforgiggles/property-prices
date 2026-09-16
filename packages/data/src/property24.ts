@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 
-import { captureListing, type RawListing } from "./storage.js";
+import { captureListing, findPublicationDate, readListingIdCheckpoint, updateListingIdCheckpoint, type RawListing } from "./storage.js";
 
 const HEADERS = {
   accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -135,6 +135,7 @@ export async function getCitySearchUrls(): Promise<Array<string>> {
 
 export async function crawlSearch(url: string, directory: string, ids: Set<number>, after: string, detailDelayMs: number): Promise<number> {
   let next: string | null = url;
+  let checkpointId = (await readListingIdCheckpoint(directory, after))?.id ?? null;
   const visited = new Set<string>();
   let captured = 0;
 
@@ -148,12 +149,19 @@ export async function crawlSearch(url: string, directory: string, ids: Set<numbe
     const page = parseSearchPage(await fetchText(next), next);
 
     for (const listing of page.listings) {
-      if (ids.has(listing.id)) {
+      if ((checkpointId !== null && listing.id <= checkpointId) || ids.has(listing.id)) {
         continue;
       }
 
       await new Promise<void>((resolve) => setTimeout(resolve, detailDelayMs));
       const detail = parseDetailPage(await fetchText(listing.url), listing.url);
+      const publicationDate = findPublicationDate(detail);
+
+      if (publicationDate !== null && publicationDate < after) {
+        checkpointId = checkpointId === null ? detail.id : Math.max(checkpointId, detail.id);
+        await updateListingIdCheckpoint(directory, after, checkpointId);
+        continue;
+      }
 
       if (await captureListing(directory, ids, detail, after)) {
         captured += 1;
