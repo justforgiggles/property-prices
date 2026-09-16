@@ -12,7 +12,7 @@ python3.12 -m venv packages/model/.venv
 packages/model/.venv/bin/python -m pip install -e packages/model
 ```
 
-The scraper uses plain HTTP requests; it does not use Playwright. It discovers all nine provinces and their city searches through Property24's location dictionary. A full crawl makes many requests and may take considerable time. Site blocking, invalid pages, or incomplete city crawls produce a nonzero exit code.
+The scraper uses plain HTTP requests; it does not use Playwright. It discovers city searches in Western Cape, Gauteng, and KwaZulu Natal through Property24's location dictionary. A full crawl makes many requests and may take considerable time. Site blocking, invalid pages, or incomplete city crawls produce a nonzero exit code.
 
 ## Data → model → function
 

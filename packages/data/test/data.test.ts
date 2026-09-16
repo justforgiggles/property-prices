@@ -5,13 +5,37 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { ListingPage, SearchPage } from "../src/property24.js";
+import { Autocomplete, ListingPage, SearchPage } from "../src/property24.js";
 import { crawlSearch } from "../src/scraper.js";
 import { Storage } from "../src/storage.js";
 
 function raw(id: number, date: string): { id: number; jsonld: Array<unknown> } {
   return { id, jsonld: [{ "@graph": [{ datePosted: date, about: {}, offers: {} }] }] };
 }
+
+test("autocomplete returns cities from the three supported provinces", async () => {
+  const originalFetch = globalThis.fetch;
+  let areas = [
+    { id: 432, name: "Cape Town", parentName: "Western Cape", type: 2 },
+    { id: 100, name: "Johannesburg", parentName: "Gauteng", type: 2 },
+    { id: 169, name: "Durban", parentName: "KwaZulu Natal", type: 2 },
+    { id: 30, name: "Bloemfontein", parentName: "Free State", type: 2 },
+    { id: 432, name: "Cape Town", parentName: "Western Cape", type: 2 },
+  ];
+  globalThis.fetch = async () => Response.json({ areas });
+
+  try {
+    assert.deepEqual(await Autocomplete.findAll(), [
+      "https://www.property24.com/for-sale/cape-town/western-cape/432?PropertyCategory=House%2CApartmentOrFlat%2CTownhouse",
+      "https://www.property24.com/for-sale/durban/kwazulu-natal/169?PropertyCategory=House%2CApartmentOrFlat%2CTownhouse",
+      "https://www.property24.com/for-sale/johannesburg/gauteng/100?PropertyCategory=House%2CApartmentOrFlat%2CTownhouse",
+    ]);
+    areas = areas.filter((area) => area.parentName !== "KwaZulu Natal");
+    await assert.rejects(Autocomplete.findAll(), /no city locations for: KwaZulu Natal/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test("daily raw files preserve schema and prevent duplicate reruns", async () => {
   const directory = await mkdtemp(join(tmpdir(), "property-data-"));

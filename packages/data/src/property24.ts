@@ -5,6 +5,7 @@ const HEADERS = {
   "accept-language": "en-US,en;q=0.9",
   "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Safari/537.36",
 };
+const PROVINCES = new Set(["Western Cape", "Gauteng", "KwaZulu Natal"]);
 
 type City = { id: number; name: string; parentName: string; type: number };
 export type RawListing = { id: number; jsonld: Array<unknown> };
@@ -106,16 +107,12 @@ export class Autocomplete {
 
     const grouped = (await response.json()) as Record<string, Array<City>>;
     const areas = Object.values(grouped).flat();
-    const provinces = new Set(areas.filter((area) => area.type === 5).map((area) => area.name));
+    const cities = areas.filter((area) => area.type === 2 && PROVINCES.has(area.parentName));
+    const returnedProvinces = new Set(cities.map((city) => city.parentName));
+    const missingProvinces = [...PROVINCES].filter((province) => !returnedProvinces.has(province));
 
-    if (provinces.size !== 9) {
-      throw new Error(`Expected nine Property24 provinces, found ${provinces.size}`);
-    }
-
-    const cities = areas.filter((area) => area.type === 2 && provinces.has(area.parentName));
-
-    if (cities.length < 600) {
-      throw new Error(`Property24 returned only ${cities.length} city locations`);
+    if (missingProvinces.length > 0) {
+      throw new Error(`Property24 returned no city locations for: ${missingProvinces.join(", ")}`);
     }
 
     return [...new Set(cities.map((city) => {
