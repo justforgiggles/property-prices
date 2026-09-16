@@ -95,7 +95,14 @@ test("valuation webhook validates completed form submissions", async () => {
   assert.equal(method.code, 405);
   assert.equal(method.headers.Allow, "POST");
 
-  for (const body of [null, { ...submission, status: "partial" }, { ...submission, data: { ...submission.data, province: "Eastern Cape" } }, { ...submission, data: { ...submission.data, bedrooms: 1.5 } }]) {
+  for (const body of [
+    null,
+    { ...submission, status: "partial" },
+    { ...submission, data: { ...submission.data, province: "Eastern Cape" } },
+    { ...submission, data: { ...submission.data, city: "Durban" } },
+    { ...submission, data: { ...submission.data, suburb: "" } },
+    { ...submission, data: { ...submission.data, bedrooms: 1.5 } },
+  ]) {
     const invalid = response();
     await valuation({ method: "POST", body }, invalid);
     assert.equal(invalid.code, 400);

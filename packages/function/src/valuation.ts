@@ -1,4 +1,5 @@
 import type { Request, Response } from "@google-cloud/functions-framework";
+import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -6,12 +7,10 @@ import { fileURLToPath } from "node:url";
 import { predictValuation, type Property, type Valuation } from "./inference.js";
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PROVINCES = new Map([
-  ["Gauteng", "Gauteng"],
-  ["KwaZulu-Natal", "KwaZulu Natal"],
-  ["Western Cape", "Western Cape"],
-]);
 const PROPERTY_TYPES = new Set(["Apartment / Flat", "House", "Townhouse"]);
+const locations = JSON.parse(
+  readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../locations.json"), "utf8"),
+) as Record<string, Record<string, Array<string>>>;
 const TEMPLATE_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../email/property-valuation.html");
 const templatePromise = readFile(TEMPLATE_PATH, "utf8");
 const zar = new Intl.NumberFormat("en-ZA", {
@@ -63,9 +62,9 @@ function parseSubmission(body: unknown): ValuationSubmission | null {
   const email = parseText(data.email, 254);
   const firstName = data.first_name === undefined || data.first_name === "" ? "" : parseText(data.first_name, 80);
   const locality1 = parseText(data.city, 100);
-  const locality2 = data.suburb === undefined || data.suburb === "" ? "" : parseText(data.suburb, 100);
-  const province = parseText(data.province, 100);
-  const region = province === null ? undefined : PROVINCES.get(province);
+  const locality2 = parseText(data.suburb, 100);
+  const region = parseText(data.province, 100);
+  const suburbs = region === null || locality1 === null ? undefined : locations[region]?.[locality1];
   const size = parsePositiveInteger(data.floor_area, 5000);
   const type = parseText(data.property_type, 100);
 
@@ -76,11 +75,13 @@ function parseSubmission(body: unknown): ValuationSubmission | null {
     firstName === null ||
     locality1 === null ||
     locality2 === null ||
-    region === undefined ||
+    region === null ||
     size === null ||
     type === null ||
     !EMAIL_PATTERN.test(email) ||
-    !PROPERTY_TYPES.has(type)
+    !PROPERTY_TYPES.has(type) ||
+    suburbs === undefined ||
+    !suburbs.includes(locality2)
   ) {
     return null;
   }
