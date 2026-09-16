@@ -65,17 +65,17 @@ The cloud build checks for all four nonempty model artifacts before compiling. `
 https://frms.dev/justforgiggles/property-prices/forms/property-valuation
 ```
 
-The form's webhook URL is intentionally set to the reserved `.invalid` domain. Deploy the email handler, then replace that placeholder with the URL returned by Google Cloud before publishing the form:
+The form's webhook points to the deployed email handler. Redeploy it after changing the function source:
 
 ```bash
 gcloud run deploy property-prices-valuation \
   --source packages/function \
   --function valuation \
   --base-image nodejs22 \
-  --region YOUR_REGION \
+  --region europe-west3 \
   --allow-unauthenticated \
-  --set-env-vars RESEND_FROM_EMAIL=YOUR_VERIFIED_SENDER \
-  --set-secrets RESEND_API_KEY=YOUR_SECRET_NAME:latest
+  --set-env-vars RESEND_FROM_EMAIL=noreply@frms.dev \
+  --set-secrets RESEND_API_KEY=resend-api-key:latest
 ```
 
 The handler accepts completed frms.dev submission envelopes, runs the existing model, and sends the respondent the HTML and plain-text valuation email. It returns `204` only after Resend accepts the message. Keep `RESEND_API_KEY` in Google Secret Manager; never add the value from the core project's `.env.production` to this repository or the form YAML.

@@ -542,5 +542,5 @@ completion:
 
 connections:
   - type: webhook
-    url: "https://property-prices-valuation.invalid"
+    url: "https://property-prices-valuation-1008115912104.europe-west3.run.app"
     trigger_on: completed
