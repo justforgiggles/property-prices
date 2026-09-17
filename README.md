@@ -73,8 +73,15 @@ gcloud run deploy property-prices-valuation \
   --base-image nodejs22 \
   --region europe-west3 \
   --allow-unauthenticated \
-  --set-env-vars RESEND_FROM_EMAIL=noreply@frms.dev \
+  --set-env-vars 'RESEND_FROM_EMAIL=Peter <hello@frms.dev>' \
   --set-secrets RESEND_API_KEY=resend-api-key:latest
 ```
 
-The handler accepts completed frms.dev submission envelopes, runs the existing model, and sends the respondent the HTML and plain-text valuation email. It returns `204` only after Resend accepts the message. Keep `RESEND_API_KEY` in Google Secret Manager; never add the value from the core project's `.env.production` to this repository or the form YAML.
+Before deployment, configure the sender domain:
+
+- Create `dmarc@frms.dev` as an alias to the monitored `hello@frms.dev` mailbox.
+- Publish one `_dmarc.frms.dev` TXT record with `v=DMARC1; p=none; rua=mailto:dmarc@frms.dev; adkim=r; aspf=r; pct=100`.
+- Keep Resend's existing `send.frms.dev` SPF/MX return path and `resend._domainkey.frms.dev` DKIM record unchanged.
+- Disable open and click tracking for `frms.dev` in Resend.
+
+The handler accepts completed frms.dev submission envelopes, runs the existing model, and sends the respondent the HTML and plain-text valuation email. It returns `204` only after Resend accepts the message. Keep `RESEND_API_KEY` in Google Secret Manager; never add the value from the core project's `.env.production` to this repository or the form YAML. Keep DMARC at `p=none` until reports show that every legitimate `frms.dev` sender is aligned.
