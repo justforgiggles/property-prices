@@ -9,8 +9,12 @@ import { fileURLToPath } from "node:url";
 import { predictValuation } from "./inference.js";
 
 const locations = JSON.parse(
-  readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../locations.json"), "utf8"),
+  readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), "../locations.json"),
+    "utf8",
+  ),
 ) as Record<string, Record<string, Array<string>>>;
+
 const validateSubmission = new Ajv().compile({
   $defs: {
     positiveInteger: {
@@ -23,14 +27,30 @@ const validateSubmission = new Ajv().compile({
         bathrooms: { $ref: "#/$defs/positiveInteger" },
         bedrooms: { $ref: "#/$defs/positiveInteger" },
         city: { maxLength: 100, minLength: 1, type: "string" },
-        email: { maxLength: 254, pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", type: "string" },
+        email: {
+          maxLength: 254,
+          pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$",
+          type: "string",
+        },
         first_name: { maxLength: 80, type: "string" },
         floor_area: { $ref: "#/$defs/positiveInteger" },
-        property_type: { enum: ["Apartment / Flat", "House", "Townhouse"], type: "string" },
+        property_type: {
+          enum: ["Apartment / Flat", "House", "Townhouse"],
+          type: "string",
+        },
         province: { maxLength: 100, minLength: 1, type: "string" },
         suburb: { maxLength: 100, minLength: 1, type: "string" },
       },
-      required: ["bathrooms", "bedrooms", "city", "email", "floor_area", "property_type", "province", "suburb"],
+      required: [
+        "bathrooms",
+        "bedrooms",
+        "city",
+        "email",
+        "floor_area",
+        "property_type",
+        "province",
+        "suburb",
+      ],
       type: "object",
     },
     id: { maxLength: 200, minLength: 1, type: "string" },
@@ -39,22 +59,31 @@ const validateSubmission = new Ajv().compile({
   required: ["data", "id", "status"],
   type: "object",
 });
-const templateDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../email");
+
+const templateDirectory = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  "../email",
+);
+
 const templatesPromise = Promise.all([
-  readFile(resolve(templateDirectory, "property-valuation.html"), "utf8").then((template) =>
-    Handlebars.compile(template),
+  readFile(resolve(templateDirectory, "property-valuation.html"), "utf8").then(
+    (template) => Handlebars.compile(template),
   ),
-  readFile(resolve(templateDirectory, "property-valuation.txt"), "utf8").then((template) =>
-    Handlebars.compile(template, { noEscape: true }),
+  readFile(resolve(templateDirectory, "property-valuation.txt"), "utf8").then(
+    (template) => Handlebars.compile(template, { noEscape: true }),
   ),
 ]);
+
 const zar = new Intl.NumberFormat("en-ZA", {
   currency: "ZAR",
   maximumFractionDigits: 0,
   style: "currency",
 });
 
-export async function valuation(request: Request, response: Response): Promise<void> {
+export async function valuation(
+  request: Request,
+  response: Response,
+): Promise<void> {
   response.set("Cache-Control", "no-store");
 
   if (request.method !== "POST") {
@@ -75,7 +104,8 @@ export async function valuation(request: Request, response: Response): Promise<v
     }
   }
 
-  submission.id = typeof submission.id === "string" ? submission.id.trim() : submission.id;
+  submission.id =
+    typeof submission.id === "string" ? submission.id.trim() : submission.id;
 
   if (invalidFirstName || !validateSubmission(submission)) {
     response.status(400).json({ error: "Submission is invalid" });
@@ -97,8 +127,13 @@ export async function valuation(request: Request, response: Response): Promise<v
       [property.bathrooms, 20],
       [property.bedrooms, 20],
       [property.size, 5000],
-    ].some(([value, maximum]) => !Number.isInteger(value) || value < 1 || value > maximum) ||
-    !locations[property.region]?.[property.locality_1]?.includes(property.locality_2)
+    ].some(
+      ([value, maximum]) =>
+        !Number.isInteger(value) || value < 1 || value > maximum,
+    ) ||
+    !locations[property.region]?.[property.locality_1]?.includes(
+      property.locality_2,
+    )
   ) {
     response.status(400).json({ error: "Submission is invalid" });
     return;
@@ -125,9 +160,15 @@ export async function valuation(request: Request, response: Response): Promise<v
     const values = {
       bathrooms: property.bathrooms,
       bedrooms: property.bedrooms,
-      greeting: submission.data.first_name ? `Hi ${submission.data.first_name},` : "Hello,",
+      greeting: submission.data.first_name
+        ? `Hi ${submission.data.first_name},`
+        : "Hello,",
       high: zar.format(estimate.high),
-      location: [property.locality_2, property.locality_1, property.region].join(", "),
+      location: [
+        property.locality_2,
+        property.locality_1,
+        property.region,
+      ].join(", "),
       low: zar.format(estimate.low),
       recommended: zar.format(estimate.recommended),
       size: `${property.size.toLocaleString("en-ZA")} m²`,
