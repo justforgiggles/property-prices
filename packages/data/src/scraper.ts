@@ -3,7 +3,6 @@ import { Storage } from "./storage.js";
 
 export async function crawlSearch(url: string, storage: Storage, cutoffDate: string, detailDelayMs: number): Promise<number> {
   let next: string | null = url;
-  let checkpointId = await storage.findListingIdCheckpoint(cutoffDate);
   const visited = new Set<string>();
   let captured = 0;
 
@@ -15,17 +14,12 @@ export async function crawlSearch(url: string, storage: Storage, cutoffDate: str
     visited.add(next);
     await new Promise<void>((resolve) => setTimeout(resolve, Math.min(detailDelayMs, 1_000)));
     const searchPage: SearchPage = new SearchPage(next);
-    let hasUnseenOrganicListing = false;
+    let hasRecentOrganicListing = false;
 
     for (const searchListing of await searchPage.parseAll()) {
       const listingPage = new ListingPage(searchListing.url);
-      const known = (checkpointId !== null && listingPage.id <= checkpointId) || await storage.hasListing(listingPage.id);
 
-      if (!searchListing.promoted && !known) {
-        hasUnseenOrganicListing = true;
-      }
-
-      if (known) {
+      if (await storage.hasListing(listingPage.id)) {
         continue;
       }
 
@@ -33,18 +27,18 @@ export async function crawlSearch(url: string, storage: Storage, cutoffDate: str
       const listing = await listingPage.parse();
       const publicationDate = storage.findListingPublicationDate(listing);
 
-      if (publicationDate !== null && publicationDate < cutoffDate) {
-        checkpointId = checkpointId === null ? listing.id : Math.max(checkpointId, listing.id);
-        await storage.updateListingIdCheckpoint(cutoffDate, checkpointId);
+      if (publicationDate === null || publicationDate < cutoffDate) {
         continue;
       }
+
+      hasRecentOrganicListing ||= !searchListing.promoted;
 
       if (await storage.insertListing(listing)) {
         captured += 1;
       }
     }
 
-    next = hasUnseenOrganicListing ? await searchPage.next() : null;
+    next = hasRecentOrganicListing ? await searchPage.next() : null;
   }
 
   return captured;

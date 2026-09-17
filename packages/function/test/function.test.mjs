@@ -3,7 +3,7 @@ import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
-import { predict } from "../dist/index.js";
+import { predict } from "../dist/inference.js";
 import { valuation } from "../dist/valuation.js";
 
 function response() {
@@ -72,12 +72,12 @@ test("function inference matches the independently verified model bundle", async
 const submission = {
   created_at: "2026-09-16T12:00:00.000Z",
   data: {
-    bathrooms: "2",
+    bathrooms: " 2 ",
     bedrooms: "3",
     city: "Cape Town",
     email: "thandi@example.com",
-    first_name: "Thandi <Test>",
-    floor_area: "120",
+    first_name: "  Thandi <Test>  ",
+    floor_area: " 120 ",
     property_type: "House",
     province: "Western Cape",
     suburb: "Sea Point",
@@ -102,6 +102,10 @@ test("valuation webhook validates completed form submissions", async () => {
     { ...submission, data: { ...submission.data, city: "Durban" } },
     { ...submission, data: { ...submission.data, suburb: "" } },
     { ...submission, data: { ...submission.data, bedrooms: "1.5" } },
+    { ...submission, data: { ...submission.data, bedrooms: "1e1" } },
+    { ...submission, data: { ...submission.data, email: "not-an-email" } },
+    { ...submission, data: { ...submission.data, first_name: "   " } },
+    { ...submission, data: { ...submission.data, floor_area: "5001" } },
   ]) {
     const invalid = response();
     await valuation({ method: "POST", body }, invalid);
@@ -131,8 +135,10 @@ test("valuation webhook emails an escaped estimate once", async () => {
     const email = JSON.parse(request.options.body);
     assert.deepEqual(email.to, ["thandi@example.com"]);
     assert.match(email.html, /Hi Thandi &lt;Test&gt;,/);
-    assert.doesNotMatch(email.html, /\{\{[A-Z_]+\}\}/);
+    assert.doesNotMatch(email.html, /\{\{[^}]+\}\}/);
     assert.match(email.html, /Likely range:/);
+    assert.match(email.text, /Hi Thandi <Test>,/);
+    assert.doesNotMatch(email.text, /\{\{[^}]+\}\}/);
     assert.match(email.text, /Floor area: 120 m²/);
   } finally {
     globalThis.fetch = originalFetch;

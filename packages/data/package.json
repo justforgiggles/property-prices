@@ -4,7 +4,6 @@
   "type": "module",
   "scripts": {
     "scrape": "node --import tsx src/cli.ts scrape",
-    "import": "node --import tsx src/cli.ts import",
     "test": "node --import tsx --test test/*.test.ts",
     "build": "tsc --noEmit"
   },

@@ -1,6 +1,6 @@
 import { createReadStream } from "node:fs";
-import { mkdir, open, readFile, readdir, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { mkdir, open, readdir } from "node:fs/promises";
+import { join } from "node:path";
 import { createInterface } from "node:readline";
 
 import type { RawListing } from "./property24.js";
@@ -71,36 +71,6 @@ export class Storage {
     return null;
   }
 
-  public async findListingIdCheckpoint(cutoffDate: string): Promise<number | null> {
-    const checkpoints = await this.readCheckpoints();
-    let checkpointDate = "";
-    let checkpointId: number | null = null;
-
-    for (const [date, id] of checkpoints) {
-      if (date <= cutoffDate && date > checkpointDate) {
-        checkpointDate = date;
-        checkpointId = id;
-      }
-    }
-
-    return checkpointId;
-  }
-
-  public async updateListingIdCheckpoint(cutoffDate: string, listingId: number): Promise<void> {
-    const checkpoints = await this.readCheckpoints();
-    const current = checkpoints.get(cutoffDate);
-
-    if (current !== undefined && current >= listingId) {
-      return;
-    }
-
-    checkpoints.set(cutoffDate, listingId);
-    const rows = [...checkpoints.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([date, id]) => `${date},${id}`);
-    const path = join(dirname(this.directory), "checkpoints.csv");
-    await mkdir(dirname(path), { recursive: true });
-    await writeFile(path, `${["date,id", ...rows].join("\n")}\n`);
-  }
-
   private async readListingIds(): Promise<Set<number>> {
     const ids = new Set<number>();
     await mkdir(this.directory, { recursive: true });
@@ -132,37 +102,5 @@ export class Storage {
     }
 
     return ids;
-  }
-
-  private async readCheckpoints(): Promise<Map<string, number>> {
-    let csv = "";
-
-    try {
-      csv = await readFile(join(dirname(this.directory), "checkpoints.csv"), "utf8");
-    } catch (error: unknown) {
-      if (typeof error !== "object" || error === null || !("code" in error) || error.code !== "ENOENT") {
-        throw error;
-      }
-    }
-
-    const checkpoints = new Map<string, number>();
-
-    for (const [index, line] of csv.split("\n").entries()) {
-      if (!line || (index === 0 && line === "date,id")) {
-        continue;
-      }
-
-      const [date, rawId, ...extra] = line.split(",");
-      const id = Number(rawId);
-      const parsedDate = new Date(`${date}T00:00:00Z`);
-
-      if (extra.length > 0 || !date || !/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date || !Number.isSafeInteger(id) || id <= 0) {
-        throw new Error(`Invalid listing ID checkpoint at line ${index + 1}`);
-      }
-
-      checkpoints.set(date, id);
-    }
-
-    return checkpoints;
   }
 }

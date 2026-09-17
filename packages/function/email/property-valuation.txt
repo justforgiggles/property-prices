@@ -1,0 +1,15 @@
+{{greeting}}
+
+Your property value estimate: {{recommended}}
+Likely range: {{low}} – {{high}}
+
+Property details used
+Type: {{type}}
+Location: {{location}}
+Bedrooms: {{bedrooms}}
+Bathrooms: {{bathrooms}}
+Floor area: {{size}}
+
+This automated estimate compares the details you provided with patterns in recent South African property listing data.
+
+Important: This estimate is indicative only. It is not a formal valuation, bank valuation, offer, or financial advice. It is based on listing information rather than completed sale prices, and the property's actual market value may differ.

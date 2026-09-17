@@ -5,7 +5,6 @@
   "workspaces": ["packages/data", "packages/model", "packages/function"],
   "scripts": {
     "scrape": "npm run scrape -w @property-prices/data --",
-    "import:raw": "npm run import -w @property-prices/data --",
     "train": "packages/model/.venv/bin/python -m property_model train",
     "test": "npm test -w @property-prices/data && packages/model/.venv/bin/python -m unittest discover -s packages/model/tests && npm test -w @property-prices/function",
     "build": "npm run build -w @property-prices/data && npm run build -w @property-prices/function"

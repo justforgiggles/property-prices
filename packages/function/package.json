@@ -13,6 +13,8 @@
   },
   "dependencies": {
     "@google-cloud/functions-framework": "^5.0.5",
+    "ajv": "^8.20.0",
+    "handlebars": "^4.7.9",
     "onnxruntime-node": "^1.26.0"
   },
   "devDependencies": {

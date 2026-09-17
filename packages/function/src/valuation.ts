@@ -1,193 +1,58 @@
 import type { Request, Response } from "@google-cloud/functions-framework";
+import { Ajv } from "ajv";
+import Handlebars from "handlebars";
 import { readFileSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { predictValuation, type Property, type Valuation } from "./inference.js";
+import { predictValuation } from "./inference.js";
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PROPERTY_TYPES = new Set(["Apartment / Flat", "House", "Townhouse"]);
 const locations = JSON.parse(
   readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../locations.json"), "utf8"),
 ) as Record<string, Record<string, Array<string>>>;
-const TEMPLATE_PATH = resolve(dirname(fileURLToPath(import.meta.url)), "../email/property-valuation.html");
-const templatePromise = readFile(TEMPLATE_PATH, "utf8");
+const validateSubmission = new Ajv().compile({
+  $defs: {
+    positiveInteger: {
+      anyOf: [{ type: "integer" }, { pattern: "^\\d+$", type: "string" }],
+    },
+  },
+  properties: {
+    data: {
+      properties: {
+        bathrooms: { $ref: "#/$defs/positiveInteger" },
+        bedrooms: { $ref: "#/$defs/positiveInteger" },
+        city: { maxLength: 100, minLength: 1, type: "string" },
+        email: { maxLength: 254, pattern: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$", type: "string" },
+        first_name: { maxLength: 80, type: "string" },
+        floor_area: { $ref: "#/$defs/positiveInteger" },
+        property_type: { enum: ["Apartment / Flat", "House", "Townhouse"], type: "string" },
+        province: { maxLength: 100, minLength: 1, type: "string" },
+        suburb: { maxLength: 100, minLength: 1, type: "string" },
+      },
+      required: ["bathrooms", "bedrooms", "city", "email", "floor_area", "property_type", "province", "suburb"],
+      type: "object",
+    },
+    id: { maxLength: 200, minLength: 1, type: "string" },
+    status: { const: "completed" },
+  },
+  required: ["data", "id", "status"],
+  type: "object",
+});
+const templateDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "../email");
+const templatesPromise = Promise.all([
+  readFile(resolve(templateDirectory, "property-valuation.html"), "utf8").then((template) =>
+    Handlebars.compile(template),
+  ),
+  readFile(resolve(templateDirectory, "property-valuation.txt"), "utf8").then((template) =>
+    Handlebars.compile(template, { noEscape: true }),
+  ),
+]);
 const zar = new Intl.NumberFormat("en-ZA", {
   currency: "ZAR",
   maximumFractionDigits: 0,
   style: "currency",
 });
-
-type ValuationSubmission = {
-  email: string;
-  firstName: string;
-  property: Property;
-  submissionId: string;
-};
-
-function parseText(value: unknown, maximumLength: number): string | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-
-  const text = value.trim();
-
-  return text && text.length <= maximumLength ? text : null;
-}
-
-function parsePositiveInteger(value: unknown, maximum: number): number | null {
-  const number = typeof value === "string" && /^\d+$/.test(value.trim()) ? Number(value) : value;
-
-  return typeof number === "number" && Number.isInteger(number) && number > 0 && number <= maximum ? number : null;
-}
-
-function parseSubmission(body: unknown): ValuationSubmission | null {
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
-    return null;
-  }
-
-  const submission = body as Record<string, unknown>;
-  const submissionId = parseText(submission.id, 200);
-
-  if (submission.status !== "completed" || submissionId === null) {
-    return null;
-  }
-
-  if (typeof submission.data !== "object" || submission.data === null || Array.isArray(submission.data)) {
-    return null;
-  }
-
-  const data = submission.data as Record<string, unknown>;
-  const bathrooms = parsePositiveInteger(data.bathrooms, 20);
-  const bedrooms = parsePositiveInteger(data.bedrooms, 20);
-  const email = parseText(data.email, 254);
-  const firstName = data.first_name === undefined || data.first_name === "" ? "" : parseText(data.first_name, 80);
-  const locality1 = parseText(data.city, 100);
-  const locality2 = parseText(data.suburb, 100);
-  const region = parseText(data.province, 100);
-  const suburbs = region === null || locality1 === null ? undefined : locations[region]?.[locality1];
-  const size = parsePositiveInteger(data.floor_area, 5000);
-  const type = parseText(data.property_type, 100);
-
-  if (
-    bathrooms === null ||
-    bedrooms === null ||
-    email === null ||
-    firstName === null ||
-    locality1 === null ||
-    locality2 === null ||
-    region === null ||
-    size === null ||
-    type === null ||
-    !EMAIL_PATTERN.test(email) ||
-    !PROPERTY_TYPES.has(type) ||
-    suburbs === undefined ||
-    !suburbs.includes(locality2)
-  ) {
-    return null;
-  }
-
-  return {
-    email,
-    firstName,
-    property: {
-      bathrooms,
-      bedrooms,
-      locality_1: locality1,
-      locality_2: locality2,
-      region,
-      size,
-      type,
-    },
-    submissionId,
-  };
-}
-
-function escapeHtml(value: string): string {
-  return value.replace(/[&<>"']/g, (character) => ({
-    "&": "&amp;",
-    "'": "&#39;",
-    '"': "&quot;",
-    "<": "&lt;",
-    ">": "&gt;",
-  })[character] as string);
-}
-
-function renderTemplate(template: string, replacements: Record<string, string>): string {
-  return template.replace(/\{\{([A-Z_]+)\}\}/g, (placeholder, name: string) => replacements[name] ?? placeholder);
-}
-
-async function toHtml(submission: ValuationSubmission, valuation: Valuation): Promise<string> {
-  const location = [submission.property.locality_2, submission.property.locality_1, submission.property.region]
-    .filter(Boolean)
-    .join(", ");
-
-  return renderTemplate(await templatePromise, {
-    BATHROOMS: String(submission.property.bathrooms),
-    BEDROOMS: String(submission.property.bedrooms),
-    GREETING: submission.firstName ? `Hi ${escapeHtml(submission.firstName)},` : "Hello,",
-    HIGH: zar.format(valuation.high),
-    LOCATION: escapeHtml(location),
-    LOW: zar.format(valuation.low),
-    PREHEADER: "Your estimated value and likely range are ready.",
-    RECOMMENDED: zar.format(valuation.recommended),
-    SIZE: `${submission.property.size.toLocaleString("en-ZA")} m²`,
-    TYPE: escapeHtml(submission.property.type),
-  });
-}
-
-function toText(submission: ValuationSubmission, valuation: Valuation): string {
-  const greeting = submission.firstName ? `Hi ${submission.firstName},` : "Hello,";
-  const location = [submission.property.locality_2, submission.property.locality_1, submission.property.region]
-    .filter(Boolean)
-    .join(", ");
-
-  return `${greeting}
-
-Your property value estimate: ${zar.format(valuation.recommended)}
-Likely range: ${zar.format(valuation.low)} – ${zar.format(valuation.high)}
-
-Property details used
-Type: ${submission.property.type}
-Location: ${location}
-Bedrooms: ${submission.property.bedrooms}
-Bathrooms: ${submission.property.bathrooms}
-Floor area: ${submission.property.size.toLocaleString("en-ZA")} m²
-
-This automated estimate compares the details you provided with patterns in recent South African property listing data.
-
-Important: This estimate is indicative only. It is not a formal valuation, bank valuation, offer, or financial advice. It is based on listing information rather than completed sale prices, and the property's actual market value may differ.`;
-}
-
-async function sendEmail(submission: ValuationSubmission, valuation: Valuation): Promise<void> {
-  const apiKey = process.env.RESEND_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL;
-
-  if (!apiKey || !from) {
-    throw new Error("Resend is not configured");
-  }
-
-  const result = await fetch("https://api.resend.com/emails", {
-    body: JSON.stringify({
-      from,
-      html: await toHtml(submission, valuation),
-      subject: "Your South African property value estimate",
-      text: toText(submission, valuation),
-      to: [submission.email],
-    }),
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-      "Idempotency-Key": `property-valuation/${submission.submissionId}`,
-    },
-    method: "POST",
-  });
-
-  if (!result.ok) {
-    throw new Error(`Resend rejected the email with status ${result.status}`);
-  }
-}
 
 export async function valuation(request: Request, response: Response): Promise<void> {
   response.set("Cache-Control", "no-store");
@@ -198,24 +63,95 @@ export async function valuation(request: Request, response: Response): Promise<v
     return;
   }
 
-  const submission = parseSubmission(request.body);
+  const submission = { ...request.body, data: { ...request.body?.data } };
+  const invalidFirstName =
+    typeof submission.data.first_name === "string" &&
+    submission.data.first_name !== "" &&
+    submission.data.first_name.trim() === "";
 
-  if (submission === null) {
+  for (const [field, value] of Object.entries(submission.data)) {
+    if (typeof value === "string") {
+      submission.data[field] = value.trim();
+    }
+  }
+
+  submission.id = typeof submission.id === "string" ? submission.id.trim() : submission.id;
+
+  if (invalidFirstName || !validateSubmission(submission)) {
     response.status(400).json({ error: "Submission is invalid" });
     return;
   }
 
-  let estimate: Valuation;
+  const property = {
+    bathrooms: Number(submission.data.bathrooms),
+    bedrooms: Number(submission.data.bedrooms),
+    locality_1: submission.data.city,
+    locality_2: submission.data.suburb,
+    region: submission.data.province,
+    size: Number(submission.data.floor_area),
+    type: submission.data.property_type,
+  };
+
+  if (
+    [
+      [property.bathrooms, 20],
+      [property.bedrooms, 20],
+      [property.size, 5000],
+    ].some(([value, maximum]) => !Number.isInteger(value) || value < 1 || value > maximum) ||
+    !locations[property.region]?.[property.locality_1]?.includes(property.locality_2)
+  ) {
+    response.status(400).json({ error: "Submission is invalid" });
+    return;
+  }
+
+  let estimate;
 
   try {
-    estimate = await predictValuation(submission.property);
+    estimate = await predictValuation(property);
   } catch {
     response.status(500).json({ error: "Valuation failed" });
     return;
   }
 
   try {
-    await sendEmail(submission, estimate);
+    const apiKey = process.env.RESEND_API_KEY;
+    const from = process.env.RESEND_FROM_EMAIL;
+
+    if (!apiKey || !from) {
+      throw new Error("Resend is not configured");
+    }
+
+    const [toHtml, toText] = await templatesPromise;
+    const values = {
+      bathrooms: property.bathrooms,
+      bedrooms: property.bedrooms,
+      greeting: submission.data.first_name ? `Hi ${submission.data.first_name},` : "Hello,",
+      high: zar.format(estimate.high),
+      location: [property.locality_2, property.locality_1, property.region].join(", "),
+      low: zar.format(estimate.low),
+      recommended: zar.format(estimate.recommended),
+      size: `${property.size.toLocaleString("en-ZA")} m²`,
+      type: property.type,
+    };
+    const result = await fetch("https://api.resend.com/emails", {
+      body: JSON.stringify({
+        from,
+        html: toHtml(values),
+        subject: "Your South African property value estimate",
+        text: toText(values),
+        to: [submission.data.email],
+      }),
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+        "Idempotency-Key": `property-valuation/${submission.id}`,
+      },
+      method: "POST",
+    });
+
+    if (!result.ok) {
+      throw new Error(`Resend rejected the email with status ${result.status}`);
+    }
   } catch {
     response.status(502).json({ error: "Email delivery failed" });
     return;

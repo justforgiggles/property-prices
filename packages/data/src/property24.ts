@@ -134,7 +134,7 @@ export class Autocomplete {
       url.searchParams.set("PropertyCategory", "House,ApartmentOrFlat,Townhouse");
       url.searchParams.set("sp", "so=Newest");
       return url.href;
-    }))].sort();
+    }))].sort(() => Math.random() - Math.random());
   }
 }
 
