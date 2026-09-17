@@ -16,17 +16,20 @@ async function main(): Promise<void> {
   }
 
   const cutoffDate = new Date(Date.now() - 29 * 86_400_000).toISOString().slice(0, 10);
-  const cities = await Autocomplete.findAll();
+  const cities = await Autocomplete.findAll((progress) => console.log(`City discovery: ${progress}`));
   let captured = 0;
   let failed = 0;
 
   for (const [index, url] of cities.entries()) {
+    const city = `${index + 1}/${cities.length} cities`;
+    console.log(`${city}: started`);
+
     try {
-      captured += await crawlSearch(url, storage, cutoffDate, 10_000);
-      console.log(`${index + 1}/${cities.length} cities, ${captured} new listings`);
+      captured += await crawlSearch(url, storage, cutoffDate, 10_000, (progress) => console.log(`${city}: ${progress}`));
+      console.log(`${city}: finished, ${captured} total new listings`);
     } catch (error: unknown) {
       failed += 1;
-      console.error(`${url}: ${error instanceof Error ? error.message : String(error)}`);
+      console.error(`${city}: failed (${url}): ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 

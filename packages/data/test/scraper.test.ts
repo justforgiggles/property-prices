@@ -12,7 +12,7 @@ function rawListing(id: number, date = "2026-09-12"): RawListing {
   return { id, jsonld: [{ "@graph": [{ datePosted: date }] }] };
 }
 
-test("newest searches stop after the recent organic boundary without excluding promoted listings", async () => {
+test("newest searches stop at the first old organic listing without using promoted listings as the boundary", async () => {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "property-data-"));
   const storage = new Storage(join(temporaryDirectory, "raw"));
   const requests = new Map<string, number>();
@@ -35,20 +35,22 @@ test("newest searches stop after the recent organic boundary without excluding p
       return new Response(`<title>Property for sale</title>
         <div class="p24_topTile"><div class="p24_tileContainer js_resultTile"><div class="p24_proTile"><a href="/for-sale/example/900">Promoted</a></div></div></div>
         <div class="p24_tileContainer js_resultTile"><a href="/for-sale/example/200">Organic</a></div>
+        <div class="p24_tileContainer js_resultTile"><a href="/for-sale/example/100">Known organic</a></div>
         <div class="p24_pager"><a href="/search/p2">Next</a></div>`);
     }
 
     if (url.pathname === "/search/p2") {
       return new Response(`<title>Property for sale</title>
         <div class="p24_topTile"><div class="p24_tileContainer js_resultTile"><div class="p24_proTile"><a href="/for-sale/example/901">Promoted</a></div></div></div>
+        <div class="p24_tileContainer js_resultTile"><a href="/for-sale/example/175">Recent organic</a></div>
         <div class="p24_tileContainer js_resultTile"><a href="/for-sale/example/150">Old organic</a></div>
-        <div class="p24_tileContainer js_resultTile"><a href="/for-sale/example/100">Organic</a></div>
+        <div class="p24_tileContainer js_resultTile"><a href="/for-sale/example/140">Later organic</a></div>
         <div class="p24_pager"><a href="/search/p3">Next</a></div>`);
     }
 
     if (url.pathname.startsWith("/for-sale/example/")) {
       const id = Number(url.pathname.split("/").at(-1));
-      const date = id === 150 ? "2026-08-01" : "2026-09-12";
+      const date = id === 150 || id === 901 ? "2026-08-01" : "2026-09-12";
       return new Response(`<title>Home for sale</title><script type="application/ld+json">${JSON.stringify(rawListing(id, date).jsonld[0])}</script>`);
     }
 
@@ -57,18 +59,47 @@ test("newest searches stop after the recent organic boundary without excluding p
 
   try {
     const searches = await Autocomplete.findAll();
+    const progress: Array<string> = [];
     assert.equal(searches.length, 3);
     assert.ok(searches.every((url) => new URL(url).searchParams.get("sp") === "so=Newest"));
-    assert.equal(await crawlSearch("https://www.property24.com/search", storage, "2026-09-01", 0), 3);
+    assert.equal(await crawlSearch("https://www.property24.com/search", storage, "2026-09-01", 0, (message) => progress.push(message)), 3);
+    assert.deepEqual(progress, [
+      "page 1 started",
+      "HTTP GET started: https://www.property24.com/search",
+      "HTTP GET finished (200): https://www.property24.com/search",
+      "HTTP GET started: https://www.property24.com/for-sale/example/900",
+      "HTTP GET finished (200): https://www.property24.com/for-sale/example/900",
+      "HTTP GET started: https://www.property24.com/for-sale/example/200",
+      "HTTP GET finished (200): https://www.property24.com/for-sale/example/200",
+      "listing 100 skipped: already captured (https://www.property24.com/for-sale/example/100)",
+      "page 1 finished, 3 results, 2 new listings",
+      "page 2 started",
+      "HTTP GET started: https://www.property24.com/search/p2",
+      "HTTP GET finished (200): https://www.property24.com/search/p2",
+      "HTTP GET started: https://www.property24.com/for-sale/example/901",
+      "HTTP GET finished (200): https://www.property24.com/for-sale/example/901",
+      "listing 901 skipped: published 2026-08-01 before cutoff 2026-09-01 (https://www.property24.com/for-sale/example/901)",
+      "HTTP GET started: https://www.property24.com/for-sale/example/175",
+      "HTTP GET finished (200): https://www.property24.com/for-sale/example/175",
+      "HTTP GET started: https://www.property24.com/for-sale/example/150",
+      "HTTP GET finished (200): https://www.property24.com/for-sale/example/150",
+      "listing 150 skipped: published 2026-08-01 before cutoff 2026-09-01 (https://www.property24.com/for-sale/example/150)",
+      "cutoff reached at listing 150; stopping city",
+      "page 2 finished, 4 results, 1 new listings",
+    ]);
     assert.equal(requests.get("/for-sale/example/900"), 1);
     assert.equal(requests.get("/for-sale/example/200"), 1);
     assert.equal(requests.get("/for-sale/example/901"), 1);
+    assert.equal(requests.get("/for-sale/example/175"), 1);
     assert.equal(requests.get("/for-sale/example/150"), 1);
     assert.equal(requests.get("/for-sale/example/100"), undefined);
+    assert.equal(requests.get("/for-sale/example/140"), undefined);
     assert.equal(requests.get("/search/p2"), 1);
     assert.equal(requests.get("/search/p3"), undefined);
-    assert.equal(await storage.hasListing(901), true);
+    assert.equal(await storage.hasListing(901), false);
+    assert.equal(await storage.hasListing(175), true);
     assert.equal(await storage.hasListing(150), false);
+    assert.equal(await storage.hasListing(140), false);
     assert.equal(await crawlSearch("https://www.property24.com/search", storage, "2026-09-01", 0), 0);
     assert.equal(requests.get("/search/p2"), 1);
   } finally {

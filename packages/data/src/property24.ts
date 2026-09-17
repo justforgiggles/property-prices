@@ -8,13 +8,14 @@ const HEADERS = {
 const PROVINCES = new Set(["Western Cape", "Gauteng", "KwaZulu Natal"]);
 
 type City = { id: number; name: string; parentName: string; type: number };
+type ReportProgress = (message: string) => void;
 export type RawListing = { id: number; jsonld: Array<unknown> };
 export type SearchListing = { url: string; promoted: boolean };
 
 export class SearchPage {
   private page: Promise<cheerio.CheerioAPI> | null = null;
 
-  public constructor(private readonly url: string) {}
+  public constructor(private readonly url: string, private readonly reportProgress?: ReportProgress) {}
 
   public async parseAll(): Promise<Array<SearchListing>> {
     const $ = await this.load();
@@ -59,7 +60,7 @@ export class SearchPage {
   }
 
   private load(): Promise<cheerio.CheerioAPI> {
-    this.page ??= fetchText(this.url).then((html) => {
+    this.page ??= fetchText(this.url, this.reportProgress).then((html) => {
       const $ = cheerio.load(html);
 
       if (!/property.*for sale/i.test($("title").text())) {
@@ -76,7 +77,7 @@ export class SearchPage {
 export class ListingPage {
   public readonly id: number;
 
-  public constructor(private readonly url: string) {
+  public constructor(private readonly url: string, private readonly reportProgress?: ReportProgress) {
     const id = parseListingId(url);
 
     if (id === null) {
@@ -87,7 +88,7 @@ export class ListingPage {
   }
 
   public async parse(): Promise<RawListing> {
-    const $ = cheerio.load(await fetchText(this.url));
+    const $ = cheerio.load(await fetchText(this.url, this.reportProgress));
     const jsonld: Array<unknown> = [];
 
     for (const script of $("script[type='application/ld+json']").toArray()) {
@@ -107,11 +108,13 @@ export class ListingPage {
 }
 
 export class Autocomplete {
-  public static async findAll(): Promise<Array<string>> {
-    const response = await fetch("https://www.property24.com/autocomplete/propertiesgrouped", {
-      headers: { accept: "application/json", "user-agent": HEADERS["user-agent"] },
-      signal: AbortSignal.timeout(60_000),
-    });
+  public static async findAll(reportProgress?: ReportProgress): Promise<Array<string>> {
+    const response = await fetchResponse(
+      "https://www.property24.com/autocomplete/propertiesgrouped",
+      { accept: "application/json", "user-agent": HEADERS["user-agent"] },
+      60_000,
+      reportProgress,
+    );
 
     if (!response.ok) {
       throw new Error(`Property24 location discovery failed (${response.status})`);
@@ -143,10 +146,10 @@ function parseListingId(url: string): number | null {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
-async function fetchText(url: string): Promise<string> {
+async function fetchText(url: string, reportProgress?: ReportProgress): Promise<string> {
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      const response = await fetch(url, { headers: HEADERS, signal: AbortSignal.timeout(30_000) });
+      const response = await fetchResponse(url, HEADERS, 30_000, reportProgress);
 
       if (!response.ok) {
         throw new Error(`Property24 request failed (${response.status}): ${url}`);
@@ -163,4 +166,17 @@ async function fetchText(url: string): Promise<string> {
   }
 
   throw new Error(`Property24 request failed: ${url}`);
+}
+
+async function fetchResponse(url: string, headers: HeadersInit, timeoutMs: number, reportProgress?: ReportProgress): Promise<Response> {
+  reportProgress?.(`HTTP GET started: ${url}`);
+
+  try {
+    const response = await fetch(url, { headers, signal: AbortSignal.timeout(timeoutMs) });
+    reportProgress?.(`HTTP GET finished (${response.status}): ${url}`);
+    return response;
+  } catch (error: unknown) {
+    reportProgress?.(`HTTP GET failed: ${url}: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
+  }
 }
