@@ -123,7 +123,7 @@ test("valuation webhook emails an escaped estimate once", async () => {
     return { ok: true, status: 200 };
   };
   process.env.RESEND_API_KEY = "test-key";
-  process.env.RESEND_FROM_EMAIL = "estimates@example.com";
+  process.env.RESEND_FROM_EMAIL = "Peter <hello@frms.dev>";
 
   try {
     const result = response();
@@ -133,13 +133,16 @@ test("valuation webhook emails an escaped estimate once", async () => {
     assert.equal(request.options.headers["Idempotency-Key"], "property-valuation/submission-123");
 
     const email = JSON.parse(request.options.body);
+    assert.equal(email.from, "Peter <hello@frms.dev>");
     assert.deepEqual(email.to, ["thandi@example.com"]);
     assert.match(email.html, /Hi Thandi &lt;Test&gt;,/);
     assert.doesNotMatch(email.html, /\{\{[^}]+\}\}/);
     assert.match(email.html, /Likely range:/);
+    assert.match(email.html, /requested a property estimate/);
     assert.match(email.text, /Hi Thandi <Test>,/);
     assert.doesNotMatch(email.text, /\{\{[^}]+\}\}/);
     assert.match(email.text, /Floor area: 120 m²/);
+    assert.match(email.text, /Questions\? Reply to this email\./);
   } finally {
     globalThis.fetch = originalFetch;
 
