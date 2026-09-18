@@ -100,6 +100,8 @@ test("valuation webhook validates completed form submissions", async () => {
     { ...submission, status: "partial" },
     { ...submission, data: { ...submission.data, province: "Eastern Cape" } },
     { ...submission, data: { ...submission.data, city: "Durban" } },
+    { ...submission, data: { ...submission.data, city: "Heidelberg", province: "Gauteng", suburb: "Heidelberg" } },
+    { ...submission, data: { ...submission.data, city: "Heidelberg", province: "Western Cape", suburb: "Rensburg" } },
     { ...submission, data: { ...submission.data, suburb: "" } },
     { ...submission, data: { ...submission.data, bedrooms: "1.5" } },
     { ...submission, data: { ...submission.data, bedrooms: "1e1" } },
@@ -144,6 +146,22 @@ test("valuation webhook emails an escaped estimate once", async () => {
     assert.doesNotMatch(email.text, /\{\{[^}]+\}\}/);
     assert.match(email.text, /Floor area: 120 m²/);
     assert.match(email.text, /Questions\? Reply to this email\./);
+
+    for (const [province, suburb] of [
+      ["Gauteng", "Rensburg"],
+      ["Western Cape", "Heidelberg"],
+    ]) {
+      const heidelberg = response();
+      await valuation({
+        method: "POST",
+        body: {
+          ...submission,
+          data: { ...submission.data, city: "Heidelberg", province, suburb },
+          id: `submission-${province}`,
+        },
+      }, heidelberg);
+      assert.equal(heidelberg.code, 204);
+    }
   } finally {
     globalThis.fetch = originalFetch;
 
