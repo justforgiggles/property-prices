@@ -25,7 +25,7 @@ async function main(): Promise<void> {
     console.log(`${city}: started`);
 
     try {
-      captured += await crawlSearch(url, storage, cutoffDate, 10_000, (progress) => console.log(`${city}: ${progress}`));
+      captured += await crawlSearch(url, storage, cutoffDate, 4_000, (progress) => console.log(`${city}: ${progress}`));
       console.log(`${city}: finished, ${captured} total new listings`);
     } catch (error: unknown) {
       failed += 1;
