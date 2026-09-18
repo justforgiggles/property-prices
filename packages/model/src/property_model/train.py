@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import os
@@ -47,7 +48,7 @@ def _python_prediction(models: dict, encoders: features.Encoders, record: dict) 
     matrix = np.asarray([features.record_to_features(record, encoders)], dtype=np.float32)
     low_log = float(models["model_q10"].predict(matrix)[0])
     high_log = float(models["model_q90"].predict(matrix)[0])
-    low = float(np.expm1(min(low_log, high_log) - encoders.interval_log_widen))
+    low = max(0.0, float(np.expm1(min(low_log, high_log) - encoders.interval_log_widen)))
     high = float(np.expm1(max(low_log, high_log) + encoders.interval_log_widen))
     recommended = float(np.expm1(models["model"].predict(matrix)[0]))
     return {"low": low, "recommended": min(max(recommended, low), high), "high": high}
@@ -81,22 +82,127 @@ def verify_bundle(package: Path, stage: Path, models: dict, encoders: features.E
 def train(package: Path) -> None:
     repository = package.parent.parent
     config = json.loads((package / "config" / "model.json").read_text(encoding="utf-8"))
-    data = load_data(repository / "data" / "raw", minimum_rows=max(20, int(config["cv_splits"]) * 2))
-    report, widening = evaluation.evaluate(data, config["model"], int(config["cv_splits"]), int(config["seed"]))
+    data, data_report = load_data(
+        repository / "data" / "raw",
+        minimum_rows=max(20, int(config["cv_splits"]) * 2),
+        return_report=True,
+    )
+    model_ready = data[["bedrooms", "bathrooms"]].notna().all(axis=1)
+    size_eligible = data[model_ready].reset_index(drop=True)
+    complete = size_eligible[size_eligible[features.SIZE_COL].notna()].reset_index(drop=True)
+    reports = {}
+    widenings = {}
+    data_candidates = (
+        ("complete", complete, True),
+        ("prior_only", data, False),
+        ("imputed_size", data, True),
+    )
+    for name, candidate, train_missing_size in data_candidates:
+        reports[name], widenings[name] = evaluation.evaluate(
+            candidate,
+            config["model"],
+            int(config["cv_splits"]),
+            int(config["seed"]),
+            train_missing_size=train_missing_size,
+        )
+    baseline = reports["complete"]["selection"]
+    selected = "complete"
+    for name in ("prior_only", "imputed_size"):
+        challenger = reports[name]["selection"]
+        incumbent = reports[selected]["selection"]
+        if (
+            challenger["mdape"] < incumbent["mdape"]
+            and challenger["rmsle"] <= baseline["rmsle"]
+            and challenger["within_20"] >= baseline["within_20"]
+        ):
+            selected = name
+    train_missing_size = selected == "imputed_size"
+    training_data = size_eligible if train_missing_size else complete
+    encoder_data = complete if selected == "complete" else data
+    parameters = config["model"]
+    model_candidates = {"base": reports[selected]["selection"]}
+    model_candidate_params = {"base": config["model"]}
+    selected_model = "base"
+    for index, overrides in enumerate(config.get("model_candidates", []), start=1):
+        candidate_parameters = {**config["model"], **overrides}
+        candidate_metrics = evaluation.evaluate_point(
+            encoder_data,
+            candidate_parameters,
+            int(config["cv_splits"]),
+            int(config["seed"]),
+            train_missing_size=train_missing_size,
+        )
+        name = f"candidate_{index}"
+        model_candidates[name] = candidate_metrics
+        model_candidate_params[name] = candidate_parameters
+        incumbent = model_candidates[selected_model]
+        if (
+            candidate_metrics["mdape"] < incumbent["mdape"]
+            and candidate_metrics["rmsle"] <= model_candidates["base"]["rmsle"]
+            and candidate_metrics["within_20"] >= model_candidates["base"]["within_20"]
+            and abs(candidate_metrics["median_bias"]) <= config["quality"].get("max_abs_median_bias", 5.0)
+        ):
+            selected_model = name
+            parameters = candidate_parameters
+    if selected_model == "base":
+        report, widening = reports[selected], widenings[selected]
+    else:
+        report, widening = evaluation.evaluate(
+            encoder_data,
+            parameters,
+            int(config["cv_splits"]),
+            int(config["seed"]),
+            train_missing_size=train_missing_size,
+        )
+    report = dict(report)
+    report.update({
+        "selected_data": selected,
+        "selected_model": selected_model,
+        "data_candidates": reports,
+        "model_candidates": model_candidates,
+        "model_candidate_params": model_candidate_params,
+        "data_quality": data_report,
+    })
     build = package / "build"
     build.mkdir(exist_ok=True)
     (build / "metrics.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    (build / "data-quality.json").write_text(json.dumps(data_report, indent=2) + "\n", encoding="utf-8")
     evaluation.print_report(report)
     failures = evaluation.quality_failures(report, config["quality"])
     if failures:
         raise RuntimeError("Model quality gate failed:\n" + "\n".join(failures))
 
-    parameters = config["model"]
     seed = int(config["seed"])
-    encoders = features.fit_encoders(data, float(parameters["smoothing"]), float(parameters["ppsqm_smoothing"]))
+    encoders = features.fit_encoders(encoder_data, float(parameters["smoothing"]), float(parameters["ppsqm_smoothing"]))
     encoders.interval_log_widen = widening
-    matrix = features.build_oof_matrix(data, int(config["cv_splits"]), seed, float(parameters["smoothing"]), float(parameters["ppsqm_smoothing"]))
-    target = np.log1p(data["price"].to_numpy(dtype=float))
+    encoders.metadata.update({
+        "model_version": 2,
+        "selected_data": selected,
+        "selected_model": selected_model,
+        "source_cutoff": str(training_data["date_posted"].max()),
+        "source_start": str(training_data["date_posted"].min()),
+        "training_rows": len(training_data),
+        "complete_rows": len(complete),
+        "missing_size_rows": int(data[features.SIZE_COL].isna().sum()),
+        "missing_room_rows": int(data[["bedrooms", "bathrooms"]].isna().any(axis=1).sum()),
+        "config_sha256": hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest(),
+        "data_sha256": hashlib.sha256(
+            encoder_data[["id", "date_posted", "price", "size"]]
+            .sort_values("id")
+            .to_csv(index=False)
+            .encode()
+        ).hexdigest(),
+        "test_metrics": report["test"],
+    })
+    matrix = features.build_oof_matrix(
+        training_data,
+        int(config["cv_splits"]),
+        seed,
+        float(parameters["smoothing"]),
+        float(parameters["ppsqm_smoothing"]),
+        prior_df=encoder_data,
+    )
+    target = np.log1p(training_data["price"].to_numpy(dtype=float))
     point = modeling.fit_point(matrix, target, parameters, seed)
     low, high = modeling.fit_quantiles(matrix, target, parameters, seed)
     models = {"model": point, "model_q10": low, "model_q90": high}
@@ -109,4 +215,4 @@ def train(package: Path) -> None:
         features.save_encoders(encoders, stage / "encoders.json")
         verify_bundle(package, stage, models, encoders)
         promote(stage, package / "models")
-    print(f"Verified deployment bundle from {len(data)} complete raw listings")
+    print(f"Verified deployment bundle from {len(training_data)} {selected} listings")

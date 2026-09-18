@@ -40,54 +40,71 @@ def fit_quantiles(X, y_log, params, seed=42):
     return lo, hi
 
 
-def _kfolds(n, n_splits, seed):
-    rng = np.random.default_rng(seed)
-    return np.array_split(rng.permutation(n), n_splits)
+def _temporal_folds(df, n_splits):
+    """Expanding-window folds; a publication date never crosses a boundary."""
+    if "date_posted" not in df:
+        raise ValueError("Temporal evaluation requires date_posted")
+    ordered = df.sort_values("date_posted", kind="stable")
+    dates = ordered["date_posted"].to_numpy()
+    boundaries = []
+    for position in np.linspace(0, len(ordered), n_splits + 2, dtype=int)[1:-1]:
+        if position < len(dates):
+            boundaries.append(dates[position])
+    boundaries = sorted(set(boundaries))
+    folds = []
+    for index, start in enumerate(boundaries):
+        end = boundaries[index + 1] if index + 1 < len(boundaries) else None
+        train = df.index[df["date_posted"] < start].to_numpy()
+        validation_mask = df["date_posted"] >= start
+        if end is not None:
+            validation_mask &= df["date_posted"] < end
+        validation_mask &= df[[F.SIZE_COL, "bedrooms", "bathrooms"]].notna().all(axis=1)
+        validation = df.index[validation_mask].to_numpy()
+        if len(train) >= 20 and len(validation):
+            folds.append((train, validation))
+    if len(folds) < 3:
+        raise ValueError("Expected at least three usable temporal folds")
+    return folds
 
 
-def nested_cv_predict(
-    df, params, n_splits=5, inner_splits=5, seed=42, quantiles=False
+def temporal_cv_predict(
+    df, params, n_splits=5, inner_splits=5, seed=42, quantiles=False,
+    train_missing_size=True,
 ):
-    """Out-of-fold predictions over every row, with honest encoding.
+    """Forward predictions from expanding publication-date windows.
 
-    For each outer fold: fit serving encoders on outer-train, OOF-encode
-    outer-train to train the model, encode outer-val with the outer-train
-    encoders, predict. No outer-val target ever touches the features or the
-    model it is scored against. Returns arrays aligned to df.reset_index order.
+    Missing-size rows may enrich training, but validation mirrors the serving
+    contract and therefore contains only rows with an observed floor size.
     """
     df = df.reset_index(drop=True)
-    n = len(df)
-    price = df[F.TARGET_COL].to_numpy(dtype=float)
     sm = float(params["smoothing"])
     pp = float(params["ppsqm_smoothing"])
+    output = {"point": [], "price": [], "fold": [], "index": []}
+    if quantiles:
+        output.update({"lo_log": [], "hi_log": []})
 
-    point = np.zeros(n)
-    lo_log = np.zeros(n)
-    hi_log = np.zeros(n)
-
-    for fold in _kfolds(n, n_splits, seed):
-        # Sort val indices so predicted rows align with the positions written.
-        val_idx = np.sort(fold)
-        train_mask = np.ones(n, dtype=bool)
-        train_mask[val_idx] = False
-        tr = df.iloc[train_mask].reset_index(drop=True)
+    for fold_number, (train_idx, val_idx) in enumerate(_temporal_folds(df, n_splits)):
+        prior = df.iloc[train_idx].reset_index(drop=True)
+        model_ready = prior[["bedrooms", "bathrooms"]].notna().all(axis=1)
+        if not train_missing_size:
+            model_ready &= prior[F.SIZE_COL].notna()
+        tr = prior[model_ready].reset_index(drop=True)
         va = df.iloc[val_idx]
 
-        enc = F.fit_encoders(tr, sm, pp)
-        X_tr = F.build_oof_matrix(tr, inner_splits, seed, sm, pp)
+        enc = F.fit_encoders(prior, sm, pp)
+        X_tr = F.build_oof_matrix(tr, inner_splits, seed, sm, pp, prior_df=prior)
         y_tr = np.log1p(tr[F.TARGET_COL].to_numpy(dtype=float))
         X_va = F.build_matrix(va, enc)
 
-        point[val_idx] = np.expm1(fit_point(X_tr, y_tr, params, seed).predict(X_va))
+        output["point"].extend(np.expm1(fit_point(X_tr, y_tr, params, seed).predict(X_va)))
+        output["price"].extend(va[F.TARGET_COL].to_numpy(dtype=float))
+        output["fold"].extend([fold_number] * len(va))
+        output["index"].extend(val_idx)
         if quantiles:
             m_lo, m_hi = fit_quantiles(X_tr, y_tr, params, seed)
-            lo_log[val_idx] = m_lo.predict(X_va)
-            hi_log[val_idx] = m_hi.predict(X_va)
-
-    if quantiles:
-        # Return raw log-space quantiles so the caller can conformally calibrate.
-        return {"point": point, "price": price, "lo_log": lo_log, "hi_log": hi_log}
-    return {"point": point, "price": price}
+            output["lo_log"].extend(m_lo.predict(X_va))
+            output["hi_log"].extend(m_hi.predict(X_va))
+    return {name: np.asarray(values) for name, values in output.items()}
 
 
 def conformal_widen(lo_log, hi_log, y_log, alpha=0.2):
@@ -100,11 +117,11 @@ def conformal_widen(lo_log, hi_log, y_log, alpha=0.2):
     scores = np.maximum(a - y_log, y_log - b)
     n = len(scores)
     q = min(1.0, np.ceil((n + 1) * (1 - alpha)) / n)
-    return float(np.quantile(scores, q, method="higher"))
+    return max(0.0, float(np.quantile(scores, q, method="higher")))
 
 
 def apply_interval(lo_log, hi_log, widen):
     """Calibrated price band from log-space quantiles and a widening amount."""
     a = np.minimum(lo_log, hi_log)
     b = np.maximum(lo_log, hi_log)
-    return np.expm1(a - widen), np.expm1(b + widen)
+    return np.maximum(0.0, np.expm1(a - widen)), np.expm1(b + widen)

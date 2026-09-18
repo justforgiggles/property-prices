@@ -23,7 +23,7 @@ npm run prepare:models -w @property-prices/function
 npm test
 ```
 
-Each previously unseen listing ID is appended once to `data/raw/YYYY-MM-DD.jsonl`, based on its publication date. Dated raw files are versionable and are never rewritten by scraper reruns; review and commit new files after a crawl. Training reads all dated files, skips listings missing required model features, writes metrics to `packages/model/build/metrics.json`, and promotes a four-file bundle only after quality gates and Python/Node ONNX parity pass. Models are generated and ignored by Git; a clean checkout can train from the migrated raw history.
+Each previously unseen listing ID is appended once to `data/raw/YYYY-MM-DD.jsonl`, based on its publication date. Dated raw files are versionable and are never rewritten by scraper reruns; review and commit new files after a crawl. Training compares complete-row, missing-size-prior, and imputed-size strategies on chronological folds, writes metrics and exclusion counts under `packages/model/build`, and promotes a four-file bundle only after forward quality gates and Python/Node ONNX parity pass. Models are generated and ignored by Git; a clean checkout can train from the migrated raw history.
 
 The scraper requests newest-first results and stops at the first unseen organic listing older than the rolling cutoff. Promoted listings are still captured but do not determine the cutoff.
 
@@ -35,7 +35,7 @@ Send JSON to the public function with `POST`:
 {"region":"Western Cape","locality_1":"Cape Town","locality_2":"Sea Point","bedrooms":3,"bathrooms":2,"size":120,"type":"House"}
 ```
 
-`locality_2` may be omitted. The function assumes South Africa and returns `{"low":number,"recommended":number,"high":number}` in ZAR. It accepts no address, coordinates, price, or other fields. Invalid input returns 400; unsupported methods return 405; model failures return 500. Responses use `Cache-Control: no-store`.
+`locality_2` may be omitted. Bedrooms and bathrooms must be integers from 1–20 and floor area must be 10–5,000 m². The function assumes South Africa and returns `{"low":number,"recommended":number,"high":number}` in ZAR. It accepts no address, coordinates, price, or other fields. Invalid input returns 400; unsupported methods return 405; model failures return 500. Responses use `Cache-Control: no-store`.
 
 Run it locally after preparing models:
 

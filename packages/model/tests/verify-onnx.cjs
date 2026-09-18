@@ -25,15 +25,17 @@ function lookup(tableMap, fallbackDefault, column, value, fallbacks) {
 
 function recordToFeatures(record, encoders) {
   const logSize = Math.log(Math.max(record.size, 1e-9));
+  const locality1 = `${record.region}|${record.locality_1}`;
+  const locality2 = `${locality1}|${record.locality_2}`;
   const localityFallbacks = [
-    ["locality_1", record.locality_1],
+    ["locality_1", locality1],
     ["region", record.region],
   ];
   const pricePerSquareMeter = lookup(
     encoders.ppsqm_encoding,
     encoders.global_ppsqm,
     "locality_2",
-    record.locality_2,
+    locality2,
     localityFallbacks,
   );
   const features = {
@@ -41,31 +43,25 @@ function recordToFeatures(record, encoders) {
     bed_bath_ratio: record.bedrooms / (record.bathrooms + 0.5),
     bedrooms: record.bedrooms,
     loc2_log_count: Math.log1p(
-      (encoders.loc2_count && encoders.loc2_count[String(record.locality_2)]) || 0,
+      (encoders.loc2_count && encoders.loc2_count[locality2]) || 0,
     ),
     log_size: logSize,
     prior_log_price: pricePerSquareMeter + logSize,
     size: record.size,
+    size_missing: 0,
     size_per_bedroom: record.size / Math.max(record.bedrooms, 0.5),
-    te_country: lookup(
-      encoders.target_encoding,
-      encoders.global_mean,
-      "country",
-      record.country,
-      [],
-    ),
     te_locality_1: lookup(
       encoders.target_encoding,
       encoders.global_mean,
       "locality_1",
-      record.locality_1,
+      locality1,
       [["region", record.region]],
     ),
     te_locality_2: lookup(
       encoders.target_encoding,
       encoders.global_mean,
       "locality_2",
-      record.locality_2,
+      locality2,
       localityFallbacks,
     ),
     te_ppsqm: pricePerSquareMeter,
@@ -85,13 +81,21 @@ function recordToFeatures(record, encoders) {
     ),
     total_rooms: record.bedrooms + record.bathrooms,
   };
-  return encoders.feature_order.map((feature) => Number(features[feature]));
+  const values = encoders.feature_order.map((feature) => Number(features[feature]));
+  if (!values.every(Number.isFinite)) {
+    throw new Error("Encoder produced invalid model features");
+  }
+  return values;
 }
 
 async function predictLog(session, values) {
+  const data = Float32Array.from(values);
+  if (![...data].every(Number.isFinite)) {
+    throw new Error("Encoder produced invalid float32 model features");
+  }
   const tensor = new ort.Tensor(
     "float32",
-    Float32Array.from(values),
+    data,
     [1, values.length],
   );
   const outputs = await session.run({ [session.inputNames[0]]: tensor });
@@ -138,7 +142,7 @@ async function main() {
     const lowLog = await predictLog(sessions.low, values);
     const highLog = await predictLog(sessions.high, values);
     const widening = Number(encoders.interval_log_widen || 0);
-    const low = Math.expm1(Math.min(lowLog, highLog) - widening);
+    const low = Math.max(0, Math.expm1(Math.min(lowLog, highLog) - widening));
     const high = Math.expm1(Math.max(lowLog, highLog) + widening);
     const recommended = Math.min(
       Math.max(Math.expm1(await predictLog(sessions.recommended, values)), low),

@@ -1626,8 +1626,8 @@ sections:
         validators:
           - required
           - type: min
-            value: 1
-            message: "Enter a floor area of at least 1 m²."
+            value: 10
+            message: "Enter a floor area of at least 10 m²."
           - type: max
             value: 5000
             message: "Enter a floor area of 5,000 m² or less."

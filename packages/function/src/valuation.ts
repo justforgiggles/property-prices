@@ -124,12 +124,12 @@ export async function valuation(
 
   if (
     [
-      [property.bathrooms, 20],
-      [property.bedrooms, 20],
-      [property.size, 5000],
+      [property.bathrooms, 1, 20],
+      [property.bedrooms, 1, 20],
+      [property.size, 10, 5000],
     ].some(
-      ([value, maximum]) =>
-        !Number.isInteger(value) || value < 1 || value > maximum,
+      ([value, minimum, maximum]) =>
+        !Number.isInteger(value) || value < minimum || value > maximum,
     ) ||
     !locations[property.region]?.[property.locality_1]?.includes(
       property.locality_2,
