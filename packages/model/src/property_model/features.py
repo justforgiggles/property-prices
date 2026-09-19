@@ -22,7 +22,6 @@ import math
 from dataclasses import dataclass, field
 
 import numpy as np
-import pandas as pd
 
 TARGET_COL = "price"
 SIZE_COL = "size"
@@ -175,8 +174,9 @@ def fit_encoders(train_df, smoothing=SMOOTHING, ppsqm_smoothing=PPSQM_SMOOTHING)
     city_to_region = df.groupby("_city_key")["_region_key"].first()
     suburb_to_city = df.groupby("_suburb_key")["_city_key"].first()
 
-    def encode(col, ycol, parent_for, m):
-        stats = df.groupby(col)[ycol].agg(["count", "mean"])
+    def encode(col, ycol, parent_for, m, frame=None):
+        frame = df if frame is None else frame
+        stats = frame.groupby(col)[ycol].agg(["count", "mean"])
         out = {}
         for value, row in stats.iterrows():
             n = float(row["count"])
@@ -200,37 +200,29 @@ def fit_encoders(train_df, smoothing=SMOOTHING, ppsqm_smoothing=PPSQM_SMOOTHING)
 
     ppsqm = df.loc[valid_size].copy()
     ppsqm["_yp"] = np.log(ppsqm[TARGET_COL].to_numpy(dtype=float) / ppsqm[SIZE_COL].to_numpy(dtype=float))
-    ppsqm["_weight"] = 1.0
-    if "date_posted" in ppsqm:
-        dates = pd.to_datetime(ppsqm["date_posted"], errors="coerce")
-        if dates.notna().any():
-            age = (dates.max() - dates).dt.total_seconds() / 86400
-            ppsqm.loc[dates.notna(), "_weight"] = np.exp(-math.log(2) * age[dates.notna()] / 90)
-
-    def weighted_mean(frame):
-        return float(np.average(frame["_yp"], weights=frame["_weight"]))
-
-    def weighted_means(col):
-        return ppsqm.groupby(col).apply(weighted_mean, include_groups=False)
-
-    def weighted_encode(col, parent_for):
-        out = {}
-        for value, rows in ppsqm.groupby(col):
-            weight = float(rows["_weight"].sum())
-            out[str(value)] = (weight * weighted_mean(rows) + ppsqm_smoothing * float(parent_for(value))) / (weight + ppsqm_smoothing)
-        return out
 
     if ppsqm.empty:
         global_ppsqm = 0.0
         ppsqm_encoding = {"region": {}, "locality_1": {}, "locality_2": {}}
     else:
-        global_ppsqm = weighted_mean(ppsqm)
-        region_ppsqm = weighted_means("_region_key")
-        city_ppsqm = weighted_means("_city_key")
+        global_ppsqm = float(ppsqm["_yp"].mean())
+        region_ppsqm = ppsqm.groupby("_region_key")["_yp"].mean()
+        city_ppsqm = ppsqm.groupby("_city_key")["_yp"].mean()
         ppsqm_encoding = {
-            "region": weighted_encode("_region_key", lambda v: global_ppsqm),
-            "locality_1": weighted_encode("_city_key", lambda v: region_ppsqm.get(city_to_region.get(v), global_ppsqm)),
-            "locality_2": weighted_encode("_suburb_key", lambda v: city_ppsqm.get(suburb_to_city.get(v), global_ppsqm)),
+            "region": encode(
+                "_region_key", "_yp", lambda v: global_ppsqm,
+                ppsqm_smoothing, ppsqm,
+            ),
+            "locality_1": encode(
+                "_city_key", "_yp",
+                lambda v: region_ppsqm.get(city_to_region.get(v), global_ppsqm),
+                ppsqm_smoothing, ppsqm,
+            ),
+            "locality_2": encode(
+                "_suburb_key", "_yp",
+                lambda v: city_ppsqm.get(suburb_to_city.get(v), global_ppsqm),
+                ppsqm_smoothing, ppsqm,
+            ),
         }
     loc2_count = {str(k): int(v) for k, v in df.groupby("_suburb_key").size().items()}
 
@@ -244,7 +236,7 @@ def fit_encoders(train_df, smoothing=SMOOTHING, ppsqm_smoothing=PPSQM_SMOOTHING)
         loc2_count=loc2_count,
         feature_order=list(FEATURE_ORDER),
         size_imputation=_size_imputation(df, valid_size),
-        metadata={"geography_keys": "composite_v1", "ppsqm_half_life_days": 90},
+        metadata={"geography_keys": "composite_v1"},
     )
 
 
@@ -343,31 +335,21 @@ def build_oof_matrix(
     prior = df if prior_df is None else prior_df.reset_index(drop=True)
     n = len(df)
     X = np.zeros((n, len(FEATURE_ORDER)), dtype=np.float32)
-    if "date_posted" in df:
-        dates = pd.to_datetime(df["date_posted"], errors="coerce")
-        if dates.isna().any():
-            raise ValueError("date_posted must be valid for chronological encoding")
-        unique_dates = np.sort(dates.unique())
-        # Only the first date lacks historical data; keep that cold-start
-        # block small rather than assigning neutral encodings to 1/n_splits.
-        folds = [np.flatnonzero(dates == unique_dates[0])]
-        for date_block in np.array_split(unique_dates[1:], n_splits):
-            if len(date_block):
-                folds.append(np.flatnonzero(dates.isin(date_block)))
-    else:
-        rng = np.random.default_rng(seed)
-        folds = np.array_split(rng.permutation(n), n_splits)
+    rng = np.random.default_rng(seed)
+    folds = np.array_split(rng.permutation(n), n_splits)
     for fold in folds:
         # Sort the validation indices so the rows we read line up with the
         # positions we write back to (iloc with a boolean mask returns rows in
         # ascending order regardless of fold order).
         val_idx = np.sort(fold)
-        if "date_posted" in df:
-            prior_dates = pd.to_datetime(prior["date_posted"], errors="coerce")
-            train_mask = prior_dates < dates.iloc[val_idx].min()
+        if "id" in df and "id" in prior:
+            validation_ids = set(df.iloc[val_idx]["id"])
+            train_mask = ~prior["id"].isin(validation_ids)
+        elif prior_df is None:
+            train_mask = np.ones(n, dtype=bool)
+            train_mask[val_idx] = False
         else:
-            validation_ids = set(df.iloc[val_idx].get("id", []))
-            train_mask = ~prior.get("id", pd.Series(range(len(prior)))).isin(validation_ids)
+            raise ValueError("prior_df requires id for leakage-safe exclusion")
         if train_mask.any():
             enc = fit_encoders(prior.loc[train_mask], smoothing, ppsqm_smoothing)
         else:

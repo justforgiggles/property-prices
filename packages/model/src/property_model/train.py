@@ -87,80 +87,27 @@ def train(package: Path) -> None:
         minimum_rows=max(20, int(config["cv_splits"]) * 2),
         return_report=True,
     )
-    model_ready = data[["bedrooms", "bathrooms"]].notna().all(axis=1)
-    size_eligible = data[model_ready].reset_index(drop=True)
-    complete = size_eligible[size_eligible[features.SIZE_COL].notna()].reset_index(drop=True)
-    reports = {}
-    widenings = {}
-    data_candidates = (
-        ("complete", complete, True),
-        ("prior_only", data, False),
-        ("imputed_size", data, True),
+    room_eligible = data[data[["bedrooms", "bathrooms"]].notna().all(axis=1)]
+    complete = room_eligible[room_eligible[features.SIZE_COL].notna()].reset_index(drop=True)
+    selected = "prior_only"
+    training_data = complete
+    encoder_data = data
+    report, widening = evaluation.evaluate(
+        encoder_data,
+        config["model"],
+        int(config["cv_splits"]),
+        int(config["seed"]),
+        train_missing_size=False,
     )
-    for name, candidate, train_missing_size in data_candidates:
-        reports[name], widenings[name] = evaluation.evaluate(
-            candidate,
-            config["model"],
-            int(config["cv_splits"]),
-            int(config["seed"]),
-            train_missing_size=train_missing_size,
-        )
-    baseline = reports["complete"]["selection"]
-    selected = "complete"
-    for name in ("prior_only", "imputed_size"):
-        challenger = reports[name]["selection"]
-        incumbent = reports[selected]["selection"]
-        if (
-            challenger["mdape"] < incumbent["mdape"]
-            and challenger["rmsle"] <= baseline["rmsle"]
-            and challenger["within_20"] >= baseline["within_20"]
-        ):
-            selected = name
-    train_missing_size = selected == "imputed_size"
-    training_data = size_eligible if train_missing_size else complete
-    encoder_data = complete if selected == "complete" else data
     parameters = config["model"]
-    model_candidates = {"base": reports[selected]["selection"]}
-    model_candidate_params = {"base": config["model"]}
-    selected_model = "base"
-    for index, overrides in enumerate(config.get("model_candidates", []), start=1):
-        candidate_parameters = {**config["model"], **overrides}
-        candidate_metrics = evaluation.evaluate_point(
-            encoder_data,
-            candidate_parameters,
-            int(config["cv_splits"]),
-            int(config["seed"]),
-            train_missing_size=train_missing_size,
-        )
-        name = f"candidate_{index}"
-        model_candidates[name] = candidate_metrics
-        model_candidate_params[name] = candidate_parameters
-        incumbent = model_candidates[selected_model]
-        if (
-            candidate_metrics["mdape"] < incumbent["mdape"]
-            and candidate_metrics["rmsle"] <= model_candidates["base"]["rmsle"]
-            and candidate_metrics["within_20"] >= model_candidates["base"]["within_20"]
-            and abs(candidate_metrics["median_bias"]) <= config["quality"].get("max_abs_median_bias", 5.0)
-        ):
-            selected_model = name
-            parameters = candidate_parameters
-    if selected_model == "base":
-        report, widening = reports[selected], widenings[selected]
-    else:
-        report, widening = evaluation.evaluate(
-            encoder_data,
-            parameters,
-            int(config["cv_splits"]),
-            int(config["seed"]),
-            train_missing_size=train_missing_size,
-        )
+    selected_model = "balanced_ensemble"
     report = dict(report)
     report.update({
         "selected_data": selected,
         "selected_model": selected_model,
-        "data_candidates": reports,
-        "model_candidates": model_candidates,
-        "model_candidate_params": model_candidate_params,
+        "data_candidates": {selected: report["selection"]},
+        "model_candidates": {selected_model: report["selection"]},
+        "model_candidate_params": {selected_model: parameters},
         "data_quality": data_report,
     })
     build = package / "build"
@@ -176,13 +123,14 @@ def train(package: Path) -> None:
     encoders = features.fit_encoders(encoder_data, float(parameters["smoothing"]), float(parameters["ppsqm_smoothing"]))
     encoders.interval_log_widen = widening
     encoders.metadata.update({
-        "model_version": 2,
+        "model_version": 3,
         "selected_data": selected,
         "selected_model": selected_model,
         "source_cutoff": str(training_data["date_posted"].max()),
         "source_start": str(training_data["date_posted"].min()),
         "training_rows": len(training_data),
         "complete_rows": len(complete),
+        "cohorts": data_report["cohorts"],
         "missing_size_rows": int(data[features.SIZE_COL].isna().sum()),
         "missing_room_rows": int(data[["bedrooms", "bathrooms"]].isna().any(axis=1).sum()),
         "config_sha256": hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest(),

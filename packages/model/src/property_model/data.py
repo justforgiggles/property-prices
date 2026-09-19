@@ -10,6 +10,7 @@ from pathlib import Path
 import pandas as pd
 
 REQUIRED_CATEGORIES = ("country", "region", "locality_1", "locality_2", "type")
+SUPPORTED_COUNTRY = "South Africa"
 SUPPORTED_REGIONS = {"Gauteng", "Western Cape", "KwaZulu Natal"}
 SUPPORTED_TYPES = {"House", "Apartment / Flat", "Townhouse"}
 MIN_PRICE = 50_000
@@ -98,12 +99,25 @@ def _normalize_raw(raw: object) -> tuple[dict | None, str | None, str | None]:
             if missing_category:
                 reasons.append(f"missing_{missing_category}")
                 continue
+            if record["country"] != SUPPORTED_COUNTRY:
+                reasons.append("unsupported_country")
+                continue
             if record["region"] not in SUPPORTED_REGIONS:
                 reasons.append("unsupported_region")
                 continue
             if record["type"] not in SUPPORTED_TYPES:
                 reasons.append("unsupported_type")
                 continue
+
+            if specification.get("priceCurrency") != "ZAR":
+                reasons.append("non_zar_price")
+                continue
+            raw_price = specification.get("price")
+            price = _number(raw_price)
+            if price is None or not MIN_PRICE <= price <= MAX_PRICE:
+                reasons.append(_missing_or_invalid(raw_price, "price"))
+                continue
+            record["price"] = price
 
             raw_bathrooms = about.get("numberOfBathroomsTotal")
             if raw_bathrooms is None:
@@ -112,41 +126,27 @@ def _normalize_raw(raw: object) -> tuple[dict | None, str | None, str | None]:
                 ("bedrooms", about.get("numberOfBedrooms")),
                 ("bathrooms", raw_bathrooms),
             ):
-                if raw_value is None or raw_value == "":
-                    record[field] = None
-                    continue
                 value = _number(raw_value)
-                if value is None or not value.is_integer() or not 1 <= value <= 20:
-                    reasons.append(f"invalid_{field}")
-                    break
-                record[field] = int(value)
-            else:
-                raw_floor_size = about.get("floorSize")
-                if raw_floor_size is None or isinstance(raw_floor_size, dict) and raw_floor_size.get("value") in (None, ""):
-                    record["size"] = None
-                elif not isinstance(raw_floor_size, dict):
-                    reasons.append("invalid_size")
-                    continue
-                else:
-                    size = _number(raw_floor_size.get("value"))
-                    if size is None or not 10 <= size <= 5_000:
-                        reasons.append("invalid_size")
-                        continue
-                    record["size"] = size
+                record[field] = (
+                    value
+                    if value is not None and 0.5 <= value <= 20 and (value * 2).is_integer()
+                    else None
+                )
 
-                if specification.get("priceCurrency") != "ZAR":
-                    reasons.append("non_zar_price")
-                    continue
-                raw_price = specification.get("price")
-                price = _number(raw_price)
-                if price is None or not MIN_PRICE <= price <= MAX_PRICE:
-                    reasons.append(_missing_or_invalid(raw_price, "price"))
-                    continue
-                if record["size"] is not None and not MIN_PRICE_PER_SQM <= price / record["size"] <= MAX_PRICE_PER_SQM:
-                    reasons.append("invalid_price_per_sqm")
-                    continue
-                record["price"] = price
-                return record, None, date_posted
+            raw_floor_size = about.get("floorSize")
+            size = (
+                _number(raw_floor_size.get("value"))
+                if isinstance(raw_floor_size, dict)
+                else None
+            )
+            record["size"] = (
+                size
+                if size is not None
+                and 10 <= size <= 5_000
+                and MIN_PRICE_PER_SQM <= price / size <= MAX_PRICE_PER_SQM
+                else None
+            )
+            return record, None, date_posted
 
     return None, reasons[0] if reasons else "missing_listing_node", observed_date
 
@@ -195,13 +195,25 @@ def load_data(
     data = pd.DataFrame.from_records(records)
     if not return_report:
         return data
-    missing_size = int(data["size"].isna().sum())
-    missing_rooms = int(data[["bedrooms", "bathrooms"]].isna().any(axis=1).sum())
+    market = len(data)
+    rooms = int(data[["bedrooms", "bathrooms"]].notna().all(axis=1).sum())
+    size = int((data[["bedrooms", "bathrooms", "size"]].notna().all(axis=1)).sum())
+    hard_excluded = total - market
+    market_only = market - rooms
+    rooms_only = rooms - size
     return data, {
         "total": total,
-        "included": len(records),
-        "included_complete": len(records) - missing_size,
-        "included_missing_size": missing_size,
-        "included_missing_rooms": missing_rooms,
+        "included": market,
+        "included_complete": size,
+        "included_missing_size": int(data["size"].isna().sum()),
+        "included_missing_rooms": market_only,
+        "cohorts": {"market": market, "rooms": rooms, "size": size},
+        "conservation": {
+            "hard_excluded": hard_excluded,
+            "market_only": market_only,
+            "rooms_only": rooms_only,
+            "size": size,
+            "total": hard_excluded + market_only + rooms_only + size,
+        },
         "excluded": dict(sorted(exclusions.items())),
     }

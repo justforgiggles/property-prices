@@ -34,7 +34,7 @@ test("prediction endpoint validates only model fields and methods", async () => 
   assert.equal(method.code, 405);
   assert.equal(method.headers.Allow, "POST");
 
-  for (const body of [{ ...property, address: "1 Main Street" }, { ...property, size: 9 }, { ...property, bedrooms: 1.5 }, { ...property, region: "" }]) {
+  for (const body of [{ ...property, address: "1 Main Street" }, { ...property, size: 9 }, { ...property, bedrooms: 1.5 }, { ...property, bathrooms: 1.5 }, { ...property, region: "" }]) {
     const invalid = response();
     await predict({ method: "POST", body }, invalid);
     assert.equal(invalid.code, 400);
@@ -104,6 +104,7 @@ test("valuation webhook validates completed form submissions", async () => {
     { ...submission, data: { ...submission.data, city: "Heidelberg", province: "Western Cape", suburb: "Rensburg" } },
     { ...submission, data: { ...submission.data, suburb: "" } },
     { ...submission, data: { ...submission.data, bedrooms: "1.5" } },
+    { ...submission, data: { ...submission.data, bathrooms: "1.5" } },
     { ...submission, data: { ...submission.data, bedrooms: "1e1" } },
     { ...submission, data: { ...submission.data, email: "not-an-email" } },
     { ...submission, data: { ...submission.data, first_name: "   " } },

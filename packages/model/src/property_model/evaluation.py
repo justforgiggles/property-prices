@@ -103,7 +103,7 @@ def evaluate_point(
 
 def quality_failures(report: dict, quality: dict) -> list[str]:
     failures = []
-    metrics = report.get("test", report["cv"])
+    metrics = report["test"] if "test" in report else report["cv"]
     if metrics["mdape"] > quality["max_mdape"]:
         failures.append(
             f"MdAPE {metrics['mdape']:.2f}% exceeds {quality['max_mdape']:.2f}%"
@@ -111,6 +111,12 @@ def quality_failures(report: dict, quality: dict) -> list[str]:
     if metrics["r2_log"] < quality["min_r2_log"]:
         failures.append(
             f"log R² {metrics['r2_log']:.3f} is below {quality['min_r2_log']:.3f}"
+        )
+    if "max_rmsle" in quality and metrics["rmsle"] > quality["max_rmsle"]:
+        failures.append(f"RMSLE {metrics['rmsle']:.3f} exceeds {quality['max_rmsle']:.3f}")
+    if "min_within_20" in quality and metrics["within_20"] < quality["min_within_20"]:
+        failures.append(
+            f"within-20% {metrics['within_20']:.2f}% is below {quality['min_within_20']:.2f}%"
         )
     if abs(metrics.get("median_bias", 0.0)) > quality.get("max_abs_median_bias", 5.0):
         failures.append(f"median bias {metrics['median_bias']:.2f}% exceeds ±5.00%")
@@ -120,11 +126,16 @@ def quality_failures(report: dict, quality: dict) -> list[str]:
             f"interval coverage {coverage:.2f}% is outside "
             f"{quality['min_interval_coverage']:.2f}%-{quality['max_interval_coverage']:.2f}%"
         )
+    width = report.get("interval_median_relative_width_pct", 0.0)
+    if "max_interval_width" in quality and width > quality["max_interval_width"]:
+        failures.append(
+            f"median interval width {width:.2f}% exceeds {quality['max_interval_width']:.2f}%"
+        )
     return failures
 
 
 def print_report(report: dict) -> None:
-    metrics = report.get("test", report["cv"])
+    metrics = report["test"] if "test" in report else report["cv"]
     print(f"Rows                : {metrics['n']}")
     print(f"MdAPE               : {metrics['mdape']:.2f}%")
     print(f"MAPE                : {metrics['mape']:.2f}%")

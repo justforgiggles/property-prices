@@ -1,7 +1,7 @@
 """CatBoost fitting, cross-validation, and interval calibration."""
 
 import numpy as np
-from catboost import CatBoostRegressor
+from catboost import CatBoostRegressor, sum_models
 
 from . import features as F
 
@@ -26,18 +26,40 @@ def cb_kwargs(params, loss_function=None, seed=42):
     )
 
 
+def _members(params):
+    ensemble = params.get("ensemble")
+    if not ensemble:
+        return [(params, 1.0)]
+    base = {key: value for key, value in params.items() if key != "ensemble"}
+    members = [({**base, **item.get("overrides", {})}, float(item["weight"])) for item in ensemble]
+    total = sum(weight for _, weight in members)
+    if total <= 0:
+        raise ValueError("Ensemble weights must have a positive sum")
+    return [(member, weight / total) for member, weight in members]
+
+
+def _combine(models, weights):
+    return models[0] if len(models) == 1 else sum_models(models, weights=weights)
+
+
 def fit_point(X, y_log, params, seed=42):
-    return CatBoostRegressor(**cb_kwargs(params, seed=seed)).fit(X, y_log)
+    members = _members(params)
+    models = [CatBoostRegressor(**cb_kwargs(member, seed=seed)).fit(X, y_log) for member, _ in members]
+    return _combine(models, [weight for _, weight in members])
 
 
 def fit_quantiles(X, y_log, params, seed=42):
-    lo = CatBoostRegressor(
-        **cb_kwargs(params, loss_function=QUANTILE_LOW, seed=seed)
-    ).fit(X, y_log)
-    hi = CatBoostRegressor(
-        **cb_kwargs(params, loss_function=QUANTILE_HIGH, seed=seed)
-    ).fit(X, y_log)
-    return lo, hi
+    members = _members(params)
+    weights = [weight for _, weight in members]
+    low = [
+        CatBoostRegressor(**cb_kwargs(member, loss_function=QUANTILE_LOW, seed=seed)).fit(X, y_log)
+        for member, _ in members
+    ]
+    high = [
+        CatBoostRegressor(**cb_kwargs(member, loss_function=QUANTILE_HIGH, seed=seed)).fit(X, y_log)
+        for member, _ in members
+    ]
+    return _combine(low, weights), _combine(high, weights)
 
 
 def _temporal_folds(df, n_splits):

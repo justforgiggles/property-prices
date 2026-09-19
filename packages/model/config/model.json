@@ -11,18 +11,28 @@
     "bagging_temperature": 2.0,
     "loss_function": "MAE",
     "smoothing": 10.0,
-    "ppsqm_smoothing": 10.0
+    "ppsqm_smoothing": 10.0,
+    "ensemble": [
+      {"weight": 0.5},
+      {
+        "weight": 0.5,
+        "overrides": {
+          "iterations": 700,
+          "learning_rate": 0.03,
+          "depth": 8,
+          "l2_leaf_reg": 15.0
+        }
+      }
+    ]
   },
-  "model_candidates": [
-    {"iterations": 1000, "learning_rate": 0.03, "depth": 5, "l2_leaf_reg": 10.0},
-    {"iterations": 1000, "learning_rate": 0.03, "depth": 7, "l2_leaf_reg": 10.0},
-    {"iterations": 700, "learning_rate": 0.03, "depth": 8, "l2_leaf_reg": 15.0}
-  ],
   "quality": {
-    "max_mdape": 25.0,
-    "min_r2_log": 0.7,
+    "max_mdape": 19.0,
+    "min_r2_log": 0.8,
+    "max_rmsle": 0.36,
+    "min_within_20": 52.0,
     "max_abs_median_bias": 5.0,
     "min_interval_coverage": 75.0,
-    "max_interval_coverage": 85.0
+    "max_interval_coverage": 85.0,
+    "max_interval_width": 84.0
   }
 }
