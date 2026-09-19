@@ -18,12 +18,15 @@ The scraper uses plain HTTP requests; it does not use Playwright. It discovers c
 
 ```bash
 npm run scrape                                 # rolling 30 published days
+npm run sync:locations                         # refresh form and function locations
 npm run train                                  # all deduplicated raw history
 npm run prepare:models -w @property-prices/function
 npm test
 ```
 
 Each previously unseen listing ID is appended once to `data/raw/YYYY-MM-DD.jsonl`, based on its publication date. Dated raw files are versionable and are never rewritten by scraper reruns; review and commit new files after a crawl. The current normalized history contains 22,080 market rows, 21,459 rows with valid half-step room counts, and 13,898 rows that also have valid floor size. Invalid or missing structural values remain available to broader market encoders instead of discarding the whole listing; price/m² statistics use only rows with valid size.
+
+Run `npm run sync:locations` after adding raw listings. It regenerates the valuation form and function validation catalog from the same normalized market rows used by the model; `npm test` fails if either catalog is stale.
 
 Training uses the 13,898 size-aware rows for the regressor and all market rows for leakage-safe location encoders. The selected point and quantile models are 50/50 CatBoost ensembles: the base depth-6 model plus a depth-8 challenger, fused before ONNX export. Random inner out-of-fold encoding sits inside chronological outer selection, calibration, and test windows. A staged time-residual target was benchmarked and rejected in favour of the more accurate direct target. Training writes metrics and exclusion counts under `packages/model/build` and promotes the unchanged four-file bundle only after point, bias, interval coverage/width, and Python/Node parity gates pass. Models are generated and ignored by Git; a clean checkout can train from the migrated raw history.
 

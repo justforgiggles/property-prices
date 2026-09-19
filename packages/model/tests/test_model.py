@@ -8,6 +8,7 @@ import pandas as pd
 
 from property_model import evaluation, features, modeling
 from property_model.data import load_data, normalize_raw
+from property_model.locations import build_locations, render_location_fields
 from property_model.train import promote
 
 
@@ -34,6 +35,31 @@ def raw(index: int) -> dict:
 
 
 class ModelTests(unittest.TestCase):
+    def test_location_catalog_is_sorted_and_disambiguates_duplicate_cities(self):
+        data = pd.DataFrame([
+            {
+                "region": "Western Cape",
+                "locality_1": "Heidelberg",
+                "locality_2": "Heidelberg",
+            },
+            {
+                "region": "Gauteng",
+                "locality_1": "Heidelberg",
+                "locality_2": "Rensburg",
+            },
+            {
+                "region": "Gauteng",
+                "locality_1": "Alberton",
+                "locality_2": "Brackenhurst",
+            },
+        ])
+        locations = build_locations(data)
+        self.assertEqual(list(locations), ["Gauteng", "Western Cape"])
+        self.assertEqual(list(locations["Gauteng"]), ["Alberton", "Heidelberg"])
+        rendered = render_location_fields(locations)
+        self.assertIn('label: "Rensburg (Gauteng)"', rendered)
+        self.assertIn('label: "Heidelberg (Western Cape)"', rendered)
+
     def test_reads_daily_raw_files_and_actual_bathrooms(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "2026-09-01.jsonl"

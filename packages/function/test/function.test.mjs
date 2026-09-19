@@ -102,6 +102,7 @@ test("valuation webhook validates completed form submissions", async () => {
     { ...submission, data: { ...submission.data, city: "Durban" } },
     { ...submission, data: { ...submission.data, city: "Heidelberg", province: "Gauteng", suburb: "Heidelberg" } },
     { ...submission, data: { ...submission.data, city: "Heidelberg", province: "Western Cape", suburb: "Rensburg" } },
+    { ...submission, data: { ...submission.data, city: "Cape Town", province: "Western Cape", suburb: "University Estate" } },
     { ...submission, data: { ...submission.data, suburb: "" } },
     { ...submission, data: { ...submission.data, bedrooms: "1.5" } },
     { ...submission, data: { ...submission.data, bathrooms: "1.5" } },
@@ -148,16 +149,17 @@ test("valuation webhook emails an escaped estimate once", async () => {
     assert.match(email.text, /Floor area: 120 m²/);
     assert.match(email.text, /Questions\? Reply to this email\./);
 
-    for (const [province, suburb] of [
-      ["Gauteng", "Rensburg"],
-      ["Western Cape", "Heidelberg"],
+    for (const [province, city, suburb] of [
+      ["Gauteng", "Heidelberg", "Rensburg"],
+      ["Western Cape", "Heidelberg", "Heidelberg"],
+      ["Western Cape", "Brackenfell", "Arauna"],
     ]) {
       const heidelberg = response();
       await valuation({
         method: "POST",
         body: {
           ...submission,
-          data: { ...submission.data, city: "Heidelberg", province, suburb },
+          data: { ...submission.data, city, province, suburb },
           id: `submission-${province}`,
         },
       }, heidelberg);
