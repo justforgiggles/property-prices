@@ -4,6 +4,7 @@
   "type": "module",
   "workspaces": ["packages/data", "packages/model", "packages/function"],
   "scripts": {
+    "submissions": "sh scripts/submissions.sh",
     "scrape": "npm run scrape -w @property-prices/data --",
     "train": "packages/model/.venv/bin/python -m property_model train",
     "sync:locations": "packages/model/.venv/bin/python -m property_model sync-locations",

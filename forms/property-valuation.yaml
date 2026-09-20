@@ -13,6 +13,9 @@ measurements:
     token: "phc_PG5OhDQIzFkoQxel2QjLVC85JPW0hHBB8gJkruofkrS"
     api_host: "https://eu.i.posthog.com"
 
+authentication:
+  verifier: "bd03158a644c5fca35e1aa40846e47eea7d8b0a0cebbd106c354044e4018f5da"
+
 sections:
   - id: location
     title: "Where is the property?"
