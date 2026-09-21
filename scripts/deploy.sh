@@ -7,6 +7,8 @@ gcloud run deploy property-prices-predict \
   --source packages/function \
   --function predict \
   --base-image nodejs22 \
+  --concurrency 1 \
+  --memory 1Gi \
   --region europe-west3 \
   --account hirebarend@gmail.com \
   --project hirebarend \
@@ -16,6 +18,8 @@ gcloud run deploy property-prices-valuation \
   --source packages/function \
   --function valuation \
   --base-image nodejs22 \
+  --concurrency 1 \
+  --memory 1Gi \
   --region europe-west3 \
   --account hirebarend@gmail.com \
   --project hirebarend \
