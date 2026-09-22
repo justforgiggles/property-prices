@@ -1,0 +1,146 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Property24 raw listing",
+  "description": "One JSON object per line in data/raw/YYYY-MM-DD.jsonl.",
+  "type": "object",
+  "required": ["id", "jsonld"],
+  "additionalProperties": false,
+  "properties": {
+    "id": { "type": "integer", "minimum": 1 },
+    "jsonld": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["@context", "@graph"],
+        "additionalProperties": false,
+        "properties": {
+          "@context": { "const": "https://schema.org" },
+          "@graph": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": ["@type", "datePosted", "breadcrumb", "about", "offers", "image", "name", "url"],
+              "additionalProperties": false,
+              "properties": {
+                "@type": { "const": "RealEstateListing" },
+                "datePosted": { "type": "string", "format": "date" },
+                "breadcrumb": {
+                  "type": "object",
+                  "required": ["@type", "itemListElement"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "@type": { "const": "BreadcrumbList" },
+                    "itemListElement": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "required": ["@type", "position", "item", "name"],
+                        "additionalProperties": false,
+                        "properties": {
+                          "@type": { "const": "ListItem" },
+                          "position": { "type": "integer", "minimum": 1 },
+                          "item": { "type": "string" },
+                          "name": { "type": "string" }
+                        }
+                      }
+                    }
+                  }
+                },
+                "about": {
+                  "type": "object",
+                  "required": ["@type", "address", "description"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "@type": { "enum": ["Apartment", "House", "Place"] },
+                    "numberOfBedrooms": { "type": "number" },
+                    "numberOfBathroomsTotal": { "type": "number" },
+                    "petsAllowed": { "type": "boolean" },
+                    "floorSize": {
+                      "type": "object",
+                      "required": ["@type", "value", "unitCode"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "@type": { "const": "QuantitativeValue" },
+                        "value": { "type": "integer" },
+                        "unitCode": { "const": "MTK" }
+                      }
+                    },
+                    "address": {
+                      "type": "object",
+                      "required": ["@type", "addressLocality", "addressRegion", "addressCountry"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "@type": { "const": "PostalAddress" },
+                        "streetAddress": { "type": "string" },
+                        "addressLocality": { "type": "string" },
+                        "addressRegion": { "type": "string" },
+                        "addressCountry": { "const": "South Africa" }
+                      }
+                    },
+                    "latitude": { "type": "number" },
+                    "longitude": { "type": "number" },
+                    "description": { "type": "string" }
+                  }
+                },
+                "offers": {
+                  "type": "object",
+                  "required": ["@type", "priceSpecification", "url"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "@type": { "const": "Offer" },
+                    "priceSpecification": {
+                      "type": "object",
+                      "required": ["@type", "price"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "@type": { "const": "UnitPriceSpecification" },
+                        "price": { "type": "string", "description": "Decimal amount or POA." },
+                        "priceCurrency": { "const": "ZAR" }
+                      }
+                    },
+                    "offeredBy": {
+                      "type": "object",
+                      "required": ["@type", "worksFor", "name", "url"],
+                      "additionalProperties": false,
+                      "properties": {
+                        "@type": { "const": "Person" },
+                        "worksFor": {
+                          "type": "object",
+                          "required": ["@type", "name", "url"],
+                          "additionalProperties": false,
+                          "properties": {
+                            "@type": { "const": "RealEstateAgent" },
+                            "logo": { "type": "string" },
+                            "name": { "type": "string" },
+                            "url": { "type": "string" }
+                          }
+                        },
+                        "name": { "type": "string" },
+                        "url": { "type": "string" }
+                      }
+                    },
+                    "url": { "type": "string" }
+                  }
+                },
+                "description": { "type": "string" },
+                "image": { "type": "string" },
+                "name": { "type": "string" },
+                "url": { "type": "string" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "url": { "type": "string" },
+    "address": { "type": "array", "items": { "type": "string" } },
+    "price": { "type": ["integer", "null"] },
+    "bedrooms": { "type": ["number", "null"] },
+    "bathrooms": { "type": ["number", "null"] },
+    "size": { "type": ["integer", "null"] },
+    "listing_date": { "type": "string" },
+    "agency": { "type": ["string", "null"] }
+  }
+}
