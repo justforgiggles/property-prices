@@ -18,7 +18,7 @@ if ([...selectedIds].some((id) => !Number.isSafeInteger(id) || id <= 0)) {
 
 const originalFetch = globalThis.fetch;
 globalThis.fetch = async (...args) => {
-  await sleep(4_000);
+  await sleep(2_000);
   return originalFetch(...args);
 };
 
@@ -112,18 +112,21 @@ for (const name of files) {
   const listings = expectedText.trimEnd().split("\n").map(JSON.parse);
   let changed = 0;
 
-  for (const listing of listings) {
-    if (selectedIds.size > 0 ? !selectedIds.has(listing.id) : Object.hasOwn(listing, "ratesAndTaxes")) {
-      continue;
+  const pending = listings.filter((listing) => selectedIds.size > 0 ? selectedIds.has(listing.id) : !Object.hasOwn(listing, "ratesAndTaxes"));
+
+  for (let offset = 0; offset < pending.length; offset += 3) {
+    const batch = pending.slice(offset, offset + 3);
+    const values = await Promise.all(batch.map(backfill));
+
+    for (const [index, listing] of batch.entries()) {
+      listing.ratesAndTaxes = values[index];
+      processed += 1;
+      changed += 1;
+      if (listing.ratesAndTaxes === null) missing += 1;
+      else numeric += 1;
     }
 
-    listing.ratesAndTaxes = await backfill(listing);
-    processed += 1;
-    changed += 1;
-    if (listing.ratesAndTaxes === null) missing += 1;
-    else numeric += 1;
-
-    if (changed % 25 === 0) {
+    if (changed % 25 < batch.length) {
       expectedText = await save(path, listings, expectedText);
       console.log(`${name}: ${changed} updated; ${processed} total (${numeric} numeric, ${missing} null)`);
     }
