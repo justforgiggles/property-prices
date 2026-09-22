@@ -1,5 +1,5 @@
-import { resolve } from "node:path";
-import { dirname } from "node:path";
+import { appendFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { Autocomplete } from "./property24.js";
@@ -25,7 +25,13 @@ async function main(): Promise<void> {
     console.log(`${city}: started`);
 
     try {
-      captured += await crawlSearch(url, storage, cutoffDate, 4_000, (progress) => console.log(`${city}: ${progress}`));
+      captured += await crawlSearch(url, storage, cutoffDate, 4_000, (progress) => {
+        console.log(`${city}: ${progress}`);
+
+        if (progress.startsWith("Rates and Taxes parse failed:")) {
+          appendFileSync(resolve(directory, "../rates-and-taxes-parse-errors.log"), `${progress}\n`);
+        }
+      });
       console.log(`${city}: finished, ${captured} total new listings`);
     } catch (error: unknown) {
       failed += 1;

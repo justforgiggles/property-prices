@@ -9,7 +9,7 @@ const PROVINCES = new Set(["Western Cape", "Gauteng", "KwaZulu Natal"]);
 
 type City = { id: number; name: string; parentName: string; type: number };
 type ReportProgress = (message: string) => void;
-export type RawListing = { id: number; jsonld: Array<unknown> };
+export type RawListing = { id: number; jsonld: Array<unknown>; ratesAndTaxes?: number | null };
 export type SearchListing = { url: string; promoted: boolean };
 
 export class SearchPage {
@@ -103,7 +103,21 @@ export class ListingPage {
       throw new Error(`Property24 listing has no JSON-LD: ${this.url}`);
     }
 
-    return { id: this.id, jsonld };
+    const ratesAndTaxesKey = $(".p24_propertyOverviewKey").filter((_, element) => $(element).text().replace(/\s+/g, " ").trim() === "Rates and Taxes").first();
+    let ratesAndTaxes: number | null = null;
+
+    if (ratesAndTaxesKey.length > 0) {
+      const value = ratesAndTaxesKey.next(".p24_propertyOverviewResult").find(".p24_info").first().text().replace(/\s+/g, " ").trim();
+      const amount = Number(value.replace(/^R\s*/i, "").replace(/[ ,]/g, ""));
+
+      if (/^R\s*(?:\d{1,3}(?:[ ,]\d{3})+|\d+)(?:\.\d{1,2})?$/i.test(value) && Number.isFinite(amount)) {
+        ratesAndTaxes = amount;
+      } else if (value !== "") {
+        this.reportProgress?.(`Rates and Taxes parse failed: ${this.url} value=${JSON.stringify(value)}`);
+      }
+    }
+
+    return { id: this.id, jsonld, ratesAndTaxes };
   }
 }
 

@@ -7,6 +7,7 @@
   "additionalProperties": false,
   "properties": {
     "id": { "type": "integer", "minimum": 1 },
+    "ratesAndTaxes": { "type": ["number", "null"], "minimum": 0 },
     "jsonld": {
       "type": "array",
       "minItems": 1,

@@ -4,13 +4,46 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 
-import { Autocomplete, type RawListing } from "../src/property24.js";
+import { Autocomplete, ListingPage, type RawListing } from "../src/property24.js";
 import { crawlSearch } from "../src/scraper.js";
 import { Storage } from "../src/storage.js";
 
 function rawListing(id: number, date = "2026-09-12"): RawListing {
   return { id, jsonld: [{ "@graph": [{ datePosted: date }] }] };
 }
+
+test("listing rates and taxes are numeric, absent, or reported when unparseable", async () => {
+  const originalFetch = globalThis.fetch;
+  const progress: Array<string> = [];
+  const values = new Map([
+    [1, "R 1 600"],
+    [2, "R 374.95"],
+    [3, null],
+    [4, "Contact agent"],
+    [5, ""],
+  ]);
+
+  globalThis.fetch = async (input: string | URL | Request): Promise<Response> => {
+    const url = new URL(input instanceof Request ? input.url : input);
+    const id = Number(url.pathname.split("/").at(-1));
+    const value = values.get(id);
+    const overview = value === null ? "" : `<div class="p24_propertyOverviewKey">Rates and Taxes</div><div class="p24_propertyOverviewResult"><div class="p24_info">${value}</div></div>`;
+    return new Response(`<p>Rates and Taxes R 9 999</p>${overview}<script type="application/ld+json">${JSON.stringify(rawListing(id).jsonld[0])}</script>`);
+  };
+
+  try {
+    for (const [id, expected] of [[1, 1600], [2, 374.95], [3, null], [4, null], [5, null]] as const) {
+      const listing = await new ListingPage(`https://www.property24.com/for-sale/example/${id}`, (message) => progress.push(message)).parse();
+      assert.equal(listing.ratesAndTaxes, expected);
+    }
+
+    assert.deepEqual(progress.filter((message) => message.startsWith("Rates and Taxes parse failed:")), [
+      "Rates and Taxes parse failed: https://www.property24.com/for-sale/example/4 value=\"Contact agent\"",
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
 
 test("newest searches stop at the first old organic listing without using promoted listings as the boundary", async () => {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), "property-data-"));

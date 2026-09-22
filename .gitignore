@@ -2,6 +2,9 @@ node_modules/
 .env
 /data.json
 /data.json.tmp
+/data/rates-and-taxes-parse-errors.log
+/data/rates-and-taxes-backfill-parse-errors.jsonl
+/data/rates-and-taxes-backfill-failures.jsonl
 packages/*/dist/
 packages/model/.venv/
 packages/model/build/
