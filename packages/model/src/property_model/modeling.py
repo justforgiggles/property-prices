@@ -91,7 +91,7 @@ def _temporal_folds(df, n_splits):
 
 def temporal_cv_predict(
     df, params, n_splits=5, inner_splits=5, seed=42, quantiles=False,
-    train_missing_size=True,
+    train_missing_size=True, selection_only=False, matrix_cache=None,
 ):
     """Forward predictions from expanding publication-date windows.
 
@@ -105,18 +105,28 @@ def temporal_cv_predict(
     if quantiles:
         output.update({"lo_log": [], "hi_log": []})
 
-    for fold_number, (train_idx, val_idx) in enumerate(_temporal_folds(df, n_splits)):
-        prior = df.iloc[train_idx].reset_index(drop=True)
-        model_ready = prior[["bedrooms", "bathrooms"]].notna().all(axis=1)
-        if not train_missing_size:
-            model_ready &= prior[F.SIZE_COL].notna()
-        tr = prior[model_ready].reset_index(drop=True)
-        va = df.iloc[val_idx]
+    folds = _temporal_folds(df, n_splits)
+    if selection_only:
+        folds = folds[:-2]
+    for fold_number, (train_idx, val_idx) in enumerate(folds):
+        key = (fold_number, sm, pp, seed, inner_splits, train_missing_size)
+        if matrix_cache is not None and key in matrix_cache:
+            X_tr, y_tr, X_va = matrix_cache[key]
+        else:
+            prior = df.iloc[train_idx].reset_index(drop=True)
+            model_ready = prior[["bedrooms", "bathrooms"]].notna().all(axis=1)
+            if not train_missing_size:
+                model_ready &= prior[F.SIZE_COL].notna()
+            tr = prior[model_ready].reset_index(drop=True)
+            va = df.iloc[val_idx]
+            enc = F.fit_encoders(prior, sm, pp)
+            X_tr = F.build_oof_matrix(tr, inner_splits, seed, sm, pp, prior_df=prior)
+            y_tr = np.log1p(tr[F.TARGET_COL].to_numpy(dtype=float))
+            X_va = F.build_matrix(va, enc)
+            if matrix_cache is not None:
+                matrix_cache[key] = (X_tr, y_tr, X_va)
 
-        enc = F.fit_encoders(prior, sm, pp)
-        X_tr = F.build_oof_matrix(tr, inner_splits, seed, sm, pp, prior_df=prior)
-        y_tr = np.log1p(tr[F.TARGET_COL].to_numpy(dtype=float))
-        X_va = F.build_matrix(va, enc)
+        va = df.iloc[val_idx]
 
         output["point"].extend(np.expm1(fit_point(X_tr, y_tr, params, seed).predict(X_va)))
         output["price"].extend(va[F.TARGET_COL].to_numpy(dtype=float))

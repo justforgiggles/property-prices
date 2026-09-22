@@ -24,6 +24,8 @@ npm run prepare:models -w @property-prices/function
 npm test
 ```
 
+To search the current CatBoost ensemble's settings and seed, run `packages/model/.venv/bin/python -m property_model hypertune` (`--trials N` changes the default 200 trials). It writes trial and summary reports to `packages/model/build` and updates the model config and verified bundle only when the candidate improves validation and newest-fold RMSLE and passes every quality gate. A full run can take several hours.
+
 Each previously unseen listing ID is appended once to `data/raw/YYYY-MM-DD.jsonl`, based on its publication date. Dated raw files are versionable and are never rewritten by scraper reruns; review and commit new files after a crawl. The current normalized history contains 22,080 market rows, 21,459 rows with valid half-step room counts, and 13,898 rows that also have valid floor size. Invalid or missing structural values remain available to broader market encoders instead of discarding the whole listing; price/m² statistics use only rows with valid size.
 
 Run `npm run sync:locations` after adding raw listings. It regenerates the valuation form and function validation catalog from the same normalized market rows used by the model; `npm test` fails if either catalog is stale.

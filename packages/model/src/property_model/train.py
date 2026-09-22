@@ -100,7 +100,7 @@ def train(package: Path) -> None:
         train_missing_size=False,
     )
     parameters = config["model"]
-    selected_model = "balanced_ensemble"
+    selected_model = "catboost_ensemble"
     report = dict(report)
     report.update({
         "selected_data": selected,

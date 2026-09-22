@@ -90,15 +90,16 @@ def evaluate(
 
 
 def evaluate_point(
-    df, params: dict, cv_splits: int, seed: int, *, train_missing_size: bool = True
+    df, params: dict, cv_splits: int, seed: int, *, train_missing_size: bool = True,
+    matrix_cache=None,
 ) -> dict:
-    """Score one cheap point-model candidate on the final temporal fold."""
+    """Score a point model on selection folds, excluding calibration and test."""
     result = modeling.temporal_cv_predict(
         df, params, n_splits=cv_splits, inner_splits=cv_splits, seed=seed,
-        train_missing_size=train_missing_size,
+        train_missing_size=train_missing_size, selection_only=True,
+        matrix_cache=matrix_cache,
     )
-    selection = result["fold"] <= result["fold"].max() - 2
-    return metric_block(result["price"][selection], result["point"][selection])
+    return metric_block(result["price"], result["point"])
 
 
 def quality_failures(report: dict, quality: dict) -> list[str]:

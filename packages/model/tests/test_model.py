@@ -2,11 +2,12 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
 
-from property_model import evaluation, features, modeling
+from property_model import evaluation, features, hypertune, modeling
 from property_model.data import load_data, normalize_raw
 from property_model.locations import build_locations, render_location_fields
 from property_model.train import promote
@@ -218,6 +219,57 @@ class ModelTests(unittest.TestCase):
         })
         for train, validation in modeling._temporal_folds(data, 3):
             self.assertLess(data.iloc[train].date_posted.max(), data.iloc[validation].date_posted.min())
+
+    def test_tuning_selection_skips_calibration_and_test_folds(self):
+        data = pd.DataFrame({
+            "date_posted": np.repeat(pd.date_range("2026-01-01", periods=12).astype(str), 10),
+            "size": 100.0,
+            "bedrooms": 3,
+            "bathrooms": 2,
+            "price": 1_000_000.0,
+        })
+        folds = modeling._temporal_folds(data, 5)
+        cache = {(number, 10.0, 10.0, 42, 5, False): (
+            np.zeros((20, 1)), np.zeros(20), np.zeros((len(validation), 1))
+        ) for number, (_, validation) in enumerate(folds[:-2])}
+        class ConstantModel:
+            def predict(self, values):
+                return np.zeros(len(values))
+        with patch.object(modeling, "fit_point", return_value=ConstantModel()) as fit:
+            result = modeling.temporal_cv_predict(
+                data, {"smoothing": 10, "ppsqm_smoothing": 10},
+                n_splits=5, inner_splits=5, seed=42,
+                train_missing_size=False, selection_only=True, matrix_cache=cache,
+            )
+        self.assertEqual(fit.call_count, len(folds) - 2)
+        self.assertLess(result["index"].max(), folds[-2][1].min())
+
+    def test_tuner_is_deterministic_and_restores_config_on_failure(self):
+        base = {"min_data_in_leaf": 1, "ensemble": [{"weight": 0.5}, {"weight": 0.5}]}
+        self.assertEqual(list(hypertune.candidates(base, 2)), list(hypertune.candidates(base, 2)))
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory)
+            (package / "config").mkdir()
+            config = package / "config" / "model.json"
+            config.write_text('{"seed":42}\n', encoding="utf-8")
+            with patch.object(hypertune, "train", side_effect=RuntimeError("export failed")):
+                with self.assertRaisesRegex(RuntimeError, "export failed"):
+                    hypertune.promote_candidate(package, {"seed": 137})
+            self.assertEqual(config.read_text(encoding="utf-8"), '{"seed":42}\n')
+
+    def test_tuner_leaves_non_improving_model_intact(self):
+        with tempfile.TemporaryDirectory() as directory:
+            package = Path(directory) / "packages" / "model"
+            (package / "config").mkdir(parents=True)
+            config = package / "config" / "model.json"
+            config.write_text(json.dumps({"seed": 42, "cv_splits": 5, "model": {}}), encoding="utf-8")
+            with patch.object(hypertune, "load_data"), patch.object(
+                hypertune.evaluation, "evaluate_point", return_value={"rmsle": 0.3}
+            ), patch.object(hypertune, "promote_candidate") as promote:
+                summary = hypertune.tune(package, trials=1)
+            self.assertEqual(summary["status"], "not_improved")
+            self.assertEqual(json.loads(config.read_text(encoding="utf-8"))["seed"], 42)
+            promote.assert_not_called()
 
     def test_inner_oof_ignores_dates_and_ppsqm_is_unweighted(self):
         rows = pd.DataFrame([
