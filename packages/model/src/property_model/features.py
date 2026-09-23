@@ -66,6 +66,7 @@ class Encoders:
     ppsqm_encoding: dict
     loc2_count: dict
     feature_order: list
+    confidence: dict = field(default_factory=dict)
     # Conformal widening (log space) applied to the quantile band so the
     # P10-P90 interval reaches its target coverage. Set by the pipeline.
     interval_log_widen: float = 0.0
@@ -75,6 +76,7 @@ class Encoders:
     def to_dict(self):
         return {
             "feature_order": self.feature_order,
+            "confidence": self.confidence,
             "global_mean": self.global_mean,
             "smoothing": self.smoothing,
             "target_encoding": self.target_encoding,
@@ -98,6 +100,7 @@ class Encoders:
             ppsqm_encoding=d["ppsqm_encoding"],
             loc2_count={str(k): int(v) for k, v in d["loc2_count"].items()},
             feature_order=list(d["feature_order"]),
+            confidence=d.get("confidence", {}),
             interval_log_widen=float(d.get("interval_log_widen", 0.0)),
             size_imputation=d.get("size_imputation", {}),
             metadata=d.get("metadata", {}),

@@ -1,7 +1,10 @@
 {{greeting}}
 
-Your property value estimate: {{recommended}}
-Likely range: {{low}} – {{high}}
+{{headline}}
+{{primaryLabel}}: {{primaryValue}}
+{{#if secondaryValue}}{{secondaryLabel}}: {{secondaryValue}}
+{{/if}}
+{{confidenceNote}}
 
 Property details used
 Type: {{type}}

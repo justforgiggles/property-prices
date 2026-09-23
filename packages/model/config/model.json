@@ -36,6 +36,10 @@
     "max_abs_median_bias": 5.0,
     "min_interval_coverage": 75.0,
     "max_interval_coverage": 85.0,
-    "max_interval_width": 84.0
+    "max_interval_width": 84.0,
+    "min_precise_rows": 50,
+    "min_precise_within_20": 80.0,
+    "min_low_confidence_rows": 100,
+    "max_low_confidence_within_20": 50.0
   }
 }

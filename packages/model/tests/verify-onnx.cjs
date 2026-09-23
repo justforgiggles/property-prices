@@ -112,6 +112,7 @@ async function main() {
   const expectedFiles = [
     "encoders.json",
     "model.onnx",
+    "model_confidence.onnx",
     "model_q10.onnx",
     "model_q90.onnx",
   ];
@@ -124,6 +125,10 @@ async function main() {
     fs.readFileSync(path.join(modelDirectory, "encoders.json"), "utf-8"),
   );
   const sessions = {
+    confidence: await ort.InferenceSession.create(
+      path.join(modelDirectory, "model_confidence.onnx"),
+      { logSeverityLevel: 3 },
+    ),
     high: await ort.InferenceSession.create(
       path.join(modelDirectory, "model_q90.onnx"),
       { logSeverityLevel: 3 },
@@ -143,17 +148,45 @@ async function main() {
     const values = recordToFeatures(record, encoders);
     const lowLog = await predictLog(sessions.low, values);
     const highLog = await predictLog(sessions.high, values);
+    const recommendedLog = await predictLog(sessions.recommended, values);
     const widening = Number(encoders.interval_log_widen || 0);
     const low = Math.max(0, Math.expm1(Math.min(lowLog, highLog) - widening));
     const high = Math.expm1(Math.max(lowLog, highLog) + widening);
     const recommended = Math.min(
-      Math.max(Math.expm1(await predictLog(sessions.recommended, values)), low),
+      Math.max(Math.expm1(recommendedLog), low),
       high,
     );
-    if (![low, recommended, high].every(Number.isFinite) || !(low <= recommended && recommended <= high)) {
+    const quantileLowLog = Math.min(lowLog, highLog);
+    const quantileHighLog = Math.max(lowLog, highLog);
+    const confidenceValues = values.concat([
+      recommendedLog,
+      quantileLowLog,
+      quantileHighLog,
+      quantileHighLog - quantileLowLog,
+      recommendedLog - quantileLowLog,
+      quantileHighLog - recommendedLog,
+      Math.abs(recommendedLog - (quantileLowLog + quantileHighLog) / 2),
+    ]);
+    const errorRisk = Math.min(
+      1,
+      Math.max(0, await predictLog(sessions.confidence, confidenceValues)),
+    );
+    const confidence =
+      errorRisk >= encoders.confidence.low_min_error_risk
+        ? "low"
+        : quantileHighLog - quantileLowLog <= encoders.confidence.precise_max_quantile_log_width
+          ? "high"
+          : "medium";
+    if (![low, recommended, high, errorRisk].every(Number.isFinite) || !(low <= recommended && recommended <= high)) {
       throw new Error("ONNX produced an invalid prediction interval");
     }
-    predictions.push({ high, low, recommended });
+    predictions.push({
+      confidence,
+      errorRisk,
+      high,
+      low,
+      recommended: confidence === "low" ? null : recommended,
+    });
   }
 
   if (process.argv.includes("--json")) {

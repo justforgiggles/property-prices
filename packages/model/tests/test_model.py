@@ -365,6 +365,22 @@ class ModelTests(unittest.TestCase):
         self.assertNotIn("ensemble", members[0][0])
         self.assertEqual(members[1][0]["depth"], 8)
 
+    def test_confidence_features_and_low_risk_precedence(self):
+        matrix = np.zeros((2, len(features.FEATURE_ORDER)), dtype=np.float32)
+        confidence = modeling.confidence_matrix(
+            matrix,
+            np.array([1_000_000.0, 2_000_000.0]),
+            np.array([13.0, 14.0]),
+            np.array([13.2, 14.4]),
+        )
+        self.assertEqual(confidence.shape, (2, len(modeling.CONFIDENCE_FEATURE_ORDER)))
+        np.testing.assert_array_equal(
+            evaluation.confidence_tiers(
+                np.array([0.6, 0.1]), np.array([0.1, 0.2]), 0.3
+            ),
+            ["low", "high"],
+        )
+
     def test_quality_gate_failure_and_bundle_promotion(self):
         report = {"cv": {"mdape": 26.0, "r2_log": 0.69}, "interval_coverage_pct": 90.0}
         quality = {"max_mdape": 25.0, "min_r2_log": 0.7, "min_interval_coverage": 75.0, "max_interval_coverage": 85.0}
@@ -403,6 +419,28 @@ class ModelTests(unittest.TestCase):
             "max_interval_width": 84.0,
         }
         self.assertEqual(len(evaluation.quality_failures(report, quality)), 3)
+
+    def test_confidence_quality_gates(self):
+        report = {
+            "cv": {"mdape": 18.0, "r2_log": 0.82},
+            "interval_coverage_pct": 80.0,
+            "confidence": {"test": {
+                "high": {"n": 49, "within_20": 79.0},
+                "medium": {"n": 100, "within_20": 60.0},
+                "low": {"n": 99, "within_20": 51.0},
+            }},
+        }
+        quality = {
+            "max_mdape": 19.0,
+            "min_r2_log": 0.8,
+            "min_interval_coverage": 75.0,
+            "max_interval_coverage": 85.0,
+            "min_precise_rows": 50,
+            "min_precise_within_20": 80.0,
+            "min_low_confidence_rows": 100,
+            "max_low_confidence_within_20": 50.0,
+        }
+        self.assertEqual(len(evaluation.quality_failures(report, quality)), 4)
 
     def test_restores_previous_bundle_after_interrupted_promotion(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 const packageDirectory = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const source = resolve(packageDirectory, "../model/models");
 const destination = join(packageDirectory, "models");
-const expected = ["encoders.json", "model.onnx", "model_q10.onnx", "model_q90.onnx"];
+const expected = ["encoders.json", "model.onnx", "model_confidence.onnx", "model_q10.onnx", "model_q90.onnx"];
 
 async function main() {
   const files = (await readdir(source)).sort();

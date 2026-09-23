@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 
 import { predict } from "../dist/inference.js";
-import { valuation } from "../dist/valuation.js";
+import { valuation, valuationPresentation } from "../dist/valuation.js";
 
 function response() {
   return {
@@ -48,8 +48,15 @@ test("prediction endpoint serves a finite ordered ZAR interval", async () => {
   await predict({ method: "POST", body: property }, result);
   assert.equal(result.code, 200);
   assert.equal(result.headers["Cache-Control"], "no-store");
-  assert.ok(result.body.low <= result.body.recommended && result.body.recommended <= result.body.high);
-  assert.ok([result.body.low, result.body.recommended, result.body.high].every(Number.isFinite));
+  assert.ok(["high", "medium", "low"].includes(result.body.confidence));
+  assert.ok(Number.isFinite(result.body.errorRisk));
+  assert.ok(result.body.errorRisk >= 0 && result.body.errorRisk <= 1);
+  assert.ok([result.body.low, result.body.high].every(Number.isFinite));
+  if (result.body.recommended === null) {
+    assert.equal(result.body.confidence, "low");
+  } else {
+    assert.ok(result.body.low <= result.body.recommended && result.body.recommended <= result.body.high);
+  }
 });
 
 test("function inference matches the independently verified model bundle", async () => {
@@ -59,16 +66,31 @@ test("function inference matches the independently verified model bundle", async
     "--model-dir", new URL("../models", import.meta.url).pathname,
     "--json",
   ], { encoding: "utf8" }));
+  const tiers = new Set();
 
   for (const [index, record] of records.entries()) {
     const result = response();
     const { country: _, ...body } = record;
     await predict({ method: "POST", body }, result);
 
-    for (const field of ["low", "recommended", "high"]) {
+    for (const field of ["low", "high"]) {
       assert.ok(Math.abs(result.body[field] - expected[index][field]) <= 1);
     }
+    assert.ok(Math.abs(result.body.errorRisk - expected[index].errorRisk) <= 1e-5);
+    assert.equal(result.body.confidence, expected[index].confidence);
+    assert.equal(result.body.recommended, expected[index].recommended);
+    tiers.add(result.body.confidence);
   }
+  assert.deepEqual([...tiers].sort(), ["high", "low", "medium"]);
+});
+
+test("valuation presentation uses precise, range-first, and range-only tiers", () => {
+  const estimate = { errorRisk: 0.1, high: 1_500_000, low: 1_000_000, recommended: 1_250_000 };
+  assert.equal(valuationPresentation({ ...estimate, confidence: "high" }).primaryLabel, "Recommended value");
+  assert.equal(valuationPresentation({ ...estimate, confidence: "medium" }).primaryLabel, "Likely range");
+  const low = valuationPresentation({ ...estimate, confidence: "low", recommended: null });
+  assert.equal(low.primaryLabel, "Indicative range");
+  assert.equal(low.secondaryValue, "");
 });
 
 const submission = {
@@ -150,7 +172,7 @@ test("valuation webhook emails an escaped estimate once", async () => {
     assert.deepEqual(email.to, ["thandi@example.com"]);
     assert.match(email.html, /Hi Thandi &lt;Test&gt;,/);
     assert.doesNotMatch(email.html, /\{\{[^}]+\}\}/);
-    assert.match(email.html, /Likely range:/);
+    assert.match(email.html, /range/i);
     assert.match(email.html, /requested a property estimate/);
     assert.match(email.text, /Hi Thandi <Test>,/);
     assert.doesNotMatch(email.text, /\{\{[^}]+\}\}/);

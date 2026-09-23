@@ -35,6 +35,11 @@ const validateProperty = new Ajv().compile({
 });
 
 type Encoders = {
+  confidence: {
+    feature_order: Array<string>;
+    low_min_error_risk: number;
+    precise_max_quantile_log_width: number;
+  };
   feature_order: Array<string>;
   global_mean: number;
   global_ppsqm: number;
@@ -64,6 +69,21 @@ const FEATURE_ORDER = [
   "loc2_log_count",
 ] as const;
 
+const CONFIDENCE_EXTRA_ORDER = [
+  "point_log",
+  "quantile_low_log",
+  "quantile_high_log",
+  "quantile_log_width",
+  "point_minus_low",
+  "high_minus_point",
+  "point_midpoint_offset",
+] as const;
+
+const CONFIDENCE_FEATURE_ORDER = [
+  ...FEATURE_ORDER,
+  ...CONFIDENCE_EXTRA_ORDER,
+] as const;
+
 function parseEncoders(json: string): Encoders {
   const value = JSON.parse(json) as Partial<Encoders>;
   const record = (candidate: unknown): candidate is Record<string, unknown> =>
@@ -82,6 +102,14 @@ function parseEncoders(json: string): Encoders {
     !Number.isFinite(value.global_mean) ||
     !Number.isFinite(value.global_ppsqm) ||
     !Number.isFinite(value.interval_log_widen) ||
+    !record(value.confidence) ||
+    !Array.isArray(value.confidence.feature_order) ||
+    value.confidence.feature_order.length !== CONFIDENCE_FEATURE_ORDER.length ||
+    !value.confidence.feature_order.every(
+      (feature, index) => feature === CONFIDENCE_FEATURE_ORDER[index],
+    ) ||
+    !Number.isFinite(value.confidence.low_min_error_risk) ||
+    !Number.isFinite(value.confidence.precise_max_quantile_log_width) ||
     !record(value.loc2_count) ||
     !Object.values(value.loc2_count).every(
       (count) => Number.isInteger(count) && Number(count) >= 0,
@@ -122,12 +150,18 @@ export async function predictValuation(property: {
   region: string;
   size: number;
   type: string;
-}): Promise<{ high: number; low: number; recommended: number }> {
+}): Promise<{
+  confidence: "high" | "low" | "medium";
+  errorRisk: number;
+  high: number;
+  low: number;
+  recommended: number | null;
+}> {
   if (!validateProperty(property)) {
     throw new Error("Property details are invalid");
   }
 
-  const [encoders, [lowSession, highSession, recommendedSession]] =
+  const [encoders, [lowSession, highSession, recommendedSession, confidenceSession]] =
     await (modelPromise ??= Promise.all([
       readFile(join(MODEL_DIRECTORY, "encoders.json"), "utf8").then(parseEncoders),
       Promise.all([
@@ -138,6 +172,9 @@ export async function predictValuation(property: {
           logSeverityLevel: 3,
         }),
         ort.InferenceSession.create(join(MODEL_DIRECTORY, "model.onnx"), {
+          logSeverityLevel: 3,
+        }),
+        ort.InferenceSession.create(join(MODEL_DIRECTORY, "model_confidence.onnx"), {
           logSeverityLevel: 3,
         }),
       ]),
@@ -226,17 +263,52 @@ export async function predictValuation(property: {
     Math.max(lowLog, highLog) + encoders.interval_log_widen,
   );
 
-  const recommended = Math.min(Math.max(Math.expm1(recommendedLog), low), high);
+  const point = Math.min(Math.max(Math.expm1(recommendedLog), low), high);
+  const quantileLowLog = Math.min(lowLog, highLog);
+  const quantileHighLog = Math.max(lowLog, highLog);
+  const confidenceValues = [
+    ...values,
+    recommendedLog,
+    quantileLowLog,
+    quantileHighLog,
+    quantileHighLog - quantileLowLog,
+    recommendedLog - quantileLowLog,
+    quantileHighLog - recommendedLog,
+    Math.abs(recommendedLog - (quantileLowLog + quantileHighLog) / 2),
+  ];
+  const confidenceTensor = new ort.Tensor(
+    "float32",
+    Float32Array.from(confidenceValues),
+    [1, confidenceValues.length],
+  );
+  const confidenceOutputs = await confidenceSession.run({
+    [confidenceSession.inputNames[0]]: confidenceTensor,
+  });
+  const errorRisk = Math.min(
+    1,
+    Math.max(
+      0,
+      Number(confidenceOutputs[confidenceSession.outputNames[0]].data[0]),
+    ),
+  );
+  const confidence =
+    errorRisk >= encoders.confidence.low_min_error_risk
+      ? "low"
+      : quantileHighLog - quantileLowLog <=
+          encoders.confidence.precise_max_quantile_log_width
+        ? "high"
+        : "medium";
+  const recommended = confidence === "low" ? null : point;
 
   if (
-    ![low, recommended, high].every(Number.isFinite) ||
-    low > recommended ||
-    recommended > high
+    ![low, point, high, errorRisk].every(Number.isFinite) ||
+    low > point ||
+    point > high
   ) {
     throw new Error("Model produced an invalid valuation");
   }
 
-  return { high, low, recommended };
+  return { confidence, errorRisk, high, low, recommended };
 }
 
 export async function predict(

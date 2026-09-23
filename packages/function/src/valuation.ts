@@ -82,6 +82,54 @@ const zar = new Intl.NumberFormat("en-ZA", {
   style: "currency",
 });
 
+export function valuationPresentation(
+  estimate: Awaited<ReturnType<typeof predictValuation>>,
+): {
+  confidenceNote: string;
+  headline: string;
+  intro: string;
+  primaryLabel: string;
+  primaryValue: string;
+  secondaryLabel: string;
+  secondaryValue: string;
+} {
+  const range = `${zar.format(estimate.low)} – ${zar.format(estimate.high)}`;
+  if (estimate.confidence === "low") {
+    return {
+      confidenceNote: "This is a low-confidence estimate because this property differs from the model’s stronger comparisons. Treat the range cautiously and consider a professional valuation.",
+      headline: "Your estimated property value range",
+      intro: "The available listing data does not support a reliable single-value estimate for this property.",
+      primaryLabel: "Indicative range",
+      primaryValue: range,
+      secondaryLabel: "",
+      secondaryValue: "",
+    };
+  }
+  if (estimate.recommended === null) {
+    throw new Error("Point estimate is missing for a non-low confidence tier");
+  }
+  if (estimate.confidence === "high") {
+    return {
+      confidenceNote: "This estimate falls within the model’s higher-confidence group, but it remains an automated asking-price estimate rather than a formal valuation.",
+      headline: "Your estimated property value",
+      intro: "Based on the details you shared, your property’s recommended value is:",
+      primaryLabel: "Recommended value",
+      primaryValue: zar.format(estimate.recommended),
+      secondaryLabel: "Likely range",
+      secondaryValue: range,
+    };
+  }
+  return {
+    confidenceNote: "This estimate has moderate confidence, so the likely range is more reliable than the central estimate alone.",
+    headline: "Your estimated property value range",
+    intro: "Based on the details you shared, the model estimates this likely range:",
+    primaryLabel: "Likely range",
+    primaryValue: range,
+    secondaryLabel: "Central estimate",
+    secondaryValue: zar.format(estimate.recommended),
+  };
+}
+
 export async function valuation(
   request: Request,
   response: Response,
@@ -161,20 +209,19 @@ export async function valuation(
     }
 
     const [toHtml, toText] = await templatesPromise;
+    const presentation = valuationPresentation(estimate);
     const values = {
+      ...presentation,
       bathrooms: property.bathrooms,
       bedrooms: property.bedrooms,
       greeting: submission.data.first_name
         ? `Hi ${submission.data.first_name},`
         : "Hello,",
-      high: zar.format(estimate.high),
       location: [
         property.locality_2,
         property.locality_1,
         property.region,
       ].join(", "),
-      low: zar.format(estimate.low),
-      recommended: zar.format(estimate.recommended),
       size: `${property.size.toLocaleString("en-ZA")} m²`,
       type: property.type,
     };

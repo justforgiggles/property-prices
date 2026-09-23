@@ -37,8 +37,9 @@ def metric_block(y_true, y_pred) -> dict:
 
 
 def evaluate(
-    df, params: dict, cv_splits: int, seed: int, *, train_missing_size: bool = True
-) -> tuple[dict, float]:
+    df, params: dict, cv_splits: int, seed: int, *, train_missing_size: bool = True,
+    return_predictions: bool = False,
+):
     result = modeling.temporal_cv_predict(
         df,
         params,
@@ -47,6 +48,7 @@ def evaluate(
         seed=seed,
         quantiles=True,
         train_missing_size=train_missing_size,
+        include_features=return_predictions,
     )
     last_fold = int(result["fold"].max())
     selection = result["fold"] <= last_fold - 2
@@ -54,7 +56,7 @@ def evaluate(
     test = result["fold"] == last_fold
     y_log = np.log1p(result["price"])
     widening = modeling.conformal_widen(
-        result["lo_log"][calibration], result["hi_log"][calibration], y_log[calibration], alpha=0.2
+        result["lo_log"][calibration], result["hi_log"][calibration], y_log[calibration], alpha=0.21
     )
     low, high = modeling.apply_interval(
         result["lo_log"][test], result["hi_log"][test], widening
@@ -86,7 +88,62 @@ def evaluate(
         "slices": slices,
         "params": params,
     }
-    return report, widening
+    return (report, widening, result) if return_predictions else (report, widening)
+
+
+def _precise_width_threshold(width, bad, target=0.8):
+    order = np.argsort(width)
+    accuracy = np.cumsum(~bad[order]) / np.arange(1, len(order) + 1)
+    eligible = np.flatnonzero(accuracy >= target)
+    if not len(eligible):
+        raise ValueError("No calibration threshold reaches precise-tier accuracy")
+    count = int(eligible[-1] + 1)
+    if count == len(order):
+        return float(width[order][-1])
+    return float((width[order][count - 1] + width[order][count]) / 2)
+
+
+def confidence_tiers(risk, width, precise_width, low_risk=0.5):
+    low = risk >= low_risk
+    high = ~low & (width <= precise_width)
+    return np.where(low, "low", np.where(high, "high", "medium"))
+
+
+def fit_confidence(result: dict, seed: int):
+    last_fold = int(result["fold"].max())
+    selection = result["fold"] <= last_fold - 2
+    calibration = result["fold"] == last_fold - 1
+    test = result["fold"] == last_fold
+    bad = np.abs(result["point"] - result["price"]) / result["price"] > 0.2
+    matrix = modeling.confidence_matrix(
+        result["features"], result["point"], result["lo_log"], result["hi_log"]
+    )
+    model = modeling.fit_confidence(matrix[selection], bad[selection], seed)
+    risk = np.clip(model.predict(matrix), 0, 1)
+    width = np.abs(result["hi_log"] - result["lo_log"])
+    precise_width = _precise_width_threshold(width[calibration], bad[calibration])
+    tiers = confidence_tiers(risk, width, precise_width)
+
+    def block(mask):
+        cohort = bad[mask]
+        return {
+            "n": int(mask.sum()),
+            "within_20": float(np.mean(~cohort) * 100.0),
+        }
+
+    report = {
+        "precise_max_quantile_log_width": precise_width,
+        "low_min_error_risk": 0.5,
+        "calibration": {
+            tier: block(calibration & (tiers == tier))
+            for tier in ("high", "medium", "low")
+        },
+        "test": {
+            tier: block(test & (tiers == tier))
+            for tier in ("high", "medium", "low")
+        },
+    }
+    return model, report
 
 
 def evaluate_point(
@@ -132,6 +189,29 @@ def quality_failures(report: dict, quality: dict) -> list[str]:
         failures.append(
             f"median interval width {width:.2f}% exceeds {quality['max_interval_width']:.2f}%"
         )
+    confidence = report.get("confidence", {}).get("test")
+    if confidence:
+        high = confidence["high"]
+        low = confidence["low"]
+        if high["n"] < quality.get("min_precise_rows", 0):
+            failures.append(
+                f"precise rows {high['n']} is below {quality['min_precise_rows']}"
+            )
+        if high["within_20"] < quality.get("min_precise_within_20", 0):
+            failures.append(
+                f"precise within-20% {high['within_20']:.2f}% is below "
+                f"{quality['min_precise_within_20']:.2f}%"
+            )
+        if low["n"] < quality.get("min_low_confidence_rows", 0):
+            failures.append(
+                f"low-confidence rows {low['n']} is below "
+                f"{quality['min_low_confidence_rows']}"
+            )
+        if low["within_20"] > quality.get("max_low_confidence_within_20", 100):
+            failures.append(
+                f"low-confidence within-20% {low['within_20']:.2f}% exceeds "
+                f"{quality['max_low_confidence_within_20']:.2f}%"
+            )
     return failures
 
 
@@ -148,3 +228,12 @@ def print_report(report: dict) -> None:
         "Median interval width: "
         f"{report['interval_median_relative_width_pct']:.1f}% of predicted price"
     )
+    if "confidence" in report:
+        tiers = report["confidence"]["test"]
+        print(
+            "Confidence tiers    : "
+            + ", ".join(
+                f"{name} {values['n']} rows/{values['within_20']:.1f}% within 20%"
+                for name, values in tiers.items()
+            )
+        )

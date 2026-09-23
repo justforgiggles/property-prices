@@ -16,7 +16,13 @@ import numpy as np
 from . import evaluation, features, modeling
 from .data import load_data
 
-DEPLOYMENT_FILES = {"encoders.json", "model.onnx", "model_q10.onnx", "model_q90.onnx"}
+DEPLOYMENT_FILES = {
+    "encoders.json",
+    "model.onnx",
+    "model_confidence.onnx",
+    "model_q10.onnx",
+    "model_q90.onnx",
+}
 ONNX_PARAMETERS = {
     "onnx_domain": "ai.catboost",
     "onnx_model_version": 1,
@@ -48,10 +54,29 @@ def _python_prediction(models: dict, encoders: features.Encoders, record: dict) 
     matrix = np.asarray([features.record_to_features(record, encoders)], dtype=np.float32)
     low_log = float(models["model_q10"].predict(matrix)[0])
     high_log = float(models["model_q90"].predict(matrix)[0])
+    point_log = float(models["model"].predict(matrix)[0])
     low = max(0.0, float(np.expm1(min(low_log, high_log) - encoders.interval_log_widen)))
     high = float(np.expm1(max(low_log, high_log) + encoders.interval_log_widen))
-    recommended = float(np.expm1(models["model"].predict(matrix)[0]))
-    return {"low": low, "recommended": min(max(recommended, low), high), "high": high}
+    recommended = min(max(float(np.expm1(point_log)), low), high)
+    confidence_matrix = modeling.confidence_matrix(
+        matrix, np.asarray([np.expm1(point_log)]), np.asarray([low_log]), np.asarray([high_log])
+    )
+    risk = min(1.0, max(0.0, float(models["model_confidence"].predict(confidence_matrix)[0])))
+    settings = encoders.confidence
+    confidence = (
+        "low"
+        if risk >= settings["low_min_error_risk"]
+        else "high"
+        if abs(high_log - low_log) <= settings["precise_max_quantile_log_width"]
+        else "medium"
+    )
+    return {
+        "low": low,
+        "recommended": None if confidence == "low" else recommended,
+        "high": high,
+        "confidence": confidence,
+        "errorRisk": risk,
+    }
 
 
 def verify_bundle(package: Path, stage: Path, models: dict, encoders: features.Encoders) -> None:
@@ -72,10 +97,17 @@ def verify_bundle(package: Path, stage: Path, models: dict, encoders: features.E
         raise RuntimeError("ONNX verification returned the wrong number of predictions")
     for record, node_prediction in zip(records, predictions, strict=True):
         python_prediction = _python_prediction(models, encoders, record)
-        for field in ("low", "recommended", "high"):
-            if not math.isfinite(node_prediction[field]) or not math.isclose(python_prediction[field], node_prediction[field], rel_tol=1e-5, abs_tol=1.0):
+        for field in ("low", "high", "errorRisk"):
+            if not math.isfinite(node_prediction[field]) or not math.isclose(python_prediction[field], node_prediction[field], rel_tol=1e-5, abs_tol=1e-5 if field == "errorRisk" else 1.0):
                 raise RuntimeError(f"Python/Node ONNX prediction differs for {field}")
-        if not node_prediction["low"] <= node_prediction["recommended"] <= node_prediction["high"]:
+        if python_prediction["confidence"] != node_prediction["confidence"]:
+            raise RuntimeError("Python/Node confidence tier differs")
+        if python_prediction["recommended"] is None:
+            if node_prediction["recommended"] is not None:
+                raise RuntimeError("Low-confidence prediction exposed a point value")
+        elif not math.isclose(python_prediction["recommended"], node_prediction["recommended"], rel_tol=1e-5, abs_tol=1.0):
+            raise RuntimeError("Python/Node point prediction differs")
+        if node_prediction["recommended"] is not None and not node_prediction["low"] <= node_prediction["recommended"] <= node_prediction["high"]:
             raise RuntimeError("ONNX prediction interval is not ordered")
 
 
@@ -92,12 +124,16 @@ def train(package: Path) -> None:
     selected = "prior_only"
     training_data = complete
     encoder_data = data
-    report, widening = evaluation.evaluate(
+    report, widening, predictions = evaluation.evaluate(
         encoder_data,
         config["model"],
         int(config["cv_splits"]),
         int(config["seed"]),
         train_missing_size=False,
+        return_predictions=True,
+    )
+    confidence_model, confidence_report = evaluation.fit_confidence(
+        predictions, int(config["seed"])
     )
     parameters = config["model"]
     selected_model = "catboost_ensemble"
@@ -110,6 +146,7 @@ def train(package: Path) -> None:
         "model_candidates": {selected_model: report["selection"]},
         "model_candidate_params": {selected_model: parameters},
         "data_quality": data_report,
+        "confidence": confidence_report,
     })
     build = package / "build"
     build.mkdir(exist_ok=True)
@@ -124,7 +161,7 @@ def train(package: Path) -> None:
     encoders = features.fit_encoders(encoder_data, float(parameters["smoothing"]), float(parameters["ppsqm_smoothing"]))
     encoders.interval_log_widen = widening
     encoders.metadata.update({
-        "model_version": 5,
+        "model_version": 6,
         "evaluation_cohort": "rates_and_taxes_present",
         "selected_data": selected,
         "selected_model": selected_model,
@@ -146,7 +183,15 @@ def train(package: Path) -> None:
             .encode()
         ).hexdigest(),
         "test_metrics": report["test"],
+        "confidence_test_metrics": report["confidence"]["test"],
     })
+    encoders.confidence = {
+        "feature_order": modeling.CONFIDENCE_FEATURE_ORDER,
+        "precise_max_quantile_log_width": confidence_report[
+            "precise_max_quantile_log_width"
+        ],
+        "low_min_error_risk": confidence_report["low_min_error_risk"],
+    }
     matrix = features.build_oof_matrix(
         training_data,
         int(config["cv_splits"]),
@@ -161,7 +206,12 @@ def train(package: Path) -> None:
     low, high = modeling.fit_quantiles(
         matrix, target, parameters, seed, sample_weight
     )
-    models = {"model": point, "model_q10": low, "model_q90": high}
+    models = {
+        "model": point,
+        "model_q10": low,
+        "model_q90": high,
+        "model_confidence": confidence_model,
+    }
 
     with tempfile.TemporaryDirectory(dir=build) as directory:
         stage = Path(directory) / "models"

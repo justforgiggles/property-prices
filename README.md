@@ -30,7 +30,7 @@ Each previously unseen listing ID is appended once to `data/raw/YYYY-MM-DD.jsonl
 
 Run `npm run sync:locations` after adding raw listings. It regenerates the valuation form and function validation catalog from the same normalized market rows used by the model; `npm test` fails if either catalog is stale.
 
-Training uses all 16,376 size-aware rows for the regressor and all market rows for leakage-safe location encoders. Rows with known rates and taxes receive full loss weight; missing-rate rows remain in training at 10% weight. Model selection, interval calibration, testing, and promotion gates use only known-rate rows to match the required production input. The selected point and quantile models blend a depth-6 base model with a depth-8 challenger before ONNX export. Training writes metrics and exclusion counts under `packages/model/build` and promotes the unchanged four-file bundle only after point, bias, interval coverage/width, and Python/Node parity gates pass. Models are generated and ignored by Git.
+Training uses all 16,376 size-aware rows for the regressor and all market rows for leakage-safe location encoders. Rows with known rates and taxes receive full loss weight; missing-rate rows remain in training at 10% weight. Model selection, interval calibration, testing, and promotion gates use only known-rate rows to match the required production input. The selected point and quantile models blend a depth-6 base model with a depth-8 challenger before ONNX export. A scalar confidence model and calibrated quantile-width threshold assign high, medium, or low confidence. Training writes metrics and exclusion counts under `packages/model/build` and promotes the five-file bundle only after point, interval, confidence-tier, and Python/Node parity gates pass. Models are generated and ignored by Git.
 
 The scraper requests newest-first results and stops at the first unseen organic listing older than the rolling cutoff. Promoted listings are still captured but do not determine the cutoff.
 
@@ -42,7 +42,7 @@ Send JSON to the public function with `POST`:
 {"region":"Western Cape","locality_1":"Cape Town","locality_2":"Sea Point","bedrooms":3,"bathrooms":2,"size":120,"rates_and_taxes":1800,"type":"House"}
 ```
 
-`locality_2` may be omitted. Bedrooms and bathrooms must be integers from 1–20, floor area must be 10–5,000 m², and monthly `rates_and_taxes` must be a whole-rand amount from R1–R100,000. The function assumes South Africa and returns `{"low":number,"recommended":number,"high":number}` in ZAR. It accepts no address, coordinates, price, or other fields. Invalid input returns 400; unsupported methods return 405; model failures return 500. Responses use `Cache-Control: no-store`.
+`locality_2` may be omitted. Bedrooms and bathrooms must be integers from 1–20, floor area must be 10–5,000 m², and monthly `rates_and_taxes` must be a whole-rand amount from R1–R100,000. The function assumes South Africa and returns `{"low":number,"recommended":number|null,"high":number,"confidence":"high"|"medium"|"low","errorRisk":number}` in ZAR. Low-confidence results suppress the point estimate. `errorRisk` is a model score from 0–1, not a guaranteed probability. It accepts no address, coordinates, price, or other fields. Invalid input returns 400; unsupported methods return 405; model failures return 500. Responses use `Cache-Control: no-store`.
 
 Run it locally after preparing models:
 
@@ -61,7 +61,7 @@ gcloud run deploy property-prices-predict \
   --allow-unauthenticated
 ```
 
-The cloud build checks for all four nonempty model artifacts before compiling. `packages/function/.gcloudignore` excludes local dependencies and includes the prepared models despite Git ignoring them. No cloud deployment is performed automatically.
+The cloud build checks for all five nonempty model artifacts before compiling. `packages/function/.gcloudignore` excludes local dependencies and includes the prepared models despite Git ignoring them. No cloud deployment is performed automatically.
 
 ## Valuation form and email
 

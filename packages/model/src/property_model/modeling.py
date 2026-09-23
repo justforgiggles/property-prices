@@ -7,6 +7,16 @@ from . import features as F
 
 QUANTILE_LOW = "Quantile:alpha=0.1"
 QUANTILE_HIGH = "Quantile:alpha=0.9"
+CONFIDENCE_EXTRA_ORDER = [
+    "point_log",
+    "quantile_low_log",
+    "quantile_high_log",
+    "quantile_log_width",
+    "point_minus_low",
+    "high_minus_point",
+    "point_midpoint_offset",
+]
+CONFIDENCE_FEATURE_ORDER = F.FEATURE_ORDER + CONFIDENCE_EXTRA_ORDER
 
 
 def cb_kwargs(params, loss_function=None, seed=42):
@@ -71,6 +81,36 @@ def fit_quantiles(X, y_log, params, seed=42, sample_weight=None):
     return _combine(low, weights), _combine(high, weights)
 
 
+def confidence_matrix(X, point, lo_log, hi_log):
+    point_log = np.log1p(np.clip(point, 0, None))
+    low = np.minimum(lo_log, hi_log)
+    high = np.maximum(lo_log, hi_log)
+    extra = np.column_stack([
+        point_log,
+        low,
+        high,
+        high - low,
+        point_log - low,
+        high - point_log,
+        np.abs(point_log - (low + high) / 2),
+    ])
+    return np.column_stack([X, extra]).astype(np.float32)
+
+
+def fit_confidence(X, bad, seed=42):
+    """Fit a scalar tail-risk score that exports as a plain ONNX tensor."""
+    return CatBoostRegressor(
+        iterations=300,
+        learning_rate=0.03,
+        depth=3,
+        l2_leaf_reg=20,
+        loss_function="RMSE",
+        random_seed=seed,
+        verbose=False,
+        allow_writing_files=False,
+    ).fit(X, bad.astype(float))
+
+
 def training_weights(X, params):
     missing_weight = float(params.get("missing_rates_weight", 1.0))
     if not 0 < missing_weight <= 1:
@@ -111,6 +151,7 @@ def _temporal_folds(df, n_splits):
 def temporal_cv_predict(
     df, params, n_splits=5, inner_splits=5, seed=42, quantiles=False,
     train_missing_size=True, selection_only=False, matrix_cache=None,
+    include_features=False,
 ):
     """Forward predictions from expanding publication-date windows.
 
@@ -123,6 +164,8 @@ def temporal_cv_predict(
     output = {"point": [], "price": [], "fold": [], "index": []}
     if quantiles:
         output.update({"lo_log": [], "hi_log": []})
+    if include_features:
+        output["features"] = []
 
     folds = _temporal_folds(df, n_splits)
     if selection_only:
@@ -156,6 +199,8 @@ def temporal_cv_predict(
         output["price"].extend(va[F.TARGET_COL].to_numpy(dtype=float))
         output["fold"].extend([fold_number] * len(va))
         output["index"].extend(val_idx)
+        if include_features:
+            output["features"].extend(X_va)
         if quantiles:
             m_lo, m_hi = fit_quantiles(X_tr, y_tr, params, seed, sample_weight)
             output["lo_log"].extend(m_lo.predict(X_va))

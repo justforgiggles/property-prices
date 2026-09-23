@@ -20,10 +20,10 @@ flowchart LR
     H --> I[25/75 fused CatBoost ensemble]
     I --> J[Chronological selection, calibration, test]
     J --> K{Quality gates pass?}
-    K -->|yes| L[Three ONNX models plus encoders.json]
+    K -->|yes| L[Four ONNX models plus encoders.json]
     K -->|no| M[Keep deployed bundle]
     L --> N[Node.js inference]
-    N --> O[low, recommended, high in ZAR]
+    N --> O[range, nullable point, confidence, risk]
 ```
 
 | Module | Responsibility |
@@ -151,9 +151,9 @@ all have rates and taxes, matching the production contract; missing-rate rows
 remain available to earlier-fold training at 10% weight. Only the inner OOF
 encoding described above is random.
 
-The current 533-row known-rates test result is MdAPE 16.91%, RMSLE 0.291,
-log-space R² 0.880, 58.72% within 20%, median bias 3.78%, interval coverage
-82.18%, and median relative interval width 70.40%.
+The current 2,415-row known-rates test result is MdAPE 15.15%, RMSLE 0.271,
+log-space R² 0.893, 61.37% within 20%, median bias 2.18%, interval coverage
+83.89%, and median relative interval width 71.17%.
 
 On the same 5,253 known-rates selection rows, downweighting missing-rate
 training rows improves the production-focused point metrics:
@@ -174,6 +174,14 @@ Promotion requires every configured gate to pass on the newest test fold:
 - Absolute median percentage bias ≤5%.
 - Interval coverage from 75% to 85%.
 - Median relative interval width ≤84%.
+- At least 50 high-confidence rows with at least 80% within 20%.
+- At least 100 low-confidence rows with at most 50% within 20%.
+
+The confidence regressor is trained only on early forward predictions, using
+the 17 base features plus the point and ordered quantile outputs and their
+gaps. The penultimate fold selects the widest quantile band that retains 80%
+within-20% accuracy. On the newest fold, the resulting tiers are high: 135
+rows at 85.2%, medium: 1,795 rows at 63.2%, and low: 485 rows at 47.8%.
 
 `build/metrics.json` also reports RMSE, MAE, median absolute error, MAPE,
 WAPE, within-10%, selection/CV metrics, and province/property-type slices.
@@ -187,12 +195,13 @@ matrix is built for all 16,376 size-cohort rows, and the fused point/P10/P90
 models are trained with the rates-aware row weights. The staged bundle is checked against native Python
 predictions before atomic promotion.
 
-The artifact shape is unchanged:
+The artifact shape is:
 
 ```text
 models/
 ├── encoders.json
 ├── model.onnx
+├── model_confidence.onnx
 ├── model_q10.onnx
 └── model_q90.onnx
 ```
@@ -204,7 +213,7 @@ source dates, hashes, selected model/data labels, and test metrics.
 features and requires finite, ordered predictions matching native CatBoost
 within relative tolerance `1e-5` or absolute tolerance R1.
 
-The public API and Node inference contract did not change. `POST` accepts:
+The public API accepts:
 
 ```json
 {"region":"Western Cape","locality_1":"Cape Town","locality_2":"Sea Point","type":"House","bedrooms":3,"bathrooms":2,"size":120,"rates_and_taxes":1800}
@@ -214,12 +223,13 @@ Public bedrooms and bathrooms remain integers from 1–20; half-step rooms are a
 training-data capability only. Size must be 10–5,000 m², and monthly
 `rates_and_taxes` must be a whole-rand amount from R1–R100,000. `locality_2`
 may be empty or omitted and then uses the city/region/global fallback. Extra
-fields are rejected. The response remains
-`{"low":number,"recommended":number,"high":number}` in ZAR.
+fields are rejected. The response is
+`{"low":number,"recommended":number|null,"high":number,"confidence":"high"|"medium"|"low","errorRisk":number}`.
+Low-confidence responses suppress the point estimate.
 
-Node validates the encoder schema and exact feature order, loads and caches
-the three ONNX sessions, constructs one `[1, 17]` tensor, and applies the same
-inverse-log and interval rules as Python. Model failures return HTTP 500,
+Node validates the encoder schema and exact feature orders, loads and caches
+the four ONNX sessions, constructs the price and confidence tensors, and
+applies the same inverse-log, interval, and tier rules as Python. Model failures return HTTP 500,
 invalid input returns 400, unsupported methods return 405, and responses use
 `Cache-Control: no-store`.
 
