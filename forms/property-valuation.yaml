@@ -3261,9 +3261,6 @@ sections:
             regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
             message: "Enter a valid email address."
 
-      - id: valuation_note
-        type: text_block
-        content: "This automated estimate is based on recent advertised property prices. It is not a formal or bank valuation, an offer, or a record of completed sale prices. Your achievable sale price may differ."
     next: done
 
 completion:
