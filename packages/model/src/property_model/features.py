@@ -38,6 +38,8 @@ FEATURE_ORDER = [
     "bed_bath_ratio",
     "size_per_bedroom",
     "log_size",
+    "log_rates_and_taxes",
+    "rates_and_taxes_missing",
     "te_region",
     "te_locality_1",
     "te_locality_2",
@@ -263,6 +265,16 @@ def record_to_features(rec, enc):
     size_missing = float(not math.isfinite(raw_size) or raw_size <= 0)
     size = _impute_size(rec, enc.size_imputation) if size_missing else raw_size
     log_size = math.log(max(size, 1e-9))
+    try:
+        rates_and_taxes = float(rec.get("rates_and_taxes"))
+    except (TypeError, ValueError):
+        rates_and_taxes = math.nan
+    rates_and_taxes_missing = float(
+        not math.isfinite(rates_and_taxes) or rates_and_taxes <= 0
+    )
+    log_rates_and_taxes = (
+        0.0 if rates_and_taxes_missing else math.log1p(rates_and_taxes)
+    )
 
     region, city, suburb = _geo_values(rec, enc.metadata.get("geography_keys") == "composite_v1")
 
@@ -286,6 +298,8 @@ def record_to_features(rec, enc):
         "bed_bath_ratio": bedrooms / (bathrooms + 0.5),
         "size_per_bedroom": size / max(bedrooms, 0.5),
         "log_size": log_size,
+        "log_rates_and_taxes": log_rates_and_taxes,
+        "rates_and_taxes_missing": rates_and_taxes_missing,
         # Retained only so pre-upgrade bundles with te_country remain loadable.
         "te_country": _lookup(enc.target_encoding, enc.global_mean, "country", rec.get("country", "South Africa"), []),
         "te_region": _lookup(enc.target_encoding, enc.global_mean, "region", region, []),

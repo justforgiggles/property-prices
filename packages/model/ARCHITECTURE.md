@@ -9,15 +9,15 @@ current system, not a proposed design.
 ```mermaid
 flowchart LR
     A[Property24 JSON-LD] --> B[Validate and normalize]
-    B --> C[22,080 market rows]
-    C --> D[21,459 valid-room rows]
-    D --> E[13,898 valid-size rows]
+    B --> C[26,065 market rows]
+    C --> D[25,323 valid-room rows]
+    D --> E[16,376 valid-size rows]
     C --> F[Target and location encoders]
     C --> G[Valid-size price/m² encoders]
-    E --> H[Leak-safe 15-feature matrix]
+    E --> H[Leak-safe 17-feature matrix]
     F --> H
     G --> H
-    H --> I[50/50 fused CatBoost ensemble]
+    H --> I[25/75 fused CatBoost ensemble]
     I --> J[Chronological selection, calibration, test]
     J --> K{Quality gates pass?}
     K -->|yes| L[Three ONNX models plus encoders.json]
@@ -51,9 +51,9 @@ The current history is partitioned without losing otherwise useful listings:
 
 | Cohort | Rows | Use |
 | --- | ---: | --- |
-| Market | 22,080 | Target encodings, location support counts, and market priors. |
-| Valid rooms | 21,459 | Market rows with both bedroom and bathroom counts. |
-| Valid size | 13,898 | Direct model training, forward evaluation, and size-dependent features. |
+| Market | 26,065 | Target encodings, location support counts, and market priors. |
+| Valid rooms | 25,323 | Market rows with both bedroom and bathroom counts. |
+| Valid size | 16,376 | Direct model fitting and size-dependent features. |
 
 Bedrooms and bathrooms are accepted for training from 0.5 to 20 in half-step
 increments. Missing, non-finite, out-of-range, or other fractional room values
@@ -65,10 +65,13 @@ encoders.
 This distinction is deliberate: structural gaps do not erase valid evidence
 about location and asking price, while the deployed regressor remains directly
 size-aware and trains only on rows that match its required inputs.
+Rates and taxes are present for 8,452 of the 16,376 model-training rows. Those
+rows receive full loss weight; the remaining rows stay in training at 10%
+weight with the explicit missing-value representation.
 
 ## 2. Features and leakage control
 
-The ONNX graph consumes a fixed 15-column `float32` tensor. Categorical values
+The ONNX graph consumes a fixed 17-column `float32` tensor. Categorical values
 are converted to smoothed numeric encodings because CatBoost categorical
 features are not exported in this graph.
 
@@ -82,7 +85,7 @@ region|city|suburb
 
 Target encodings use `log1p(price)` and all market rows. Price/m² encodings use
 `log(price / size)` and only rows with valid size. Both use hierarchical
-smoothing with strength 10 and back off from suburb to city to region to the
+smoothing with strength 3 and back off from suburb to city to region to the
 global mean. Unknown locality counts fall back to zero.
 
 The feature order persisted in `encoders.json` and enforced by Node is:
@@ -97,28 +100,30 @@ The feature order persisted in `encoders.json` and enforced by Node is:
 | 6 | `bed_bath_ratio` | `bedrooms / (bathrooms + 0.5)`. |
 | 7 | `size_per_bedroom` | `size / max(bedrooms, 0.5)`. |
 | 8 | `log_size` | Natural log of size. |
-| 9–12 | `te_region`, `te_locality_1`, `te_locality_2`, `te_type` | Smoothed log-price encodings. |
-| 13 | `te_ppsqm` | Hierarchical log price/m² encoding. |
-| 14 | `prior_log_price` | `te_ppsqm + log_size`. |
-| 15 | `loc2_log_count` | `log1p` market-row count for the composite suburb. |
+| 9 | `log_rates_and_taxes` | `log1p` monthly rates and taxes, zero when missing historically. |
+| 10 | `rates_and_taxes_missing` | Historical missing-value indicator; zero for serving. |
+| 11–14 | `te_region`, `te_locality_1`, `te_locality_2`, `te_type` | Smoothed log-price encodings. |
+| 15 | `te_ppsqm` | Hierarchical log price/m² encoding. |
+| 16 | `prior_log_price` | `te_ppsqm + log_size`. |
+| 17 | `loc2_log_count` | `log1p` market-row count for the composite suburb. |
 
 Training features use deterministic random inner out-of-fold encoding. For
 each inner fold, its listing IDs are removed from the broader encoder cohort,
 so no row's target contributes to its own features. Final serving encoders use
-all 22,080 market rows because a new request has no observed target. There is
+all 26,065 market rows because a new request has no observed target. There is
 no recency-weighted encoder or price index.
 
 ## 3. Selected models and intervals
 
-All models predict `log1p(price)`. The selected direct-target model is a 50/50
+All models predict `log1p(price)`. The selected direct-target model is a 25/75
 CatBoost ensemble fused with `catboost.sum_models` before ONNX export:
 
-| Member | Iterations | Learning rate | Depth | L2 |
-| --- | ---: | ---: | ---: | ---: |
-| Base | 700 | 0.05 | 6 | 6 |
-| Depth-8 override | 700 | 0.03 | 8 | 15 |
+| Member | Weight | Iterations | Learning rate | Depth | L2 |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Base | 25% | 850 | 0.02 | 6 | 3 |
+| Depth-8 override | 75% | 638 | 0.02 | 8 | 3 |
 
-The same blend is used for the MAE point model and the P10/P90 quantile models.
+The same blend is used for the RMSE point model and the P10/P90 quantile models.
 Fusion preserves the existing one-file-per-output serving contract. A staged
 model that predicted a residual from a time-varying prior was benchmarked and
 rejected because it did not beat this direct size-aware ensemble.
@@ -141,25 +146,24 @@ inside the final interval.
 Outer folds are expanding chronological windows based on `date_posted`.
 Encoders and models for each validation window use only earlier rows. The early
 outer folds form the model-selection report, the penultimate fold calibrates
-the interval, and the newest fold is the untouched test. Only the inner OOF
+the interval, and the newest fold is the untouched test. These evaluation rows
+all have rates and taxes, matching the production contract; missing-rate rows
+remain available to earlier-fold training at 10% weight. Only the inner OOF
 encoding described above is random.
 
-The current test result is MdAPE 17.82%, RMSLE 0.345, log-space R² 0.836,
-53.95% within 20%, median bias −1.31%, interval coverage 79.37%, and median
-relative interval width 77.03%.
+The current 533-row known-rates test result is MdAPE 16.91%, RMSLE 0.291,
+log-space R² 0.880, 58.72% within 20%, median bias 3.78%, interval coverage
+82.18%, and median relative interval width 70.40%.
 
-On the 1,977 listings shared by the previous and new cleaners in the untouched
-13–18 September test window, both recipes were retrained only on earlier rows:
+On the same 5,253 known-rates selection rows, downweighting missing-rate
+training rows improves the production-focused point metrics:
 
-| Metric | Previous | Current |
+| Metric | Equal weight | 10% missing-rate weight |
 | --- | ---: | ---: |
-| MdAPE | 20.51% | 17.59% |
-| MAE | R691,503 | R620,916 |
-| RMSLE | 0.364 | 0.338 |
-| Within 20% | 48.76% | 54.78% |
-| Median bias | −3.84% | −1.43% |
-| Interval coverage | 83.92% | 80.37% |
-| Median interval width | 100.48% | 77.79% |
+| MdAPE | 15.96% | 15.69% |
+| MAE | R694,494 | R677,329 |
+| RMSLE | 0.288 | 0.283 |
+| Within 20% | 59.30% | 61.45% |
 
 Promotion requires every configured gate to pass on the newest test fold:
 
@@ -179,8 +183,8 @@ WAPE, within-10%, selection/CV metrics, and province/property-type slices.
 
 After the gates pass, final encoders are fit from all market rows, with the
 price/m² tables restricted to their valid-size subset. A leakage-safe OOF
-matrix is built for the 13,898 size-cohort rows, and the fused point/P10/P90
-models are trained. The staged bundle is checked against native Python
+matrix is built for all 16,376 size-cohort rows, and the fused point/P10/P90
+models are trained with the rates-aware row weights. The staged bundle is checked against native Python
 predictions before atomic promotion.
 
 The artifact shape is unchanged:
@@ -203,17 +207,18 @@ within relative tolerance `1e-5` or absolute tolerance R1.
 The public API and Node inference contract did not change. `POST` accepts:
 
 ```json
-{"region":"Western Cape","locality_1":"Cape Town","locality_2":"Sea Point","type":"House","bedrooms":3,"bathrooms":2,"size":120}
+{"region":"Western Cape","locality_1":"Cape Town","locality_2":"Sea Point","type":"House","bedrooms":3,"bathrooms":2,"size":120,"rates_and_taxes":1800}
 ```
 
 Public bedrooms and bathrooms remain integers from 1–20; half-step rooms are a
-training-data capability only. Size must be 10–5,000 m². `locality_2` may be
-empty or omitted and then uses the city/region/global fallback. Extra fields
-are rejected. The response remains
+training-data capability only. Size must be 10–5,000 m², and monthly
+`rates_and_taxes` must be a whole-rand amount from R1–R100,000. `locality_2`
+may be empty or omitted and then uses the city/region/global fallback. Extra
+fields are rejected. The response remains
 `{"low":number,"recommended":number,"high":number}` in ZAR.
 
 Node validates the encoder schema and exact feature order, loads and caches
-the three ONNX sessions, constructs one `[1, 15]` tensor, and applies the same
+the three ONNX sessions, constructs one `[1, 17]` tensor, and applies the same
 inverse-log and interval rules as Python. Model failures return HTTP 500,
 invalid input returns 400, unsupported methods return 405, and responses use
 `Cache-Control: no-store`.

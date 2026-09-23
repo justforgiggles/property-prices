@@ -42,24 +42,41 @@ def _combine(models, weights):
     return models[0] if len(models) == 1 else sum_models(models, weights=weights)
 
 
-def fit_point(X, y_log, params, seed=42):
+def fit_point(X, y_log, params, seed=42, sample_weight=None):
     members = _members(params)
-    models = [CatBoostRegressor(**cb_kwargs(member, seed=seed)).fit(X, y_log) for member, _ in members]
+    models = [
+        CatBoostRegressor(**cb_kwargs(member, seed=seed)).fit(
+            X, y_log, sample_weight=sample_weight
+        )
+        for member, _ in members
+    ]
     return _combine(models, [weight for _, weight in members])
 
 
-def fit_quantiles(X, y_log, params, seed=42):
+def fit_quantiles(X, y_log, params, seed=42, sample_weight=None):
     members = _members(params)
     weights = [weight for _, weight in members]
     low = [
-        CatBoostRegressor(**cb_kwargs(member, loss_function=QUANTILE_LOW, seed=seed)).fit(X, y_log)
+        CatBoostRegressor(**cb_kwargs(member, loss_function=QUANTILE_LOW, seed=seed)).fit(
+            X, y_log, sample_weight=sample_weight
+        )
         for member, _ in members
     ]
     high = [
-        CatBoostRegressor(**cb_kwargs(member, loss_function=QUANTILE_HIGH, seed=seed)).fit(X, y_log)
+        CatBoostRegressor(**cb_kwargs(member, loss_function=QUANTILE_HIGH, seed=seed)).fit(
+            X, y_log, sample_weight=sample_weight
+        )
         for member, _ in members
     ]
     return _combine(low, weights), _combine(high, weights)
+
+
+def training_weights(X, params):
+    missing_weight = float(params.get("missing_rates_weight", 1.0))
+    if not 0 < missing_weight <= 1:
+        raise ValueError("missing_rates_weight must be in (0, 1]")
+    missing = X[:, F.FEATURE_ORDER.index("rates_and_taxes_missing")]
+    return np.where(missing == 1, missing_weight, 1.0)
 
 
 def _temporal_folds(df, n_splits):
@@ -80,7 +97,9 @@ def _temporal_folds(df, n_splits):
         validation_mask = df["date_posted"] >= start
         if end is not None:
             validation_mask &= df["date_posted"] < end
-        validation_mask &= df[[F.SIZE_COL, "bedrooms", "bathrooms"]].notna().all(axis=1)
+        validation_mask &= df[
+            [F.SIZE_COL, "bedrooms", "bathrooms", "rates_and_taxes"]
+        ].notna().all(axis=1)
         validation = df.index[validation_mask].to_numpy()
         if len(train) >= 20 and len(validation):
             folds.append((train, validation))
@@ -95,8 +114,8 @@ def temporal_cv_predict(
 ):
     """Forward predictions from expanding publication-date windows.
 
-    Missing-size rows may enrich training, but validation mirrors the serving
-    contract and therefore contains only rows with an observed floor size.
+    Missing-size and missing-rates rows may enrich training, but validation
+    mirrors the serving contract and contains only complete known-rates rows.
     """
     df = df.reset_index(drop=True)
     sm = float(params["smoothing"])
@@ -128,12 +147,17 @@ def temporal_cv_predict(
 
         va = df.iloc[val_idx]
 
-        output["point"].extend(np.expm1(fit_point(X_tr, y_tr, params, seed).predict(X_va)))
+        sample_weight = training_weights(X_tr, params)
+        output["point"].extend(
+            np.expm1(
+                fit_point(X_tr, y_tr, params, seed, sample_weight).predict(X_va)
+            )
+        )
         output["price"].extend(va[F.TARGET_COL].to_numpy(dtype=float))
         output["fold"].extend([fold_number] * len(va))
         output["index"].extend(val_idx)
         if quantiles:
-            m_lo, m_hi = fit_quantiles(X_tr, y_tr, params, seed)
+            m_lo, m_hi = fit_quantiles(X_tr, y_tr, params, seed, sample_weight)
             output["lo_log"].extend(m_lo.predict(X_va))
             output["hi_log"].extend(m_hi.predict(X_va))
     return {name: np.asarray(values) for name, values in output.items()}

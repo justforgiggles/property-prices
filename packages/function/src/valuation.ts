@@ -34,6 +34,7 @@ const validateSubmission = new Ajv().compile({
         },
         first_name: { maxLength: 80, type: "string" },
         floor_area: { $ref: "#/$defs/positiveInteger" },
+        rates_and_taxes: { $ref: "#/$defs/positiveInteger" },
         property_type: {
           enum: ["Apartment / Flat", "House", "Townhouse"],
           type: "string",
@@ -49,6 +50,7 @@ const validateSubmission = new Ajv().compile({
         "floor_area",
         "property_type",
         "province",
+        "rates_and_taxes",
         "suburb",
       ],
       type: "object",
@@ -117,6 +119,7 @@ export async function valuation(
     bedrooms: Number(submission.data.bedrooms),
     locality_1: submission.data.city,
     locality_2: submission.data.suburb,
+    rates_and_taxes: Number(submission.data.rates_and_taxes),
     region: submission.data.province,
     size: Number(submission.data.floor_area),
     type: submission.data.property_type,
@@ -126,6 +129,7 @@ export async function valuation(
     [
       [property.bathrooms, 1, 20],
       [property.bedrooms, 1, 20],
+      [property.rates_and_taxes, 1, 100000],
       [property.size, 10, 5000],
     ].some(
       ([value, minimum, maximum]) =>

@@ -45,8 +45,10 @@ function recordToFeatures(record, encoders) {
     loc2_log_count: Math.log1p(
       (encoders.loc2_count && encoders.loc2_count[locality2]) || 0,
     ),
+    log_rates_and_taxes: Math.log1p(record.rates_and_taxes),
     log_size: logSize,
     prior_log_price: pricePerSquareMeter + logSize,
+    rates_and_taxes_missing: 0,
     size: record.size,
     size_missing: 0,
     size_per_bedroom: record.size / Math.max(record.bedrooms, 0.5),

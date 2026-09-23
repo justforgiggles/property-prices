@@ -17,11 +17,20 @@ const validateProperty = new Ajv().compile({
     bedrooms: { maximum: 20, minimum: 1, type: "integer" },
     locality_1: { pattern: "\\S", type: "string" },
     locality_2: { type: "string" },
+    rates_and_taxes: { maximum: 100000, minimum: 1, type: "integer" },
     region: { pattern: "\\S", type: "string" },
     size: { maximum: 5000, minimum: 10, type: "number" },
     type: { pattern: "\\S", type: "string" },
   },
-  required: ["bathrooms", "bedrooms", "locality_1", "region", "size", "type"],
+  required: [
+    "bathrooms",
+    "bedrooms",
+    "locality_1",
+    "rates_and_taxes",
+    "region",
+    "size",
+    "type",
+  ],
   type: "object",
 });
 
@@ -44,6 +53,8 @@ const FEATURE_ORDER = [
   "bed_bath_ratio",
   "size_per_bedroom",
   "log_size",
+  "log_rates_and_taxes",
+  "rates_and_taxes_missing",
   "te_region",
   "te_locality_1",
   "te_locality_2",
@@ -107,6 +118,7 @@ export async function predictValuation(property: {
   bedrooms: number;
   locality_1: string;
   locality_2: string;
+  rates_and_taxes: number;
   region: string;
   size: number;
   type: string;
@@ -151,8 +163,10 @@ export async function predictValuation(property: {
     bed_bath_ratio: property.bedrooms / (property.bathrooms + 0.5),
     bedrooms: property.bedrooms,
     loc2_log_count: Math.log1p(encoders.loc2_count[locality2] ?? 0),
+    log_rates_and_taxes: Math.log1p(property.rates_and_taxes),
     log_size: logSize,
     prior_log_price: pricePerSquareMeter + logSize,
+    rates_and_taxes_missing: 0,
     size: property.size,
     size_missing: 0,
     size_per_bedroom: property.size / Math.max(property.bedrooms, 0.5),

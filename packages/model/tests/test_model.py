@@ -71,6 +71,23 @@ class ModelTests(unittest.TestCase):
             self.assertEqual(data.iloc[0]["bedrooms"], 3)
             self.assertEqual(data.iloc[0]["price"], 3_500_000)
 
+    def test_normalizes_rates_and_taxes_without_dropping_rows(self):
+        for index, (value, expected) in enumerate((
+            (1_250.50, 1_250.50),
+            (None, None),
+            (0, None),
+            (100_001, None),
+            ("unknown", None),
+        )):
+            record = raw(index)
+            record["ratesAndTaxes"] = value
+            normalized = normalize_raw(record)
+            self.assertIsNotNone(normalized)
+            if expected is None:
+                self.assertIsNone(normalized["rates_and_taxes"])
+            else:
+                self.assertEqual(normalized["rates_and_taxes"], expected)
+
     def test_keeps_missing_size_and_rejects_duplicate_ids(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / "2026-09-01.jsonl"
@@ -172,6 +189,7 @@ class ModelTests(unittest.TestCase):
             )
             _, report = load_data(Path(directory), minimum_rows=1, return_report=True)
         self.assertEqual(report["cohorts"], {"market": 3, "rooms": 2, "size": 1})
+        self.assertEqual(report["included_missing_rates_and_taxes"], 3)
         self.assertEqual(report["conservation"], {
             "hard_excluded": 1,
             "market_only": 1,
@@ -209,6 +227,18 @@ class ModelTests(unittest.TestCase):
         values = features.record_to_features(rows[-1], encoders)
         self.assertEqual(values[features.FEATURE_ORDER.index("size")], 100)
         self.assertEqual(values[features.FEATURE_ORDER.index("size_missing")], 1)
+        self.assertEqual(values[features.FEATURE_ORDER.index("log_rates_and_taxes")], 0)
+        self.assertEqual(values[features.FEATURE_ORDER.index("rates_and_taxes_missing")], 1)
+        present = features.record_to_features(
+            {**rows[-1], "rates_and_taxes": 1_800}, encoders
+        )
+        self.assertAlmostEqual(
+            present[features.FEATURE_ORDER.index("log_rates_and_taxes")],
+            np.log1p(1_800),
+        )
+        self.assertEqual(
+            present[features.FEATURE_ORDER.index("rates_and_taxes_missing")], 0
+        )
 
     def test_temporal_folds_never_train_on_validation_or_future_dates(self):
         data = pd.DataFrame({
@@ -216,9 +246,19 @@ class ModelTests(unittest.TestCase):
             "size": 100.0,
             "bedrooms": 3,
             "bathrooms": 2,
+            "rates_and_taxes": np.tile([1_000.0, np.nan], 60),
         })
         for train, validation in modeling._temporal_folds(data, 3):
             self.assertLess(data.iloc[train].date_posted.max(), data.iloc[validation].date_posted.min())
+            self.assertTrue(data.iloc[validation].rates_and_taxes.notna().all())
+
+    def test_training_weights_keep_missing_rates_rows_at_ten_percent(self):
+        matrix = np.zeros((2, len(features.FEATURE_ORDER)))
+        matrix[1, features.FEATURE_ORDER.index("rates_and_taxes_missing")] = 1
+        np.testing.assert_array_equal(
+            modeling.training_weights(matrix, {"missing_rates_weight": 0.1}),
+            [1.0, 0.1],
+        )
 
     def test_tuning_selection_skips_calibration_and_test_folds(self):
         data = pd.DataFrame({
@@ -226,18 +266,25 @@ class ModelTests(unittest.TestCase):
             "size": 100.0,
             "bedrooms": 3,
             "bathrooms": 2,
+            "rates_and_taxes": 1_000.0,
             "price": 1_000_000.0,
         })
         folds = modeling._temporal_folds(data, 5)
         cache = {(number, 10.0, 10.0, 42, 5, False): (
-            np.zeros((20, 1)), np.zeros(20), np.zeros((len(validation), 1))
+            np.zeros((20, len(features.FEATURE_ORDER))),
+            np.zeros(20),
+            np.zeros((len(validation), len(features.FEATURE_ORDER))),
         ) for number, (_, validation) in enumerate(folds[:-2])}
         class ConstantModel:
             def predict(self, values):
                 return np.zeros(len(values))
         with patch.object(modeling, "fit_point", return_value=ConstantModel()) as fit:
             result = modeling.temporal_cv_predict(
-                data, {"smoothing": 10, "ppsqm_smoothing": 10},
+                data, {
+                    "missing_rates_weight": 0.1,
+                    "smoothing": 10,
+                    "ppsqm_smoothing": 10,
+                },
                 n_splits=5, inner_splits=5, seed=42,
                 train_missing_size=False, selection_only=True, matrix_cache=cache,
             )

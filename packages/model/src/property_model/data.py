@@ -17,6 +17,7 @@ MIN_PRICE = 50_000
 MAX_PRICE = 200_000_000
 MIN_PRICE_PER_SQM = 500
 MAX_PRICE_PER_SQM = 500_000
+MAX_RATES_AND_TAXES = 100_000
 
 
 def _number(value: object) -> float | None:
@@ -119,6 +120,14 @@ def _normalize_raw(raw: object) -> tuple[dict | None, str | None, str | None]:
                 continue
             record["price"] = price
 
+            rates_and_taxes = _number(raw.get("ratesAndTaxes"))
+            record["rates_and_taxes"] = (
+                rates_and_taxes
+                if rates_and_taxes is not None
+                and rates_and_taxes <= MAX_RATES_AND_TAXES
+                else None
+            )
+
             raw_bathrooms = about.get("numberOfBathroomsTotal")
             if raw_bathrooms is None:
                 raw_bathrooms = about.get("numberOfBathrooms")
@@ -206,6 +215,7 @@ def load_data(
         "included": market,
         "included_complete": size,
         "included_missing_size": int(data["size"].isna().sum()),
+        "included_missing_rates_and_taxes": int(data["rates_and_taxes"].isna().sum()),
         "included_missing_rooms": market_only,
         "cohorts": {"market": market, "rooms": rooms, "size": size},
         "conservation": {

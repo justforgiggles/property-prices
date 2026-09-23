@@ -47,7 +47,8 @@ def render_location_fields(locations: Locations) -> str:
         lines.extend(f"            - {_yaml(city)}" for city in cities)
     lines.extend([
         "        validators:",
-        "          - required",
+        "          - type: required",
+        '            message: "Select a city or town."',
         "",
         "      - id: suburb",
         "        type: dropdown",
@@ -80,7 +81,12 @@ def render_location_fields(locations: Locations) -> str:
                         f"              value: {_yaml(suburb)}",
                     ])
 
-    lines.extend(["        validators:", "          - required", ""])
+    lines.extend([
+        "        validators:",
+        "          - type: required",
+        '            message: "Select a suburb."',
+        "",
+    ])
     return "\n".join(lines)
 
 

@@ -103,6 +103,7 @@ def train(package: Path) -> None:
     selected_model = "catboost_ensemble"
     report = dict(report)
     report.update({
+        "evaluation_cohort": "rates_and_taxes_present",
         "selected_data": selected,
         "selected_model": selected_model,
         "data_candidates": {selected: report["selection"]},
@@ -123,7 +124,8 @@ def train(package: Path) -> None:
     encoders = features.fit_encoders(encoder_data, float(parameters["smoothing"]), float(parameters["ppsqm_smoothing"]))
     encoders.interval_log_widen = widening
     encoders.metadata.update({
-        "model_version": 3,
+        "model_version": 5,
+        "evaluation_cohort": "rates_and_taxes_present",
         "selected_data": selected,
         "selected_model": selected_model,
         "source_cutoff": str(training_data["date_posted"].max()),
@@ -132,10 +134,13 @@ def train(package: Path) -> None:
         "complete_rows": len(complete),
         "cohorts": data_report["cohorts"],
         "missing_size_rows": int(data[features.SIZE_COL].isna().sum()),
+        "missing_rates_and_taxes_rows": int(data["rates_and_taxes"].isna().sum()),
+        "rates_and_taxes_training_rows": int(training_data["rates_and_taxes"].notna().sum()),
+        "missing_rates_weight": float(parameters["missing_rates_weight"]),
         "missing_room_rows": int(data[["bedrooms", "bathrooms"]].isna().any(axis=1).sum()),
         "config_sha256": hashlib.sha256(json.dumps(config, sort_keys=True).encode()).hexdigest(),
         "data_sha256": hashlib.sha256(
-            encoder_data[["id", "date_posted", "price", "size"]]
+            encoder_data[["id", "date_posted", "price", "size", "rates_and_taxes"]]
             .sort_values("id")
             .to_csv(index=False)
             .encode()
@@ -151,8 +156,11 @@ def train(package: Path) -> None:
         prior_df=encoder_data,
     )
     target = np.log1p(training_data["price"].to_numpy(dtype=float))
-    point = modeling.fit_point(matrix, target, parameters, seed)
-    low, high = modeling.fit_quantiles(matrix, target, parameters, seed)
+    sample_weight = modeling.training_weights(matrix, parameters)
+    point = modeling.fit_point(matrix, target, parameters, seed, sample_weight)
+    low, high = modeling.fit_quantiles(
+        matrix, target, parameters, seed, sample_weight
+    )
     models = {"model": point, "model_q10": low, "model_q90": high}
 
     with tempfile.TemporaryDirectory(dir=build) as directory:

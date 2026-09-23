@@ -26,11 +26,11 @@ npm test
 
 To search the current CatBoost ensemble's settings and seed, run `packages/model/.venv/bin/python -m property_model hypertune` (`--trials N` changes the default 200 trials). It writes trial and summary reports to `packages/model/build` and updates the model config and verified bundle only when the candidate improves validation and newest-fold RMSLE and passes every quality gate. A full run can take several hours.
 
-Each previously unseen listing ID is appended once to `data/raw/YYYY-MM-DD.jsonl`, based on its publication date. Dated raw files are versionable and are never rewritten by scraper reruns; review and commit new files after a crawl. The current normalized history contains 22,080 market rows, 21,459 rows with valid half-step room counts, and 13,898 rows that also have valid floor size. Invalid or missing structural values remain available to broader market encoders instead of discarding the whole listing; price/m² statistics use only rows with valid size.
+Each previously unseen listing ID is appended once to `data/raw/YYYY-MM-DD.jsonl`, based on its publication date. Dated raw files are versionable and are never rewritten by scraper reruns; review and commit new files after a crawl. The current normalized history contains 26,065 market rows, 25,323 rows with valid half-step room counts, and 16,376 rows that also have valid floor size. Invalid or missing structural values remain available to broader market encoders instead of discarding the whole listing; price/m² statistics use only rows with valid size.
 
 Run `npm run sync:locations` after adding raw listings. It regenerates the valuation form and function validation catalog from the same normalized market rows used by the model; `npm test` fails if either catalog is stale.
 
-Training uses the 13,898 size-aware rows for the regressor and all market rows for leakage-safe location encoders. The selected point and quantile models are 50/50 CatBoost ensembles: the base depth-6 model plus a depth-8 challenger, fused before ONNX export. Random inner out-of-fold encoding sits inside chronological outer selection, calibration, and test windows. A staged time-residual target was benchmarked and rejected in favour of the more accurate direct target. Training writes metrics and exclusion counts under `packages/model/build` and promotes the unchanged four-file bundle only after point, bias, interval coverage/width, and Python/Node parity gates pass. Models are generated and ignored by Git; a clean checkout can train from the migrated raw history.
+Training uses all 16,376 size-aware rows for the regressor and all market rows for leakage-safe location encoders. Rows with known rates and taxes receive full loss weight; missing-rate rows remain in training at 10% weight. Model selection, interval calibration, testing, and promotion gates use only known-rate rows to match the required production input. The selected point and quantile models blend a depth-6 base model with a depth-8 challenger before ONNX export. Training writes metrics and exclusion counts under `packages/model/build` and promotes the unchanged four-file bundle only after point, bias, interval coverage/width, and Python/Node parity gates pass. Models are generated and ignored by Git.
 
 The scraper requests newest-first results and stops at the first unseen organic listing older than the rolling cutoff. Promoted listings are still captured but do not determine the cutoff.
 
@@ -39,10 +39,10 @@ The scraper requests newest-first results and stops at the first unseen organic 
 Send JSON to the public function with `POST`:
 
 ```json
-{"region":"Western Cape","locality_1":"Cape Town","locality_2":"Sea Point","bedrooms":3,"bathrooms":2,"size":120,"type":"House"}
+{"region":"Western Cape","locality_1":"Cape Town","locality_2":"Sea Point","bedrooms":3,"bathrooms":2,"size":120,"rates_and_taxes":1800,"type":"House"}
 ```
 
-`locality_2` may be omitted. Bedrooms and bathrooms must be integers from 1–20 and floor area must be 10–5,000 m². The function assumes South Africa and returns `{"low":number,"recommended":number,"high":number}` in ZAR. It accepts no address, coordinates, price, or other fields. Invalid input returns 400; unsupported methods return 405; model failures return 500. Responses use `Cache-Control: no-store`.
+`locality_2` may be omitted. Bedrooms and bathrooms must be integers from 1–20, floor area must be 10–5,000 m², and monthly `rates_and_taxes` must be a whole-rand amount from R1–R100,000. The function assumes South Africa and returns `{"low":number,"recommended":number,"high":number}` in ZAR. It accepts no address, coordinates, price, or other fields. Invalid input returns 400; unsupported methods return 405; model failures return 500. Responses use `Cache-Control: no-store`.
 
 Run it locally after preparing models:
 

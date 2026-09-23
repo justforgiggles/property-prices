@@ -23,6 +23,7 @@ const property = {
   bedrooms: 3,
   locality_1: "Cape Town",
   locality_2: "Sea Point",
+  rates_and_taxes: 1800,
   region: "Western Cape",
   size: 120,
   type: "House",
@@ -34,7 +35,8 @@ test("prediction endpoint validates only model fields and methods", async () => 
   assert.equal(method.code, 405);
   assert.equal(method.headers.Allow, "POST");
 
-  for (const body of [{ ...property, address: "1 Main Street" }, { ...property, size: 9 }, { ...property, bedrooms: 1.5 }, { ...property, bathrooms: 1.5 }, { ...property, region: "" }]) {
+  const { rates_and_taxes: _, ...withoutRatesAndTaxes } = property;
+  for (const body of [{ ...property, address: "1 Main Street" }, { ...property, size: 9 }, { ...property, bedrooms: 1.5 }, { ...property, bathrooms: 1.5 }, { ...property, rates_and_taxes: 0 }, { ...property, rates_and_taxes: 1.5 }, { ...property, rates_and_taxes: 100001 }, withoutRatesAndTaxes, { ...property, region: "" }]) {
     const invalid = response();
     await predict({ method: "POST", body }, invalid);
     assert.equal(invalid.code, 400);
@@ -80,6 +82,7 @@ const submission = {
     floor_area: " 120 ",
     property_type: "House",
     province: "Western Cape",
+    rates_and_taxes: " 1800 ",
     suburb: "Sea Point",
   },
   form_id: "property-valuation",
@@ -95,6 +98,7 @@ test("valuation webhook validates completed form submissions", async () => {
   assert.equal(method.code, 405);
   assert.equal(method.headers.Allow, "POST");
 
+  const { rates_and_taxes: _, ...withoutRatesAndTaxes } = submission.data;
   for (const body of [
     null,
     { ...submission, status: "partial" },
@@ -111,6 +115,10 @@ test("valuation webhook validates completed form submissions", async () => {
     { ...submission, data: { ...submission.data, first_name: "   " } },
     { ...submission, data: { ...submission.data, floor_area: "5001" } },
     { ...submission, data: { ...submission.data, floor_area: "9" } },
+    { ...submission, data: { ...submission.data, rates_and_taxes: "0" } },
+    { ...submission, data: { ...submission.data, rates_and_taxes: "1.5" } },
+    { ...submission, data: { ...submission.data, rates_and_taxes: "100001" } },
+    { ...submission, data: withoutRatesAndTaxes },
   ]) {
     const invalid = response();
     await valuation({ method: "POST", body }, invalid);
