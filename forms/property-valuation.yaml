@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=https://frms.dev/schema.json
 version: 1
-title: "South African property value estimate"
-description: "Get an instant, data-driven estimate based on recent South African property listings."
+title: "South African property price estimate"
+description: "Get a free, data-driven estimate of what your home could list for, based on recent South African property listings."
 
 start:
-  title: "Know what your property could be worth"
-  description: "It takes about two minutes, and we will email your estimated value and range. This is an indicative estimate, not a formal valuation."
+  title: "What could you list your property for?"
+  description: "Answer a few questions in about two minutes. We will email you an estimated asking price and likely range, without needing to speak to an estate agent. This is an indicative estimate, not a formal valuation."
   button: "Get my free estimate"
 
 measurements:
@@ -18,8 +18,8 @@ authentication:
 
 sections:
   - id: location
-    title: "Where is the property?"
-    description: "Choose a province, then city or town, then suburb. We currently cover Gauteng, KwaZulu-Natal and the Western Cape."
+    title: "Where is your property?"
+    description: "Select its province, city or town, and suburb. We currently cover Gauteng, KwaZulu-Natal and the Western Cape."
     fields:
       - id: province
         type: dropdown
@@ -32,7 +32,8 @@ sections:
           - label: "Western Cape"
             value: "Western Cape"
         validators:
-          - required
+          - type: required
+            message: "Select a province."
 
       - id: city
         type: dropdown
@@ -276,7 +277,8 @@ sections:
             - "Worcester"
             - "Yzerfontein"
         validators:
-          - required
+          - type: required
+            message: "Select a city or town."
 
       - id: suburb
         type: dropdown
@@ -3132,12 +3134,13 @@ sections:
             - "Pearl Bay"
             - "Yzerfontein"
         validators:
-          - required
+          - type: required
+            message: "Select a suburb."
     next: property
 
   - id: property
-    title: "Tell us about the property"
-    description: "Use your best estimate if you do not know an exact figure."
+    title: "Tell us about your property"
+    description: "Enter the details as accurately as you can. If you are unsure, use your best estimate."
     fields:
       - id: property_type
         type: single_select
@@ -3147,13 +3150,18 @@ sections:
           - "Apartment / Flat"
           - "Townhouse"
         validators:
-          - required
+          - type: required
+            message: "Select a property type."
 
       - id: bedrooms
         type: number
         label: "Bedrooms"
         validators:
-          - required
+          - type: required
+            message: "Enter the number of bedrooms."
+          - type: pattern
+            regex: "^\\d+$"
+            message: "Enter bedrooms as a whole number."
           - type: min
             value: 1
             message: "Enter at least 1 bedroom."
@@ -3165,7 +3173,11 @@ sections:
         type: number
         label: "Bathrooms"
         validators:
-          - required
+          - type: required
+            message: "Enter the number of bathrooms."
+          - type: pattern
+            regex: "^\\d+$"
+            message: "Enter bathrooms as a whole number."
           - type: min
             value: 1
             message: "Enter at least 1 bathroom."
@@ -3175,21 +3187,31 @@ sections:
 
       - id: floor_area
         type: number
-        label: "Floor area (m²)"
+        label: "Floor size (m²)"
+        helper_text: "Enter the floor size of the house, apartment or townhouse, not the erf or plot size. Use a whole number."
         validators:
-          - required
+          - type: required
+            message: "Enter the floor size."
+          - type: pattern
+            regex: "^\\d+$"
+            message: "Enter floor size as a whole number."
           - type: min
             value: 10
-            message: "Enter a floor area of at least 10 m²."
+            message: "Enter a floor size of at least 10 m²."
           - type: max
             value: 5000
-            message: "Enter a floor area of 5,000 m² or less."
+            message: "Enter a floor size of 5,000 m² or less."
 
       - id: rates_and_taxes
         type: number
-        label: "Monthly rates and taxes (R)"
+        label: "Monthly municipal rates and taxes (R)"
+        helper_text: "Enter the monthly municipal amount, excluding levies. Use whole rands."
         validators:
-          - required
+          - type: required
+            message: "Enter the monthly rates and taxes."
+          - type: pattern
+            regex: "^\\d+$"
+            message: "Enter rates and taxes in whole rands."
           - type: min
             value: 1
             message: "Enter monthly rates and taxes of at least R1."
@@ -3200,7 +3222,7 @@ sections:
 
   - id: delivery
     title: "Where should we send your estimate?"
-    description: "We will email your indicative valuation as soon as it is ready."
+    description: "We will email your estimated asking price and likely range as soon as they are ready."
     fields:
       - id: first_name
         type: short_text
@@ -3209,29 +3231,28 @@ sections:
         validators:
           - type: max_length
             value: 80
+            message: "Enter a first name of 80 characters or fewer."
 
       - id: email
         type: email
         label: "Email address"
         placeholder: "thandi@example.com"
+        helper_text: "We will only use this email to send your estimate. No marketing messages."
         validators:
-          - required
+          - type: required
+            message: "Enter your email address."
           - type: pattern
             regex: "^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
             message: "Enter a valid email address."
 
-      - id: privacy_note
-        type: text_block
-        content: "We will use your email only to send this valuation. No marketing messages."
-
       - id: valuation_note
         type: text_block
-        content: "This estimate uses recent property listing data and is indicative only. It is not a formal valuation or a record of completed sale prices."
+        content: "This automated estimate is based on recent advertised property prices. It is not a formal or bank valuation, an offer, or a record of completed sale prices. Your achievable sale price may differ."
     next: done
 
 completion:
   title: "Your estimate is on its way"
-  message: "We are calculating it now and will email it to {{data.email}} shortly. If it does not arrive, check your spam folder."
+  message: "We are calculating your estimated asking price now and will email it to {{data.email}} shortly. If you do not see it, check your spam folder."
 
 connections:
   - type: webhook
