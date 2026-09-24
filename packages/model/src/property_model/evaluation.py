@@ -56,7 +56,7 @@ def evaluate(
     test = result["fold"] == last_fold
     y_log = np.log1p(result["price"])
     widening = modeling.conformal_widen(
-        result["lo_log"][calibration], result["hi_log"][calibration], y_log[calibration], alpha=0.21
+        result["lo_log"][calibration], result["hi_log"][calibration], y_log[calibration], alpha=0.23
     )
     low, high = modeling.apply_interval(
         result["lo_log"][test], result["hi_log"][test], widening
