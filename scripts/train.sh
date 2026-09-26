@@ -1,8 +1,5 @@
 #!/bin/sh
 set -eu
 
-cd "$(dirname "$0")/.."
-. "${NVM_DIR:-$HOME/.nvm}/nvm.sh"
-
-nvm exec 22 npm run train
-nvm exec 22 npm run prepare:models -w @property-prices/function
+repository=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+exec "$repository/packages/model/.venv/bin/python" -m property_model train "$@"

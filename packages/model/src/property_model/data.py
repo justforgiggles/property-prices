@@ -1,229 +1,170 @@
-"""Validate and normalize raw dated JSON-LD for model training."""
-
-from __future__ import annotations
-
-from collections import Counter
+"""Raw listing extraction, conservative cleaning and homeowner input validation."""
+import hashlib
 import json
-import math
+import re
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
-REQUIRED_CATEGORIES = ("country", "region", "locality_1", "locality_2", "type")
-SUPPORTED_COUNTRY = "South Africa"
-SUPPORTED_REGIONS = {"Gauteng", "Western Cape", "KwaZulu Natal"}
-SUPPORTED_TYPES = {"House", "Apartment / Flat", "Townhouse"}
-MIN_PRICE = 50_000
-MAX_PRICE = 200_000_000
-MIN_PRICE_PER_SQM = 500
-MAX_PRICE_PER_SQM = 500_000
-MAX_RATES_AND_TAXES = 100_000
+from .config import LIMITS, NUMERIC
 
 
-def _number(value: object) -> float | None:
-    if isinstance(value, bool) or value is None:
-        return None
-    if isinstance(value, (int, float)):
-        number = float(value)
-    elif isinstance(value, str):
-        try:
-            number = float(value.replace(",", ""))
-        except ValueError:
-            return None
-    else:
-        return None
-    return number if math.isfinite(number) and number > 0 else None
+def normalize(value):
+    return (re.sub(r"\s+", " ", str(value or "").strip().casefold())
+            .replace("kwazulu-natal", "kwazulu natal") or "__unknown__")
 
 
-def _text(value: object) -> str | None:
-    return value.strip() if isinstance(value, str) and value.strip() else None
+def add_geography(frame):
+    frame = frame.copy()
+    frame["city_key"] = frame.province + "|" + frame.city
+    frame["suburb_key"] = frame.city_key + "|" + frame.suburb
+    return frame
 
 
-def _is_rental(node: dict, elements: list) -> bool:
-    values = [node.get("url")]
-    offers = node.get("offers")
-    if isinstance(offers, dict):
-        values.append(offers.get("url"))
-    for element in elements:
-        if isinstance(element, dict):
-            values.extend((element.get("name"), element.get("item")))
-    texts = [value.strip().lower() for value in values if isinstance(value, str)]
-    return any("/to-rent/" in value or "/for-rent/" in value for value in texts) or any(
-        value in {"property to rent", "property for rent"} for value in texts
+def inputs_frame(records):
+    """Validate the public seven-input contract; unknown measurements stay missing."""
+    if isinstance(records, dict):
+        records = [records]
+    if not isinstance(records, list) or not records:
+        raise ValueError("Supply a property object or non-empty list of objects.")
+    rows = []
+    for record in records:
+        if not isinstance(record, dict):
+            raise ValueError("Each property must be an object.")
+        extra = set(record) - {"province", "city", "suburb", *NUMERIC}
+        if extra:
+            raise ValueError(f"Unexpected fields: {sorted(extra)}")
+        row = {}
+        for column in ["province", "city", "suburb"]:
+            value = record.get(column)
+            if value is not None and not isinstance(value, str):
+                raise ValueError(f"{column} must be text or null")
+            row[column] = normalize(value)
+        for column, (low, high) in LIMITS.items():
+            value = record.get(column)
+            if value is None:
+                row[column] = np.nan
+                continue
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not np.isfinite(value):
+                raise ValueError(f"{column} must be a finite number or null")
+            if not low <= value <= high:
+                raise ValueError(f"{column} must be between {low} and {high}; use null if unknown")
+            row[column] = float(value)
+        rows.append(row)
+    return add_geography(pd.DataFrame(rows))
+
+
+def extract_listing(record, snapshot):
+    listing = record["jsonld"][0]["@graph"][0]
+    property_ = listing["about"]
+    address = property_["address"]
+    breadcrumb = {item["position"]: item["name"]
+                  for item in listing["breadcrumb"]["itemListElement"]}
+    return dict(
+        id=str(record["id"]), price=listing["offers"]["priceSpecification"]["price"],
+        province=normalize(breadcrumb.get(2, address.get("addressRegion"))),
+        city=normalize(breadcrumb.get(3)),
+        suburb=normalize(breadcrumb.get(4, address.get("addressLocality"))),
+        bedrooms=property_.get("numberOfBedrooms", record.get("bedrooms")),
+        bathrooms=property_.get("numberOfBathroomsTotal", record.get("bathrooms")),
+        floor_size=property_.get("floorSize", {}).get("value", record.get("size")),
+        rates=record.get("ratesAndTaxes"), date=listing.get("datePosted"), snapshot=snapshot,
+        kind=property_.get("@type"), property_type=property_.get("description"),
+        street=normalize(address.get("streetAddress")), image=listing.get("image", ""),
+        description=listing.get("description", ""),
     )
 
 
-def _missing_or_invalid(value: object, field: str) -> str:
-    return f"missing_{field}" if value is None or value == "" else f"invalid_{field}"
+def property_groups(frame):
+    """Link related listings without price, preserving the original union-root order."""
+    parent = list(range(len(frame)))
+
+    def find(index):
+        while parent[index] != index:
+            parent[index] = parent[parent[index]]
+            index = parent[index]
+        return index
+
+    seen = {}
+    for index, row in frame.iterrows():
+        geography = (row.province, row.city, row.suburb)
+        keys = []
+        if row.street != "__unknown__" and re.search(r"\d", row.street):
+            keys.append(("street", geography, row.street))
+        if row.image:
+            keys.append(("image", row.image))
+        if len(row.description) > 60:
+            keys.append(("text", geography, normalize(row.description), str(row.bedrooms),
+                         str(row.bathrooms), str(row.floor_size)))
+        for key in keys:
+            if key in seen:
+                parent[find(index)] = find(seen[key])
+            else:
+                seen[key] = index
+    return [find(index) for index in range(len(frame))]
 
 
-def _normalize_raw(raw: object) -> tuple[dict | None, str | None, str | None]:
-    if not isinstance(raw, dict) or not isinstance(raw.get("jsonld"), list):
-        raise ValueError("Raw listing must contain {id, jsonld}")
-    if not isinstance(raw.get("id"), int) or isinstance(raw["id"], bool):
-        raise ValueError("Raw listing ID must be an integer")
-
-    reasons: list[str] = []
-    observed_date = None
-    for document in raw["jsonld"]:
-        if not isinstance(document, dict) or not isinstance(document.get("@graph"), list):
-            continue
-        for node in document["@graph"]:
-            if not isinstance(node, dict) or not isinstance(node.get("about"), dict) or not isinstance(node.get("offers"), dict):
-                continue
-            about = node["about"]
-            address = about.get("address") if isinstance(about.get("address"), dict) else {}
-            offers = node["offers"]
-            specification = offers.get("priceSpecification") if isinstance(offers.get("priceSpecification"), dict) else {}
-            breadcrumb = node.get("breadcrumb") if isinstance(node.get("breadcrumb"), dict) else {}
-            elements = breadcrumb.get("itemListElement") if isinstance(breadcrumb.get("itemListElement"), list) else []
-            date_posted = _text(node.get("datePosted"))
-            observed_date = observed_date or date_posted
-
-            if _is_rental(node, elements):
-                reasons.append("rental_listing")
-                continue
-
-            record = {
-                "id": raw["id"],
-                "date_posted": date_posted,
-                "country": _text(address.get("addressCountry")),
-                "region": _text(address.get("addressRegion")),
-                "locality_1": _text(elements[2].get("name")) if len(elements) > 2 and isinstance(elements[2], dict) else None,
-                "locality_2": _text(address.get("addressLocality")),
-                "type": _text(about.get("description", about.get("@type"))),
-            }
-            missing_category = next((field for field in REQUIRED_CATEGORIES if record[field] is None), None)
-            if date_posted is None:
-                reasons.append("missing_date_posted")
-                continue
-            if missing_category:
-                reasons.append(f"missing_{missing_category}")
-                continue
-            if record["country"] != SUPPORTED_COUNTRY:
-                reasons.append("unsupported_country")
-                continue
-            if record["region"] not in SUPPORTED_REGIONS:
-                reasons.append("unsupported_region")
-                continue
-            if record["type"] not in SUPPORTED_TYPES:
-                reasons.append("unsupported_type")
-                continue
-
-            if specification.get("priceCurrency") != "ZAR":
-                reasons.append("non_zar_price")
-                continue
-            raw_price = specification.get("price")
-            price = _number(raw_price)
-            if price is None or not MIN_PRICE <= price <= MAX_PRICE:
-                reasons.append(_missing_or_invalid(raw_price, "price"))
-                continue
-            record["price"] = price
-
-            rates_and_taxes = _number(raw.get("ratesAndTaxes"))
-            record["rates_and_taxes"] = (
-                rates_and_taxes
-                if rates_and_taxes is not None
-                and rates_and_taxes <= MAX_RATES_AND_TAXES
-                else None
-            )
-
-            raw_bathrooms = about.get("numberOfBathroomsTotal")
-            if raw_bathrooms is None:
-                raw_bathrooms = about.get("numberOfBathrooms")
-            for field, raw_value in (
-                ("bedrooms", about.get("numberOfBedrooms")),
-                ("bathrooms", raw_bathrooms),
-            ):
-                value = _number(raw_value)
-                record[field] = (
-                    value
-                    if value is not None and 0.5 <= value <= 20 and (value * 2).is_integer()
-                    else None
-                )
-
-            raw_floor_size = about.get("floorSize")
-            size = (
-                _number(raw_floor_size.get("value"))
-                if isinstance(raw_floor_size, dict)
-                else None
-            )
-            record["size"] = (
-                size
-                if size is not None
-                and 10 <= size <= 5_000
-                and MIN_PRICE_PER_SQM <= price / size <= MAX_PRICE_PER_SQM
-                else None
-            )
-            return record, None, date_posted
-
-    return None, reasons[0] if reasons else "missing_listing_node", observed_date
+def clean_listings(frame):
+    frame = frame.copy()
+    for column in ["price"] + NUMERIC:
+        frame[column] = pd.to_numeric(frame[column], errors="coerce")
+    invalid_price = ~np.isfinite(frame.price) | (frame.price < 10000)
+    rental = frame.description.fillna("").str.contains(
+        r"\b(?:to let|to rent|for rent|available for rental)\b", case=False, regex=True)
+    residential = frame.kind.isin(["Apartment", "House"]) | frame.property_type.fillna("").str.contains(
+        "house|apartment|townhouse|flat", case=False)
+    excluded = invalid_price | rental | ~residential
+    cleaned = frame[~excluded].copy()
+    corrections = {}
+    for column, (low, high) in LIMITS.items():
+        bad = cleaned[column].notna() & (
+            ~np.isfinite(cleaned[column]) | (cleaned[column] < low) | (cleaned[column] > high))
+        corrections[column] = int(bad.sum())
+        cleaned.loc[bad, column] = np.nan
+    repeated = int(cleaned.id.duplicated().sum())
+    cleaned = cleaned.sort_values(["date", "snapshot"]).drop_duplicates("id", keep="last").reset_index(drop=True)
+    if cleaned.empty:
+        raise ValueError("No valid residential listings remain after cleaning.")
+    cleaned["group"] = property_groups(cleaned)
+    audit = dict(raw_rows=len(frame), excluded_rows=int(excluded.sum()), repeated_ids_removed=repeated,
+                 valid_rows=len(cleaned), groups=int(cleaned.group.nunique()),
+                 invalid_features_set_missing=corrections)
+    return add_geography(cleaned), audit
 
 
-def normalize_raw(raw: object) -> dict | None:
-    """Return a supported sale listing, including rows whose floor size is missing."""
-    return _normalize_raw(raw)[0]
+def load_data(directory):
+    """Read raw data directly; no research cache or precomputed clean pickle is needed."""
+    files = sorted(Path(directory).glob("*.jsonl"))
+    if not files:
+        raise ValueError(f"No JSONL files found in {directory}")
+    rows, malformed = [], []
+    digest = hashlib.sha256()
+    for file in files:
+        digest.update(file.name.encode())
+        for number, line in enumerate(file.read_text().splitlines(), 1):
+            digest.update(line.encode())
+            try:
+                rows.append(extract_listing(json.loads(line), file.stem))
+            except (KeyError, IndexError, ValueError, TypeError) as error:
+                malformed.append(dict(file=file.name, line=number, error=str(error)))
+    if not rows:
+        raise ValueError("No extractable listings found.")
+    cleaned, audit = clean_listings(pd.DataFrame(rows))
+    audit.update(files=len(files), raw_sha256=digest.hexdigest(), malformed=malformed)
+    return cleaned, audit
 
 
-def load_data(
-    directory: Path, minimum_rows: int = 20, *, return_report: bool = False
-) -> pd.DataFrame | tuple[pd.DataFrame, dict[str, object]]:
-    """Load dated raw files, optionally returning inclusion/exclusion counts."""
-    if not directory.is_dir():
-        raise FileNotFoundError(f"Raw data directory not found: {directory}")
-    records = []
-    ids = set()
-    exclusions: Counter[str] = Counter()
-    total = 0
-    for path in sorted(directory.glob("????-??-??.jsonl")):
-        with path.open("r", encoding="utf-8") as source:
-            for number, line in enumerate(source, start=1):
-                if not line.strip():
-                    continue
-                total += 1
-                try:
-                    raw = json.loads(line)
-                except json.JSONDecodeError as error:
-                    raise ValueError(f"Invalid JSON in {path.name}:{number}") from error
-                if not isinstance(raw, dict) or not isinstance(raw.get("id"), int) or isinstance(raw["id"], bool):
-                    raise ValueError(f"Invalid raw listing ID in {path.name}:{number}")
-                if raw["id"] in ids:
-                    raise ValueError(f"Duplicate raw listing ID {raw['id']}")
-                ids.add(raw["id"])
-                record, reason, date_posted = _normalize_raw(raw)
-                if date_posted is not None and date_posted != path.stem:
-                    raise ValueError(
-                        f"datePosted {date_posted!r} does not match {path.name} in line {number}"
-                    )
-                if record is not None:
-                    records.append(record)
-                else:
-                    exclusions[reason or "unknown"] += 1
-    if len(records) < minimum_rows:
-        raise ValueError(f"Expected at least {minimum_rows} usable listings, found {len(records)}")
-    data = pd.DataFrame.from_records(records)
-    if not return_report:
-        return data
-    market = len(data)
-    rooms = int(data[["bedrooms", "bathrooms"]].notna().all(axis=1).sum())
-    size = int((data[["bedrooms", "bathrooms", "size"]].notna().all(axis=1)).sum())
-    hard_excluded = total - market
-    market_only = market - rooms
-    rooms_only = rooms - size
-    return data, {
-        "total": total,
-        "included": market,
-        "included_complete": size,
-        "included_missing_size": int(data["size"].isna().sum()),
-        "included_missing_rates_and_taxes": int(data["rates_and_taxes"].isna().sum()),
-        "included_missing_rooms": market_only,
-        "cohorts": {"market": market, "rooms": rooms, "size": size},
-        "conservation": {
-            "hard_excluded": hard_excluded,
-            "market_only": market_only,
-            "rooms_only": rooms_only,
-            "size": size,
-            "total": hard_excluded + market_only + rooms_only + size,
-        },
-        "excluded": dict(sorted(exclusions.items())),
-    }
+def split_data(frame, path):
+    """Use the locked IDs; never silently create a different evaluation population."""
+    membership = json.loads(Path(path).read_text())
+    if set(membership["development"]) & set(membership["test"]):
+        raise ValueError("Development and test IDs overlap.")
+    known = set(membership["development"]) | set(membership["test"])
+    if not set(frame.id) <= known:
+        raise ValueError("The supplied split does not cover this dataset. Supply matching split IDs.")
+    development = frame[frame.id.isin(membership["development"])].reset_index(drop=True)
+    test = frame[frame.id.isin(membership["test"])].reset_index(drop=True)
+    if development.empty or test.empty or set(development.group) & set(test.group):
+        raise ValueError("Split is empty or contains overlapping property groups.")
+    return development, test

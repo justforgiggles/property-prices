@@ -2,27 +2,18 @@
 set -eu
 
 cd "$(dirname "$0")/.."
-
-gcloud run deploy property-prices-predict \
-  --source packages/function \
-  --function predict \
-  --base-image nodejs22 \
-  --concurrency 1 \
-  --memory 1Gi \
-  --region europe-west3 \
-  --account hirebarend@gmail.com \
-  --project hirebarend \
-  --quiet
+packages/model/.venv/bin/python -m property_model.artifacts packages/model/models
 
 gcloud run deploy property-prices-valuation \
-  --source packages/function \
+  --source packages/model \
   --function valuation \
-  --base-image nodejs22 \
+  --base-image python314 \
   --concurrency 1 \
-  --memory 1Gi \
+  --cpu 2 \
+  --memory 2Gi \
   --region europe-west3 \
   --account hirebarend@gmail.com \
   --project hirebarend \
-  --set-env-vars 'RESEND_FROM_EMAIL=Peter <hello@frms.dev>' \
+  --set-env-vars 'WORKERS=1,THREADS=1,RESEND_FROM_EMAIL=Peter <hello@frms.dev>' \
   --set-secrets RESEND_API_KEY=resend-api-key:latest \
   --quiet

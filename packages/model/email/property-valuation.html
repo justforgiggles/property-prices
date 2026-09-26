@@ -8,7 +8,7 @@
   </head>
   <body style="margin:0;padding:0;background:#f3f5f7;color:#17212b;font-family:Arial,Helvetica,sans-serif;-webkit-text-size-adjust:100%;">
     <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;line-height:1px;">
-      Your estimated value and likely range are ready.
+      Your recommended asking price is ready.
     </div>
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;background:#f3f5f7;">
       <tr>
@@ -28,7 +28,6 @@
                     <td align="center" style="padding:28px 20px;">
                       <p style="margin:0 0 8px;font-size:14px;line-height:20px;font-weight:bold;letter-spacing:.5px;text-transform:uppercase;color:#35664a;">{{primaryLabel}}</p>
                       <p style="margin:0 0 8px;font-size:36px;line-height:44px;font-weight:bold;color:#153b28;">{{primaryValue}}</p>
-                      {{#if secondaryValue}}<p style="margin:0;font-size:15px;line-height:22px;color:#35664a;">{{secondaryLabel}}: {{secondaryValue}}</p>{{/if}}
                     </td>
                   </tr>
                 </table>
@@ -38,10 +37,6 @@
               <td style="padding:0 40px 32px;">
                 <h2 style="margin:0 0 16px;font-size:20px;line-height:28px;color:#17212b;">Property summary</h2>
                 <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%;border-collapse:collapse;border-top:1px solid #dde3e8;">
-                  <tr>
-                    <td style="padding:12px 8px 12px 0;border-bottom:1px solid #dde3e8;font-size:14px;line-height:20px;color:#52606d;">Property type</td>
-                    <td align="right" style="padding:12px 0 12px 8px;border-bottom:1px solid #dde3e8;font-size:14px;line-height:20px;font-weight:bold;color:#17212b;">{{type}}</td>
-                  </tr>
                   <tr>
                     <td style="padding:12px 8px 12px 0;border-bottom:1px solid #dde3e8;font-size:14px;line-height:20px;color:#52606d;">Location</td>
                     <td align="right" style="padding:12px 0 12px 8px;border-bottom:1px solid #dde3e8;font-size:14px;line-height:20px;font-weight:bold;color:#17212b;">{{location}}</td>
@@ -64,8 +59,8 @@
             <tr>
               <td style="padding:0 40px 40px;">
                 <h2 style="margin:0 0 12px;font-size:20px;line-height:28px;color:#17212b;">How this estimate was calculated</h2>
-                <p style="margin:0 0 16px;font-size:15px;line-height:24px;color:#52606d;">We compared your property details with recent residential listing data for similar properties in your area. Listing prices may differ from completed sale prices, so the range reflects normal market variation.</p>
-                <p style="margin:0 0 16px;font-size:15px;line-height:24px;color:#52606d;">{{confidenceNote}}</p>
+                <p style="margin:0 0 16px;font-size:15px;line-height:24px;color:#52606d;">We compared your property details with recent residential listing data for similar properties in your area. Listing prices may differ from completed sale prices.</p>
+                <p style="margin:0 0 16px;font-size:15px;line-height:24px;color:#52606d;">{{estimateNote}}</p>
                 <p style="margin:0 0 12px;padding-top:16px;border-top:1px solid #dde3e8;font-size:12px;line-height:18px;color:#6b7785;">This automated estimate is indicative only and is not a formal property valuation, offer, or financial advice. Property condition, exact location, improvements, and current market conditions may affect the achievable sale price.</p>
                 <p style="margin:0;font-size:12px;line-height:18px;color:#6b7785;">You’re receiving this because you requested a property estimate. Questions? Reply to this email.</p>
               </td>

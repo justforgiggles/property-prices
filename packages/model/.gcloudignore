@@ -1,0 +1,8 @@
+.gcloudignore
+.git/
+.venv*/
+build/
+tests/
+__pycache__/
+*.egg-info/
+:memory:.ses

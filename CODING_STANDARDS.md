@@ -13,4 +13,4 @@ Adapted from the referenced core `CODING_STANDARDS.md` RFC for this repository. 
 
 ## Repository checks
 
-Run the touched package's smallest runnable test plus its build/type check. For data and function packages, use their `npm test` and `npm run build` scripts; for the model, run Python unit tests, train on current data, and verify the generated ONNX bundle independently in Node. Review changed callable names, signatures, error behavior, and comments against the source RFC, not just the compiler.
+Run the touched package's smallest runnable test plus its build/type check. For the data package, use its `npm test` and `npm run build` scripts. For Python changes, run the unit tests and webhook integration check. Model-recipe changes additionally require training on current data and native artifact round-trip verification. Review changed callable names, signatures, error behavior, and comments against the source RFC, not just the compiler.

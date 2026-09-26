@@ -1,94 +1,171 @@
 # Property prices
 
-Three packages: `packages/data` captures raw Property24 listing JSON-LD, `packages/model` trains and verifies CatBoost/ONNX models in Python, and `packages/function` serves one HTTP valuation function in Node.js. The website, leads, insights, geocoding, and MongoDB are intentionally outside this repository.
+An explainable pipeline from Property24 listings to a recommended asking price.
+`packages/data` scrapes raw data. `packages/model` trains the model and serves
+one Python webhook that predicts locally and emails the estimate.
+
+Start with the [pipeline architecture](packages/model/ARCHITECTURE.md) and
+[worked example](packages/model/WALKTHROUGH.md). The model follows the demo's
+frozen ten-LightGBM-plus-CatBoost recipe. It predicts advertised asking prices,
+not completed sale values, and supplies diagnostics rather than price ranges
+or confidence tiers.
 
 ## Setup
 
-Use Node.js 22 and Python 3.10–3.12:
+Use Node.js 22 and Python 3.14. LightGBM needs OpenMP (`brew install libomp` on
+macOS if absent; Google's Ubuntu runtime supplies `libgomp1`).
 
-```bash
+```sh
 npm ci
-python3.12 -m venv packages/model/.venv
-packages/model/.venv/bin/python -m pip install -e packages/model
+python3.14 -m venv packages/model/.venv
+packages/model/.venv/bin/python -m pip install -e packages/model functions-framework==3.9.2 Jinja2==3.1.6
 ```
 
-The scraper uses plain HTTP requests; it does not use Playwright. It discovers city searches in Western Cape, Gauteng, and KwaZulu Natal through Property24's location dictionary. A full crawl makes many requests and may take considerable time. Site blocking, invalid pages, or incomplete city crawls produce a nonzero exit code.
+If upgrading an existing Python 3.12 environment, recreate the virtual
+environment with Python 3.14 first. The old ONNX package is replaced only after
+the native model package passes verification.
 
-## Data → model → function
+## Raw data → model
 
-```bash
-npm run scrape                                 # rolling 30 published days
-npm run sync:locations                         # refresh form and function locations
-npm run train                                  # all deduplicated raw history
-npm run prepare:models -w @property-prices/function
+```sh
+npm run scrape
+npm run sync:locations
+./scripts/train.sh
 npm test
+npm run build
+python3 scripts/test-scripts.py
 ```
 
-To search the current CatBoost ensemble's settings and seed, run `packages/model/.venv/bin/python -m property_model hypertune` (`--trials N` changes the default 200 trials). It writes trial and summary reports to `packages/model/build` and updates the model config and verified bundle only when the candidate improves validation and newest-fold RMSLE and passes every quality gate. A full run can take several hours.
+The scraper captures each listing ID once in publication-dated JSONL files.
+Training keeps incomplete residential properties, links probable relistings,
+reserves whole groups for evaluation, and constructs historical features using
+grouped cross-fitting. It evaluates a development-only fit before fitting the
+production model on all valid rows.
 
-Each previously unseen listing ID is appended once to `data/raw/YYYY-MM-DD.jsonl`, based on its publication date. Dated raw files are versionable and are never rewritten by scraper reruns; review and commit new files after a crawl. The current normalized history contains 26,065 market rows, 25,323 rows with valid half-step room counts, and 16,376 rows that also have valid floor size. Invalid or missing structural values remain available to broader market encoders instead of discarding the whole listing; price/m² statistics use only rows with valid size.
+`data/splits.json` locks evaluation membership and the raw-data hash. After a
+new scrape, explicitly choose a new split file; do not overwrite the previous
+split to improve a score:
 
-Run `npm run sync:locations` after adding raw listings. It regenerates the valuation form and function validation catalog from the same normalized market rows used by the model; `npm test` fails if either catalog is stale.
+```sh
+./scripts/train.sh --splits data/splits-2026-10-01.json
+```
 
-Training uses all 16,376 size-aware rows for the regressor and all market rows for leakage-safe location encoders. Rows with known rates and taxes receive full loss weight; missing-rate rows remain in training at 10% weight. Model selection, interval calibration, testing, and promotion gates use only known-rate rows to match the required production input. The selected point and quantile models blend a depth-6 base model with a depth-8 challenger before ONNX export. A scalar confidence model and calibrated quantile-width threshold assign high, medium, or low confidence. Training writes metrics and exclusion counts under `packages/model/build` and promotes the five-file bundle only after point, interval, confidence-tier, and Python/Node parity gates pass. Models are generated and ignored by Git.
+Optional `--data-dir`, `--output-dir` and `--build-dir` paths are resolved from
+the caller's working directory. Defaults are anchored to this repository.
+Training writes reports under `packages/model/build/reports`, preserves a
+verified development model under `build/evaluation`, and publishes native
+artifacts under `packages/model/models`. Unchanged development fits can be
+reused after provenance and artifact verification; production always refits.
+Model files and build reports are ignored by Git.
 
-The scraper requests newest-first results and stops at the first unseen organic listing older than the rolling cutoff. Promoted listings are still captured but do not determine the cutoff.
+The first repository-data evaluation reserves 5,700 of 28,551 cleaned listings:
+**64.30% within ±20% overall**, **66.74% within ±20% in the mainstream band**,
+and **13.64% overall median absolute percentage error**. These results concern
+the development-trained recipe; they are not a fresh test of the final model
+trained on all rows. See [verification evidence](packages/model/VERIFICATION.md).
 
-## Prediction API
+For independent evaluation of the saved development artifact:
 
-Send JSON to the public function with `POST`:
+```sh
+packages/model/.venv/bin/python -m property_model evaluate
+```
+
+## Prediction
+
+```sh
+packages/model/.venv/bin/python -m property_model predict
+packages/model/.venv/bin/python -m property_model predict --input '{"province":"Gauteng","city":"Johannesburg","suburb":"Berea","bedrooms":2,"bathrooms":1,"floor_size":85,"rates":700}'
+```
+
+The CLI accepts one object, a nonempty list, or a JSON filename, and outputs a
+list. Direct prediction is a Python API/CLI capability; there is no standalone
+prediction HTTP endpoint. Supply the seven input fields shown above. Geography is text or
+null; measurements are numbers or null. Omitted values remain unknown.
+Bedrooms/bathrooms accept 0–100 including fractions, area accepts 5–100,000 m²,
+and monthly rates accept R0–R1,000,000. Numeric strings, booleans, nonfinite
+numbers, out-of-range values and additional fields are rejected. If all four
+measurements are missing, the documented geographic-median fallback applies.
+
+Each CLI result contains `recommended_asking_price_zar`,
+`unrounded_prediction_zar`, `comparable_estimate_zar`, `comparable_count`,
+`historical_suburb_count`, `historical_city_count`, `historical_province_count`,
+`geographic_fallback`, `closest_comparable_distance`, `mean_comparable_distance`,
+`comparable_price_per_m2_zar`, `comparable_log_dispersion`, `model_log_std`, and
+`missing_inputs`. Unavailable diagnostics are null. Display the rounded
+recommendation directly without another adjustment.
+
+## Email function and deployment
+
+The [form](forms/property-valuation.yaml) retains its existing required inputs,
+location selectors and narrower numeric limits. Property type was removed.
+Location options now follow the same breadcrumb geography as the model, with
+source spelling retained for display. `npm run check:locations` detects stale
+form or validation catalogs.
+
+The Python webhook validates a completed form submission, maps `floor_area` to
+`floor_size` and `rates_and_taxes` to `rates`, predicts directly using the cached
+model, renders the existing HTML/plain-text templates, and sends through Resend.
+It preserves HTML escaping and submission-ID idempotency. All responses use
+`Cache-Control: no-store`: invalid submissions return 400, non-POST methods 405,
+model failures 500, email failures 502, and accepted deliveries 204.
+
+Run the single function locally:
+
+```sh
+packages/model/.venv/bin/python -m functions_framework \
+  --source packages/model/main.py --target valuation --port 8080
+```
+
+The HTTP body is the form's completed-submission envelope, for example:
 
 ```json
-{"region":"Western Cape","locality_1":"Cape Town","locality_2":"Sea Point","bedrooms":3,"bathrooms":2,"size":120,"rates_and_taxes":1800,"type":"House"}
+{"id":"submission-123","status":"completed","data":{"province":"Gauteng","city":"Johannesburg","suburb":"Berea","bedrooms":"2","bathrooms":"1","floor_area":"85","rates_and_taxes":"700","email":"owner@example.com"}}
 ```
 
-`locality_2` may be omitted. Bedrooms and bathrooms must be integers from 1–20, floor area must be 10–5,000 m², and monthly `rates_and_taxes` must be a whole-rand amount from R1–R100,000. The function assumes South Africa and returns `{"low":number,"recommended":number|null,"high":number,"confidence":"high"|"medium"|"low","errorRisk":number}` in ZAR. Low-confidence results suppress the point estimate. `errorRisk` is a model score from 0–1, not a guaranteed probability. It accepts no address, coordinates, price, or other fields. Invalid input returns 400; unsupported methods return 405; model failures return 500. Responses use `Cache-Control: no-store`.
+The webhook requires bedrooms/bathrooms from 1–20, area from 10–5,000 m²,
+and rates from R1–R100,000, all whole numbers. It accepts numeric form strings,
+checks location combinations against the catalog, and rejects booleans. The
+broader model input contract described above remains available through the CLI.
+Tests mock delivery; invoking the real webhook with valid Resend credentials
+sends a real email. Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` for local sending.
 
-Run it locally after preparing models:
-
-```bash
-npm run serve -w @property-prices/function
+```sh
+./scripts/deploy.sh
 ```
 
-Deploy only after `npm run train` and `npm run prepare:models -w @property-prices/function` pass. Select your Google Cloud project and region, then deploy the standalone [Cloud Run function](https://cloud.google.com/run/docs/deploy-functions):
+This verifies the model artifacts and deploys only `property-prices-valuation`
+from `packages/model` using Python 3.14 in `hirebarend`, `europe-west3`. Its
+existing webhook URL, public access policy, and Resend secret configuration are
+preserved. There is no prediction URL or service-to-service authentication.
 
-```bash
-gcloud run deploy property-prices-predict \
-  --source packages/function \
-  --function predict \
-  --base-image nodejs22 \
-  --region YOUR_REGION \
-  --allow-unauthenticated
+The service uses one worker, concurrency one, 2 CPUs and 2 GiB memory.
+Its `.gcloudignore` includes templates, location catalog and native model files,
+while excluding virtual environments, tests and build reports. No training is
+performed during deployment.
+
+After deploying and verifying the replacement webhook, the old
+`property-prices-predict` Cloud Run service can be retired if no external clients
+still use it. The deployment script does not delete it automatically. No cloud
+deployment or deletion was performed during this change.
+
+Runtime references: [Python functions](https://docs.cloud.google.com/run/docs/runtimes/python),
+[system packages](https://docs.cloud.google.com/docs/buildpacks/stacks).
+
+The hosted form remains at
+`https://frms.dev/justforgiggles/property-prices/forms/property-valuation`.
+Retain the existing verified Resend sender domain and DNS configuration.
+
+## Verification commands
+
+```sh
+npm test
+npm run build
+python3 scripts/test-scripts.py
+npm run verify -w @property-prices/model
+packages/model/.venv/bin/python packages/model/tests/verify_service.py
+packages/model/.venv/bin/python packages/model/tests/verify_reference.py /path/to/demo
 ```
 
-The cloud build checks for all five nonempty model artifacts before compiling. `packages/function/.gcloudignore` excludes local dependencies and includes the prepared models despite Git ignoring them. No cloud deployment is performed automatically.
-
-## Valuation form and email
-
-[`forms/property-valuation.yaml`](./forms/property-valuation.yaml) is a frms.dev form for residential properties in Gauteng, KwaZulu-Natal, and the Western Cape. After pushing it to the default branch, its form URL is:
-
-```text
-https://frms.dev/justforgiggles/property-prices/forms/property-valuation
-```
-
-The form's webhook points to the deployed email handler. Redeploy it after changing the function source:
-
-```bash
-gcloud run deploy property-prices-valuation \
-  --source packages/function \
-  --function valuation \
-  --base-image nodejs22 \
-  --region europe-west3 \
-  --allow-unauthenticated \
-  --set-env-vars 'RESEND_FROM_EMAIL=Peter <hello@frms.dev>' \
-  --set-secrets RESEND_API_KEY=resend-api-key:latest
-```
-
-Before deployment, configure the sender domain:
-
-- Create `dmarc@frms.dev` as an alias to the monitored `hello@frms.dev` mailbox.
-- Publish one `_dmarc.frms.dev` TXT record with `v=DMARC1; p=none; rua=mailto:dmarc@frms.dev; adkim=r; aspf=r; pct=100`.
-- Keep Resend's existing `send.frms.dev` SPF/MX return path and `resend._domainkey.frms.dev` DKIM record unchanged.
-- Disable open and click tracking for `frms.dev` in Resend.
-
-The handler accepts completed frms.dev submission envelopes, runs the existing model, and sends the respondent the HTML and plain-text valuation email. It returns `204` only after Resend accepts the message. Keep `RESEND_API_KEY` in Google Secret Manager; never add the value from the core project's `.env.production` to this repository or the form YAML. Keep DMARC at `p=none` until reports show that every legitimate `frms.dev` sender is aligned.
+The last command is an optional one-time migration comparison using the demo's
+preserved reference; normal training, inference and tests need no sibling repo.
+Only load trusted model packages because the historical reference uses Joblib.

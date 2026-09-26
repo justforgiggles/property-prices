@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .data import load_data
+from .data import load_data, normalize
 
 
 Locations = dict[str, dict[str, list[str]]]
@@ -15,18 +15,33 @@ FIELDS_START = "      - id: city\n"
 FIELDS_END = "    next: property\n"
 
 
-def build_locations(data: pd.DataFrame) -> Locations:
+def build_locations(data: pd.DataFrame, labels: dict[str, str]) -> Locations:
     locations: dict[str, dict[str, set[str]]] = {}
-    columns = data[["region", "locality_1", "locality_2"]]
-    for region, city, suburb in columns.itertuples(index=False, name=None):
-        locations.setdefault(str(region), {}).setdefault(str(city), set()).add(str(suburb))
+    for province, city, suburb in data[["province", "city", "suburb"]].itertuples(index=False, name=None):
+        if province not in {"gauteng", "kwazulu natal", "western cape"} or "__unknown__" in (city, suburb):
+            continue
+        province, city, suburb = (labels.get(name, name) for name in (province, city, suburb))
+        locations.setdefault(province, {}).setdefault(city, set()).add(suburb)
     return {
-        province: {
-            city: sorted(locations[province][city])
-            for city in sorted(locations[province])
-        }
-        for province in sorted(locations)
+        province: {city: sorted(suburbs) for city, suburbs in sorted(cities.items())}
+        for province, cities in sorted(locations.items())
     }
+
+
+def location_labels(raw_directory: Path) -> dict[str, str]:
+    """Keep source spelling for display; prediction normalizes only at the model boundary."""
+    labels = {}
+    for path in sorted(raw_directory.glob("*.jsonl")):
+        for line in path.read_text().splitlines():
+            try:
+                listing = json.loads(line)["jsonld"][0]["@graph"][0]
+                for item in listing["breadcrumb"]["itemListElement"]:
+                    if item["position"] in (2, 3, 4) and isinstance(item["name"], str):
+                        labels.setdefault(normalize(item["name"]), " ".join(item["name"].split()))
+            except (KeyError, IndexError, TypeError, ValueError):
+                continue
+    labels.update({"gauteng": "Gauteng", "western cape": "Western Cape", "kwazulu natal": "KwaZulu Natal"})
+    return labels
 
 
 def _yaml(value: str) -> str:
@@ -91,8 +106,10 @@ def render_location_fields(locations: Locations) -> str:
 
 
 def sync_locations(root: Path, *, check: bool = False) -> None:
-    locations = build_locations(load_data(root / "data" / "raw"))
-    locations_path = root / "packages" / "function" / "locations.json"
+    raw_directory = root / "data" / "raw"
+    data, _ = load_data(raw_directory)
+    locations = build_locations(data, location_labels(raw_directory))
+    locations_path = root / "packages" / "model" / "locations.json"
     form_path = root / "forms" / "property-valuation.yaml"
     expected_locations = json.dumps(locations, ensure_ascii=False, indent=2) + "\n"
     form = form_path.read_text(encoding="utf-8")

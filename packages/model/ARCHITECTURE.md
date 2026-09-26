@@ -1,263 +1,216 @@
-# Property valuation model architecture
+# Asking-price pipeline
 
-This document describes the implemented Property24 asking-price pipeline. The
-source of truth is [`src/property_model`](src/property_model); this is the
-current system, not a proposed design.
+Start with `src/property_model/train.py`. It shows the complete training flow;
+each module it calls owns one stage. The webhook enters through `main.py`; direct prediction uses
+`property_model predict` (CLI). Both use the same feature and model code.
 
-## Overview
+This estimates **advertised residential asking prices in ZAR**. It does not
+estimate completed sale prices. Its feature construction and blend can be
+explained step by step; the eleven fitted tree models are not a simple causal
+explanation of a home's value.
 
 ```mermaid
-flowchart LR
-    A[Property24 JSON-LD] --> B[Validate and normalize]
-    B --> C[26,065 market rows]
-    C --> D[25,323 valid-room rows]
-    D --> E[16,376 valid-size rows]
-    C --> F[Target and location encoders]
-    C --> G[Valid-size price/m² encoders]
-    E --> H[Leak-safe 17-feature matrix]
-    F --> H
-    G --> H
-    H --> I[25/75 fused CatBoost ensemble]
-    I --> J[Chronological selection, calibration, test]
-    J --> K{Quality gates pass?}
-    K -->|yes| L[Four ONNX models plus encoders.json]
-    K -->|no| M[Keep deployed bundle]
-    L --> N[Node.js inference]
-    N --> O[range, nullable point, confidence, risk]
+flowchart TD
+    A[Raw daily JSONL] --> B[Extract and clean listings]
+    B --> C[Link related properties]
+    C --> D[Frozen development/test split]
+    D --> E[Grouped cross-fit of historical features]
+    E --> F[Ten direct learners + one comparable correction]
+    F --> G[Reserved-test evaluation]
+    G --> H[Refit recipe on all valid listings]
+    H --> I[Save, reload, verify, promote]
+    I --> J[Cached Python model]
+    K[Form submission] --> V[Validate seven homeowner inputs]
+    V --> J
+    J --> L[Rounded asking price]
+    L --> M[Render email and send through Resend]
 ```
 
-| Module | Responsibility |
-| --- | --- |
-| [`data.py`](src/property_model/data.py) | Normalize raw JSON-LD, preserve useful incomplete rows, and report cohorts/exclusions. |
-| [`features.py`](src/property_model/features.py) | Fit hierarchical encoders and build the fixed numeric matrix. |
-| [`modeling.py`](src/property_model/modeling.py) | Fit fused CatBoost models, produce temporal predictions, and calibrate intervals. |
-| [`evaluation.py`](src/property_model/evaluation.py) | Calculate forward metrics and release gates. |
-| [`train.py`](src/property_model/train.py) | Train, verify, export, and atomically promote the bundle. |
+## 1. Raw documents → cleaned properties (`data.py`)
 
-## 1. Data cohorts
+Read daily files and lines in order. The first JSON-LD graph object supplies the
+asking price; a cached root price is not authoritative. Breadcrumb positions 2,
+3 and 4 supply province, city and suburb. Province/suburb use address fields
+only if the respective breadcrumb position is absent. Bedrooms, bathrooms and
+floor area prefer the property's JSON-LD fields; root fields are fallbacks
+when those fields are absent. Rates come from `ratesAndTaxes` and are treated
+as monthly municipality rates, never levies. Explicit null is not replaced by
+a fallback value.
 
-The scraper stores each listing ID once in `data/raw/YYYY-MM-DD.jsonl`, using
-Property24's `datePosted`. Training reads those files in lexical order and
-requires the filename and `datePosted` to agree. Invalid JSON, invalid IDs, or
-duplicate IDs stop training.
+Normalize geography with whitespace collapsing and Unicode case folding;
+normalize `kwazulu-natal` to `kwazulu natal`. Unknown text becomes `__unknown__`.
+Keep built residential listings with finite asking prices of at least R10,000.
+Remove the demo's literal rental phrases and nonresidential property types.
+There is no upper price cutoff and no restriction to complete measurements.
 
-Only ZAR sale listings for houses, apartments/flats, and townhouses in
-Gauteng, KwaZulu Natal, and the Western Cape enter the market cohort. Required
-market fields are date, country, region, city, suburb, type, and an asking
-price from R50,000 to R200,000,000. Rental and out-of-scope listings are hard
-exclusions.
+| Field | Valid historical and model-input range |
+|---|---|
+| Bedrooms, bathrooms | 0–100, including fractions |
+| Floor size | 5–100,000 m² |
+| Rates | R0–R1,000,000 |
 
-The current history is partitioned without losing otherwise useful listings:
+Invalid historical measurements become missing. Invalid supplied model values
+are rejected; callers can explicitly send null or omit an unknown value.
+Numeric strings and booleans are not model inputs. The email form retains its
+existing, narrower required-input limits.
 
-| Cohort | Rows | Use |
-| --- | ---: | --- |
-| Market | 26,065 | Target encodings, location support counts, and market priors. |
-| Valid rooms | 25,323 | Market rows with both bedroom and bathroom counts. |
-| Valid size | 16,376 | Direct model fitting and size-dependent features. |
+Keep the last repeated listing ID after sorting by posting date and snapshot
+date. Record malformed rows, exclusions, corrected measurements and counts in
+`build/data-quality.json`. No raw files are rewritten.
 
-Bedrooms and bathrooms are accepted for training from 0.5 to 20 in half-step
-increments. Missing, non-finite, out-of-range, or other fractional room values
-become missing; the listing remains in the market cohort. Floor size is valid
-from 10 to 5,000 m² when its asking price is also between R500 and R500,000 per
-m². An invalid or missing size likewise remains available to non-size market
-encoders.
+## 2. Cleaned properties → related groups and a reserved test
 
-This distinction is deliberate: structural gaps do not erase valid evidence
-about location and asking price, while the deployed regressor remains directly
-size-aware and trains only on rows that match its required inputs.
-Rates and taxes are present for 8,452 of the 16,376 model-training rows. Those
-rows receive full loss weight; the remaining rows stay in training at 10%
-weight with the explicit missing-value representation.
+Link records transitively by any of:
 
-## 2. Features and leakage control
+- A normalized street address containing a digit in the same geography.
+- The same nonempty full image URL.
+- A long normalized marketing description in the same geography with matching
+  bedrooms, bathrooms and floor size.
 
-The ONNX graph consumes a fixed 17-column `float32` tensor. Categorical values
-are converted to smoothed numeric encodings because CatBoost categorical
-features are not exported in this graph.
+Preserve the demo's grouping order, since seeded splits depend on group labels.
+Grouping does not delete advertisements. Counts are listing counts, not
+necessarily independent homes. Conservative linkage can group multiple units
+at one address, and some relistings may remain undetected.
 
-Geography uses composite keys so same-named places do not collide:
+`train.reserve_test` reserves 20% of groups with seed 20260925 and writes
+`data/splits.json`. Whole groups stay on one side. The raw-data hash is locked;
+changed data requires an explicitly different `--splits` path. Never regenerate
+a split to obtain a better score.
+
+The development model is evaluated against the reserved test. The production
+model subsequently learns from all valid data, including former test rows.
+Consequently the reported test score measures the development-trained recipe,
+not independent accuracy of the final all-data fitted artifact. A production
+artifact is rejected by the independent evaluation command.
+
+## 3. Properties → 70 features (`features.py`, `comparables.py`)
+
+`config.FEATURE_COLUMNS` is the single ordered feature contract. Both branches
+consume exactly this matrix; missing numerical features stay missing.
+
+| Feature family | Count | Meaning |
+|---|---:|---|
+| Structural | 24 | Geography, four measurements, missingness, logs, ratios and size band |
+| Historical summaries | 36 | Six statistics across six market groups |
+| Comparables | 10 | Local reference price, support, distance and dispersion |
+
+### Structural features
+
+Five location categories describe province, city, suburb, `province|city`, and
+`province|city|suburb`. Four raw numbers are followed by each number's missing
+flag and `log1p` transform. Five ratios describe bathrooms/bedroom, area/bedroom,
+area/bathroom, rates/area and rates/bedroom. Zero denominators become missing.
+Add bedrooms × bathrooms and an area band with upper boundaries 50, 100, 150,
+250, 400, 800 and infinity. Upper boundaries belong to the lower band.
+
+LightGBM receives the saved categorical dictionaries; unknown categories become
+missing codes. CatBoost receives category strings. Neither model uses property
+type as an input, although type remains useful for cleaning historical data.
+
+### Historical summaries
+
+Build groups for province, city hierarchy, suburb hierarchy, suburb + bedrooms,
+city + bedrooms + bathrooms, and city + size band. Each supplies count, median
+log price, sample log-price standard deviation, median log price/m², median
+area and median rates. Missing statistics stay missing; an unseen group's
+count is zero.
+
+Only median log price is smoothed:
 
 ```text
-region
-region|city
-region|city|suburb
+smoothed = (count × local_median + 10 × parent_estimate) / (count + 10)
 ```
 
-Target encodings use `log1p(price)` and all market rows. Price/m² encodings use
-`log(price / size)` and only rows with valid size. Both use hierarchical
-smoothing with strength 3 and back off from suburb to city to region to the
-global mean. Unknown locality counts fall back to zero.
+Province falls back to the global median, city to province, and suburb to city.
+The three structural groups all use the subject's smoothed suburb estimate as
+parent, including the groups keyed at city level. This preserves the demo's
+recipe rather than substituting a different hierarchy.
 
-The feature order persisted in `encoders.json` and enforced by Node is:
+### Comparable listings
 
-| # | Feature | Definition |
-| ---: | --- | --- |
-| 1 | `bedrooms` | Bedroom count. |
-| 2 | `bathrooms` | Bathroom count. |
-| 3 | `size` | Floor size in m². |
-| 4 | `size_missing` | Missing-size indicator; zero for size-cohort training and serving. |
-| 5 | `total_rooms` | `bedrooms + bathrooms`. |
-| 6 | `bed_bath_ratio` | `bedrooms / (bathrooms + 0.5)`. |
-| 7 | `size_per_bedroom` | `size / max(bedrooms, 0.5)`. |
-| 8 | `log_size` | Natural log of size. |
-| 9 | `log_rates_and_taxes` | `log1p` monthly rates and taxes, zero when missing historically. |
-| 10 | `rates_and_taxes_missing` | Historical missing-value indicator; zero for serving. |
-| 11–14 | `te_region`, `te_locality_1`, `te_locality_2`, `te_type` | Smoothed log-price encodings. |
-| 15 | `te_ppsqm` | Hierarchical log price/m² encoding. |
-| 16 | `prior_log_price` | `te_ppsqm + log_size`. |
-| 17 | `loc2_log_count` | `log1p` market-row count for the composite suburb. |
+Choose the first pool with at least five rows: suburb, city, province, otherwise
+global. Compare `[bedrooms/2, bathrooms/2, log(area), log1p(rates)]`, weighted
+`[1, 1, 2, 1.5]`. Use only shared measurements, divide by shared weights, and
+add `0.25 × fraction_of_unshared_measurements`. Stable distance ordering breaks
+ties using historical row order.
 
-Training features use deterministic random inner out-of-fold encoding. For
-each inner fold, its listing IDs are removed from the broader encoder cohort,
-so no row's target contributes to its own features. Final serving encoders use
-all 26,065 market rows because a new request has no observed target. There is
-no recency-weighted encoder or price index.
+Take five nearest listings and weight them by `exp(-3 × distance)`. Adjust each
+log asking price by `0.5 × clip(log(subject_area / comparable_area), -0.7, 0.7)`;
+apply no area correction if either area is unknown. Their weighted median is
+`comp_log`, the comparable reference price in log space. Other features record
+support counts, fallback level, price/m², distance and dispersion.
 
-## 3. Selected models and intervals
+### The leakage boundary
 
-All models predict `log1p(price)`. The selected direct-target model is a 25/75
-CatBoost ensemble fused with `catboost.sum_models` before ONNX export:
+A training row must not supply its own asking price to summaries or comparables.
+`training_features` uses four shuffled grouped folds, seed 119. Each held fold
+gets historical features built exclusively from the other groups. All linked
+advertisements are excluded together. Structural features need no cross-fit.
 
-| Member | Weight | Iterations | Learning rate | Depth | L2 |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| Base | 25% | 850 | 0.02 | 6 | 3 |
-| Depth-8 override | 75% | 638 | 0.02 | 8 | 3 |
+At prediction time, `prediction_features` uses the saved full training
+reference. A new homeowner's price is unknown and never an input. The test
+reference contains development rows only. The production reference contains
+all cleaned rows.
 
-The same blend is used for the RMSE point model and the P10/P90 quantile models.
-Fusion preserves the existing one-file-per-output serving contract. A staged
-model that predicted a residual from a time-varying prior was benchmarked and
-rejected because it did not beat this direct size-aware ensemble.
+## 4. Features → predictions (`modeling.py`)
 
-The raw P10–P90 band is a nominal 80% interval. The penultimate chronological
-fold supplies split-conformal scores:
+The settings are frozen in `config.py`, with no search framework or alternate
+model branches:
 
-```text
-score = max(min(q10, q90) - actual_log_price,
-            actual_log_price - max(q10, q90))
-```
+1. Fit ten LightGBM models on `log(price)` with seeds
+   7, 19, 41, 67, 101, 137, 211, 307, 419, 523. Each has 2,200 estimators,
+   learning rate 0.04, 63 leaves, minimum child size 30, L2 40, feature fraction
+   0.8, and absolute-error objective.
+2. Calculate residual targets `log(price) - comp_log`, subtract their median,
+   and fit CatBoost with 3,000 iterations, depth 6, rate 0.025 and Huber loss.
+   Restore the saved median when predicting the correction.
+3. Exponentiate each direct learner separately, then average in price space.
+   Exponentiate the corrected comparable log price separately. Log outputs
+   are clipped to [0, 25] before exponentiation.
+4. Blend the two branch prices equally and multiply once by 0.98.
+5. Round the result to the nearest R1,000 using Python's ties-to-even rounding.
 
-The finite-sample 80th-percentile score is constrained to a non-negative
-log-space widening and applied symmetrically. The lower ZAR bound is clamped
-to zero, crossed quantiles are ordered, and the point prediction is clamped
-inside the final interval.
+When all four numeric inputs are unknown, replace all branch outputs with the
+median price from the selected geographic pool before applying 0.98. The
+reported comparable count is zero, distance fields and model disagreement are
+null, and missing inputs are listed. Do not interpret arbitrary nearest
+neighbors with no shared measurements as meaningful structural comparisons.
 
-## 4. Forward evaluation and gates
+The model also returns the unrounded price, comparable estimate, geographic
+counts, fallback, distances, dispersion and model disagreement. These are
+**diagnostics, not calibrated confidence probabilities or price intervals**.
 
-Outer folds are expanding chronological windows based on `date_posted`.
-Encoders and models for each validation window use only earlier rows. The early
-outer folds form the model-selection report, the penultimate fold calibrates
-the interval, and the newest fold is the untouched test. These evaluation rows
-all have rates and taxes, matching the production contract; missing-rate rows
-remain available to earlier-fold training at 10% weight. Only the inner OOF
-encoding described above is random.
+## 5. Evaluation and artifact publication
 
-The current 2,415-row known-rates test result is MdAPE 15.15%, RMSLE 0.271,
-log-space R² 0.893, 61.37% within 20%, median bias 2.18%, interval coverage
-83.89%, and median relative interval width 71.17%.
+`evaluation.py` writes metrics, individual predictions and segment tables to
+`build/reports`. Mainstream is defined by development-price percentiles 10–90,
+not selected by performance on the test. The report includes within-20%, MdAPE,
+MAE, RMSE, log error, bias and a grouped bootstrap interval for mainstream
+within-20% accuracy. The bootstrap interval describes an aggregate metric;
+it is not a property price range.
 
-On the same 5,253 known-rates selection rows, downweighting missing-rate
-training rows improves the production-focused point metrics:
+`artifacts.py` saves ten native LightGBM text files, CatBoost's native model,
+`market.joblib` (plain reference data and category dictionaries), and a manifest.
+The manifest contains feature/settings contracts, package versions, source
+hashes, file checksums, training IDs, data audit, split hash and evaluation.
+Only load trusted artifacts: Joblib is a Python deserialization format.
 
-| Metric | Equal weight | 10% missing-rate weight |
-| --- | ---: | ---: |
-| MdAPE | 15.96% | 15.69% |
-| MAE | R694,494 | R677,329 |
-| RMSLE | 0.288 | 0.283 |
-| Within 20% | 59.30% | 61.45% |
+Publish only after integrity checks, reload, prediction comparison and exact
+rounded-price comparison pass. On save or publication failure preserve the
+previous bundle. Simultaneous writers to one model directory are unsupported.
 
-Promotion requires every configured gate to pass on the newest test fold:
+## 6. Serving and reading order
 
-- MdAPE ≤19%.
-- Log-space R² ≥0.80.
-- RMSLE ≤0.36.
-- At least 52% of predictions within 20%.
-- Absolute median percentage bias ≤5%.
-- Interval coverage from 75% to 85%.
-- Median relative interval width ≤84%.
-- At least 50 high-confidence rows with at least 80% within 20%.
-- At least 100 low-confidence rows with at most 50% within 20%.
+`main.py` is the single HTTP orchestration boundary: parse the completed form
+submission, predict with the cached model, render the email, and send it.
+`valuation.py` owns the submission validation, form-to-model mapping, Jinja2
+rendering and bounded Resend request. These serving files sit outside the model
+package so training and feature code remain independent of HTTP and email.
+Neither serving file calculates features, adjusts prices, or re-rounds outputs.
+The model loads once per process. Invalid submissions never invoke prediction
+or delivery; failed predictions never send email. The webhook returns no model
+JSON: direct prediction and diagnostics remain available through the CLI.
 
-The confidence regressor is trained only on early forward predictions, using
-the 17 base features plus the point and ordered quantile outputs and their
-gaps. The penultimate fold selects the widest quantile band that retains 80%
-within-20% accuracy. On the newest fold, the resulting tiers are high: 135
-rows at 85.2%, medium: 1,795 rows at 63.2%, and low: 485 rows at 47.8%.
-
-`build/metrics.json` also reports RMSE, MAE, median absolute error, MAPE,
-WAPE, within-10%, selection/CV metrics, and province/property-type slices.
-`build/data-quality.json` records cohort conservation and hard exclusions.
-
-## 5. Export and production contract
-
-After the gates pass, final encoders are fit from all market rows, with the
-price/m² tables restricted to their valid-size subset. A leakage-safe OOF
-matrix is built for all 16,376 size-cohort rows, and the fused point/P10/P90
-models are trained with the rates-aware row weights. The staged bundle is checked against native Python
-predictions before atomic promotion.
-
-The artifact shape is:
-
-```text
-models/
-├── encoders.json
-├── model.onnx
-├── model_confidence.onnx
-├── model_q10.onnx
-└── model_q90.onnx
-```
-
-`encoders.json` contains the exact feature order, composite lookup tables,
-counts, globals, size-imputation tables, conformal widening, cohort counts,
-source dates, hashes, selected model/data labels, and test metrics.
-[`tests/verify-onnx.cjs`](tests/verify-onnx.cjs) independently recreates Node
-features and requires finite, ordered predictions matching native CatBoost
-within relative tolerance `1e-5` or absolute tolerance R1.
-
-The public API accepts:
-
-```json
-{"region":"Western Cape","locality_1":"Cape Town","locality_2":"Sea Point","type":"House","bedrooms":3,"bathrooms":2,"size":120,"rates_and_taxes":1800}
-```
-
-Public bedrooms and bathrooms remain integers from 1–20; half-step rooms are a
-training-data capability only. Size must be 10–5,000 m², and monthly
-`rates_and_taxes` must be a whole-rand amount from R1–R100,000. `locality_2`
-may be empty or omitted and then uses the city/region/global fallback. Extra
-fields are rejected. The response is
-`{"low":number,"recommended":number|null,"high":number,"confidence":"high"|"medium"|"low","errorRisk":number}`.
-Low-confidence responses suppress the point estimate.
-
-Node validates the encoder schema and exact feature orders, loads and caches
-the four ONNX sessions, constructs the price and confidence tensors, and
-applies the same inverse-log, interval, and tier rules as Python. Model failures return HTTP 500,
-invalid input returns 400, unsupported methods return 405, and responses use
-`Cache-Control: no-store`.
-
-## 6. Limitations
-
-- The target is an advertised asking price, not a completed transaction, bank
-  valuation, guaranteed sale value, or pricing-strategy optimum.
-- Coverage is limited to supported Property24 categories and three provinces;
-  sparse or unseen locations rely on broader fallback means.
-- The model has no condition, amenity, erf-size, exact-coordinate, text, or
-  image features.
-- Listings are immutable first captures, so the model does not observe price
-  revisions, sale outcomes, or time on market.
-- Probable relists and development duplicates are not grouped beyond unique
-  listing ID.
-- The nominal 80% interval is empirical and can vary by market segment or as
-  the market changes.
-
-## Reproduce
-
-From the repository root:
-
-```sh
-npm run train
-npm run test:onnx -w @property-prices/model
-npm run prepare:models -w @property-prices/function
-npm test
-```
-
-Training writes reports under `packages/model/build` and promotes the verified
-bundle to `packages/model/models`.
+Read in order: `train.py`, `data.py`, `features.py`, `comparables.py`,
+`modeling.py`, `evaluation.py`, `artifacts.py`, then `main.py` and `valuation.py`.
+See [the worked example](WALKTHROUGH.md) for actual intermediate values.

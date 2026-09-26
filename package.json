@@ -2,15 +2,18 @@
   "name": "property-prices",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/data", "packages/model", "packages/function"],
+  "workspaces": [
+    "packages/data",
+    "packages/model"
+  ],
   "scripts": {
     "submissions": "sh scripts/submissions.sh",
     "scrape": "npm run scrape -w @property-prices/data --",
-    "train": "packages/model/.venv/bin/python -m property_model train",
+    "train": "sh scripts/train.sh",
     "sync:locations": "packages/model/.venv/bin/python -m property_model sync-locations",
     "check:locations": "packages/model/.venv/bin/python -m property_model sync-locations --check",
-    "test": "npm test -w @property-prices/data && packages/model/.venv/bin/python -m unittest discover -s packages/model/tests && npm run check:locations && npm test -w @property-prices/function",
-    "build": "npm run build -w @property-prices/data && npm run build -w @property-prices/function"
+    "test": "npm test -w @property-prices/data && packages/model/.venv/bin/python -m unittest discover -s packages/model/tests && npm run check:locations && packages/model/.venv/bin/python scripts/test-scripts.py",
+    "build": "npm run build -w @property-prices/data"
   },
   "overrides": {
     "uuid": "^11.1.1"

@@ -1,386 +1,95 @@
-"""Shared feature pipeline for training and inference.
-
-Both training and inference import this module, so the exact same feature
-engineering runs in Python. ``tests/verify-onnx.js`` mirrors the inference
-transform against the generated ``encoders.json`` to protect the consumer
-contract.
-
-Design notes:
-- CatBoost cannot export categorical features to ONNX, so every categorical
-  field is turned into a number here (smoothed target encoding). The model sees
-  a single ``float32`` matrix, which CatBoost and onnxruntime-node both handle.
-- High-cardinality geography (``locality_2`` is mostly singletons) leaks badly
-  under naive target encoding. Training uses ``build_oof_matrix`` (out-of-fold
-  encoding) so a row is never encoded with its own target; serving uses
-  ``fit_encoders`` (full-train statistics). This split is the standard fix.
-"""
-
-from __future__ import annotations
-
-import json
-import math
-from dataclasses import dataclass, field
-
+"""The fixed 70-feature matrix, training-only summaries and grouped cross-fitting."""
 import numpy as np
+import pandas as pd
+from sklearn.model_selection import GroupKFold
 
-TARGET_COL = "price"
-SIZE_COL = "size"
-SMOOTHING = 20.0
-PPSQM_SMOOTHING = 20.0
-
-# Fixed model feature order. Persisted in encoders.json and mirrored in Node.
-FEATURE_ORDER = [
-    "bedrooms",
-    "bathrooms",
-    "size",
-    "size_missing",
-    "total_rooms",
-    "bed_bath_ratio",
-    "size_per_bedroom",
-    "log_size",
-    "log_rates_and_taxes",
-    "rates_and_taxes_missing",
-    "te_region",
-    "te_locality_1",
-    "te_locality_2",
-    "te_type",
-    "te_ppsqm",
-    "prior_log_price",
-    "loc2_log_count",
-]
-
-@dataclass
-class Encoders:
-    """Fitted lookup tables plus the fixed feature order.
-
-    ``target_encoding`` holds smoothed mean ``log1p(price)`` per category;
-    ``ppsqm_encoding`` holds smoothed mean ``log(price/size)`` per location;
-    ``loc2_count`` holds how many listings each locality_2 had when fit.
-    """
-
-    global_mean: float
-    smoothing: float
-    target_encoding: dict
-    global_ppsqm: float
-    ppsqm_smoothing: float
-    ppsqm_encoding: dict
-    loc2_count: dict
-    feature_order: list
-    confidence: dict = field(default_factory=dict)
-    # Conformal widening (log space) applied to the quantile band so the
-    # P10-P90 interval reaches its target coverage. Set by the pipeline.
-    interval_log_widen: float = 0.0
-    size_imputation: dict = field(default_factory=dict)
-    metadata: dict = field(default_factory=dict)
-
-    def to_dict(self):
-        return {
-            "feature_order": self.feature_order,
-            "confidence": self.confidence,
-            "global_mean": self.global_mean,
-            "smoothing": self.smoothing,
-            "target_encoding": self.target_encoding,
-            "global_ppsqm": self.global_ppsqm,
-            "ppsqm_smoothing": self.ppsqm_smoothing,
-            "ppsqm_encoding": self.ppsqm_encoding,
-            "loc2_count": self.loc2_count,
-            "interval_log_widen": self.interval_log_widen,
-            "size_imputation": self.size_imputation,
-            "metadata": self.metadata,
-        }
-
-    @classmethod
-    def from_dict(cls, d):
-        return cls(
-            global_mean=float(d["global_mean"]),
-            smoothing=float(d["smoothing"]),
-            target_encoding=d["target_encoding"],
-            global_ppsqm=float(d["global_ppsqm"]),
-            ppsqm_smoothing=float(d["ppsqm_smoothing"]),
-            ppsqm_encoding=d["ppsqm_encoding"],
-            loc2_count={str(k): int(v) for k, v in d["loc2_count"].items()},
-            feature_order=list(d["feature_order"]),
-            confidence=d.get("confidence", {}),
-            interval_log_widen=float(d.get("interval_log_widen", 0.0)),
-            size_imputation=d.get("size_imputation", {}),
-            metadata=d.get("metadata", {}),
-        )
+from .comparables import comparable_features, numeric_coordinates
+from .config import (FEATURE_COLUMNS, INNER_FOLDS, INNER_SEED, LOCATIONS,
+                     NUMERIC, RATIOS, SHRINKAGE, SIZE_EDGES, SUMMARY_KEYS)
 
 
-def _key(*values):
-    return "|".join(str(value) for value in values)
+def size_bands(area):
+    return pd.cut(area, SIZE_EDGES).astype(str).fillna("__unknown__")
 
 
-def _geo_values(rec, composite=True):
-    region = str(rec["region"])
-    city = str(rec["locality_1"])
-    suburb = str(rec["locality_2"])
-    if not composite:
-        return region, city, suburb
-    return region, _key(region, city), _key(region, city, suburb)
+def structural_features(frame):
+    features = frame[LOCATIONS + NUMERIC].copy().reset_index(drop=True)
+    for column in LOCATIONS:
+        features[column] = features[column].fillna("__unknown__").astype(str)
+    for column in NUMERIC:
+        features[column + "_missing"] = features[column].isna().astype(int)
+        features["log_" + column] = np.log1p(features[column])
+    for numerator, denominator in RATIOS:
+        features[numerator + "_per_" + denominator] = features[numerator] / features[denominator].replace(0, np.nan)
+    features["rooms_product"] = features.bedrooms * features.bathrooms
+    features["size_band"] = size_bands(features.floor_size)
+    return features
 
 
-def _size_imputation(df, valid_size):
-    actual = df.loc[valid_size].copy()
-    if actual.empty:
-        return {"global": 1.0}
-    actual[SIZE_COL] = actual[SIZE_COL].astype(float)
-    levels = {
-        "region_city_suburb_type": ["region", "locality_1", "locality_2", "type"],
-        "region_city_type": ["region", "locality_1", "type"],
-        "region_type": ["region", "type"],
-        "type": ["type"],
-    }
-    result = {"global": float(actual[SIZE_COL].median())}
-    for name, columns in levels.items():
-        medians = actual.groupby(columns, dropna=False)[SIZE_COL].median()
-        result[name] = {
-            _key(*(index if isinstance(index, tuple) else (index,))): float(value)
-            for index, value in medians.items()
-        }
-    return result
+def summary_keys(frame):
+    frame = frame.copy()
+    bedrooms = frame.bedrooms.fillna(-1).astype(str)
+    bathrooms = frame.bathrooms.fillna(-1).astype(str)
+    frame["bed_key"] = frame.suburb_key + "|" + bedrooms
+    frame["config_key"] = frame.city_key + "|" + bedrooms + "|" + bathrooms
+    frame["size_key"] = frame.city_key + "|" + size_bands(frame.floor_size)
+    return frame
 
 
-def _impute_size(rec, imputation):
-    candidates = (
-        ("region_city_suburb_type", _key(rec["region"], rec["locality_1"], rec["locality_2"], rec["type"])),
-        ("region_city_type", _key(rec["region"], rec["locality_1"], rec["type"])),
-        ("region_type", _key(rec["region"], rec["type"])),
-        ("type", str(rec["type"])),
-    )
-    for level, key in candidates:
-        value = imputation.get(level, {}).get(key)
-        if value is not None:
-            return float(value)
-    return float(imputation.get("global", 1.0))
+def build_reference(training):
+    """Plain data only: saved artifacts do not depend on our Python class locations."""
+    if training.empty:
+        raise ValueError("Cannot build a market reference from an empty population.")
+    pool = summary_keys(training[LOCATIONS + NUMERIC + ["price"]].reset_index(drop=True))
+    log_prices = np.log(pool.price.to_numpy())
+    summarized = pool.assign(lp=log_prices, lppm=np.log(pool.price / pool.floor_size))
+    tables = {}
+    for key in SUMMARY_KEYS:
+        tables[key] = summarized.groupby(key).agg(
+            lp=("lp", "median"), n=("lp", "size"), spread=("lp", "std"),
+            lppm=("lppm", "median"), area=("floor_size", "median"), rates=("rates", "median"))
+    return dict(pool=pool, log_prices=log_prices, global_log_price=float(np.median(log_prices)),
+                numeric=numeric_coordinates(pool), tables=tables,
+                indices={key: pool.groupby(key).indices for key in ["province", "city_key", "suburb_key"]})
 
 
-def fit_encoders(train_df, smoothing=SMOOTHING, ppsqm_smoothing=PPSQM_SMOOTHING):
-    """Fit smoothed, hierarchical target encoders on a training set.
-
-    Each category is encoded by the mean of the quantity (log-price or
-    log-ppsqm) over its rows, shrunk toward a parent mean so rare categories do
-    not overfit:  ``te = (n * mean + m * parent) / (n + m)``. Parents follow the
-    geography: locality_2 -> locality_1 -> region -> global.
-    """
-    df = train_df.copy()
-    price = df[TARGET_COL].to_numpy(dtype=float)
-    size = df[SIZE_COL].to_numpy(dtype=float)
-    valid_size = np.isfinite(size) & (size > 0)
-    df["_y"] = np.log1p(price)
-    df["_region_key"] = df["region"].astype(str)
-    df["_city_key"] = df[["region", "locality_1"]].astype(str).agg("|".join, axis=1)
-    df["_suburb_key"] = df[["region", "locality_1", "locality_2"]].astype(str).agg("|".join, axis=1)
-
-    global_mean = float(df["_y"].mean())
-    region_mean = df.groupby("_region_key")["_y"].mean()
-    city_mean = df.groupby("_city_key")["_y"].mean()
-
-    city_to_region = df.groupby("_city_key")["_region_key"].first()
-    suburb_to_city = df.groupby("_suburb_key")["_city_key"].first()
-
-    def encode(col, ycol, parent_for, m, frame=None):
-        frame = df if frame is None else frame
-        stats = frame.groupby(col)[ycol].agg(["count", "mean"])
-        out = {}
-        for value, row in stats.iterrows():
-            n = float(row["count"])
-            mean_value = float(row["mean"])
-            parent = float(parent_for(value))
-            out[str(value)] = (n * mean_value + m * parent) / (n + m)
-        return out
-
-    target_encoding = {
-        "region": encode("_region_key", "_y", lambda v: global_mean, smoothing),
-        "type": encode("type", "_y", lambda v: global_mean, smoothing),
-        "locality_1": encode(
-            "_city_key", "_y",
-            lambda v: region_mean.get(city_to_region.get(v), global_mean), smoothing,
-        ),
-        "locality_2": encode(
-            "_suburb_key", "_y",
-            lambda v: city_mean.get(suburb_to_city.get(v), global_mean), smoothing,
-        ),
-    }
-
-    ppsqm = df.loc[valid_size].copy()
-    ppsqm["_yp"] = np.log(ppsqm[TARGET_COL].to_numpy(dtype=float) / ppsqm[SIZE_COL].to_numpy(dtype=float))
-
-    if ppsqm.empty:
-        global_ppsqm = 0.0
-        ppsqm_encoding = {"region": {}, "locality_1": {}, "locality_2": {}}
-    else:
-        global_ppsqm = float(ppsqm["_yp"].mean())
-        region_ppsqm = ppsqm.groupby("_region_key")["_yp"].mean()
-        city_ppsqm = ppsqm.groupby("_city_key")["_yp"].mean()
-        ppsqm_encoding = {
-            "region": encode(
-                "_region_key", "_yp", lambda v: global_ppsqm,
-                ppsqm_smoothing, ppsqm,
-            ),
-            "locality_1": encode(
-                "_city_key", "_yp",
-                lambda v: region_ppsqm.get(city_to_region.get(v), global_ppsqm),
-                ppsqm_smoothing, ppsqm,
-            ),
-            "locality_2": encode(
-                "_suburb_key", "_yp",
-                lambda v: city_ppsqm.get(suburb_to_city.get(v), global_ppsqm),
-                ppsqm_smoothing, ppsqm,
-            ),
-        }
-    loc2_count = {str(k): int(v) for k, v in df.groupby("_suburb_key").size().items()}
-
-    return Encoders(
-        global_mean=global_mean,
-        smoothing=float(smoothing),
-        target_encoding=target_encoding,
-        global_ppsqm=global_ppsqm,
-        ppsqm_smoothing=float(ppsqm_smoothing),
-        ppsqm_encoding=ppsqm_encoding,
-        loc2_count=loc2_count,
-        feature_order=list(FEATURE_ORDER),
-        size_imputation=_size_imputation(df, valid_size),
-        metadata={"geography_keys": "composite_v1"},
-    )
+def aggregate_features(query, reference):
+    query = summary_keys(query.reset_index(drop=True))
+    output = pd.DataFrame(index=query.index)
+    parent = np.full(len(query), reference["global_log_price"])
+    for key in SUMMARY_KEYS:
+        table = reference["tables"][key].reindex(query[key]).reset_index(drop=True)
+        count = table.n.fillna(0)
+        local = table.lp.fillna(pd.Series(parent))
+        estimate = (count * local + SHRINKAGE * parent) / (count + SHRINKAGE)
+        output[key + "_logmedian"] = estimate
+        output[key + "_count"] = count
+        output[key + "_dispersion"] = table.spread
+        output[key + "_logppm"] = table.lppm
+        output[key + "_typical_area"] = table.area
+        output[key + "_typical_rates"] = table.rates
+        # The final three structural groups all shrink toward the subject's suburb.
+        if key in ["province", "city_key", "suburb_key"]:
+            parent = estimate.to_numpy()
+    return output
 
 
-def _lookup(table_map, default, col, value, fallbacks):
-    """Encoded value for ``value`` in ``col``, falling back up the hierarchy."""
-    table = table_map.get(col, {})
-    if str(value) in table:
-        return table[str(value)]
-    for fb_col, fb_value in fallbacks:
-        fb_table = table_map.get(fb_col, {})
-        if str(fb_value) in fb_table:
-            return fb_table[str(fb_value)]
-    return default
+def prediction_features(query, reference):
+    return pd.concat([structural_features(query), aggregate_features(query, reference),
+                      comparable_features(query, reference)], axis=1)[FEATURE_COLUMNS]
 
 
-def record_to_features(rec, enc):
-    """Turn one raw listing dict into the ordered numeric feature list."""
-    bedrooms = float(rec["bedrooms"])
-    bathrooms = float(rec["bathrooms"])
-    try:
-        raw_size = float(rec.get("size"))
-    except (TypeError, ValueError):
-        raw_size = math.nan
-    size_missing = float(not math.isfinite(raw_size) or raw_size <= 0)
-    size = _impute_size(rec, enc.size_imputation) if size_missing else raw_size
-    log_size = math.log(max(size, 1e-9))
-    try:
-        rates_and_taxes = float(rec.get("rates_and_taxes"))
-    except (TypeError, ValueError):
-        rates_and_taxes = math.nan
-    rates_and_taxes_missing = float(
-        not math.isfinite(rates_and_taxes) or rates_and_taxes <= 0
-    )
-    log_rates_and_taxes = (
-        0.0 if rates_and_taxes_missing else math.log1p(rates_and_taxes)
-    )
-
-    region, city, suburb = _geo_values(rec, enc.metadata.get("geography_keys") == "composite_v1")
-
-    region_fb = [("region", region)]
-    loc2_fb = [("locality_1", city), ("region", region)]
-
-    te_ppsqm = _lookup(
-        enc.ppsqm_encoding,
-        enc.global_ppsqm,
-        "locality_2",
-        suburb,
-        loc2_fb,
-    )
-
-    feats = {
-        "bedrooms": bedrooms,
-        "bathrooms": bathrooms,
-        "size": size,
-        "size_missing": size_missing,
-        "total_rooms": bedrooms + bathrooms,
-        "bed_bath_ratio": bedrooms / (bathrooms + 0.5),
-        "size_per_bedroom": size / max(bedrooms, 0.5),
-        "log_size": log_size,
-        "log_rates_and_taxes": log_rates_and_taxes,
-        "rates_and_taxes_missing": rates_and_taxes_missing,
-        # Retained only so pre-upgrade bundles with te_country remain loadable.
-        "te_country": _lookup(enc.target_encoding, enc.global_mean, "country", rec.get("country", "South Africa"), []),
-        "te_region": _lookup(enc.target_encoding, enc.global_mean, "region", region, []),
-        "te_locality_1": _lookup(
-            enc.target_encoding,
-            enc.global_mean,
-            "locality_1",
-            city,
-            region_fb,
-        ),
-        "te_locality_2": _lookup(
-            enc.target_encoding,
-            enc.global_mean,
-            "locality_2",
-            suburb,
-            loc2_fb,
-        ),
-        "te_type": _lookup(enc.target_encoding, enc.global_mean, "type", rec["type"], []),
-        "te_ppsqm": te_ppsqm,
-        "prior_log_price": te_ppsqm + log_size,  # implied log-price from $/m^2 * size
-        "loc2_log_count": math.log1p(enc.loc2_count.get(suburb, 0)),
-    }
-    return [float(feats[name]) for name in enc.feature_order]
-
-
-def build_matrix(df, enc):
-    """Build a ``float32`` feature matrix from a DataFrame of listings."""
-    rows = [record_to_features(rec, enc) for rec in df.to_dict(orient="records")]
-    return np.asarray(rows, dtype=np.float32)
-
-
-def build_oof_matrix(
-    train_df,
-    n_splits=5,
-    seed=42,
-    smoothing=SMOOTHING,
-    ppsqm_smoothing=PPSQM_SMOOTHING,
-    prior_df=None,
-):
-    """Out-of-fold encoded feature matrix for training the model.
-
-    Each row is encoded with encoders fit on the *other* folds, so a row's own
-    target never enters its features. This is the standard cure for target-
-    encoding leakage on sparse high-cardinality categories.
-    """
-    df = train_df.reset_index(drop=True)
-    prior = df if prior_df is None else prior_df.reset_index(drop=True)
-    n = len(df)
-    X = np.zeros((n, len(FEATURE_ORDER)), dtype=np.float32)
-    rng = np.random.default_rng(seed)
-    folds = np.array_split(rng.permutation(n), n_splits)
-    for fold in folds:
-        # Sort the validation indices so the rows we read line up with the
-        # positions we write back to (iloc with a boolean mask returns rows in
-        # ascending order regardless of fold order).
-        val_idx = np.sort(fold)
-        if "id" in df and "id" in prior:
-            validation_ids = set(df.iloc[val_idx]["id"])
-            train_mask = ~prior["id"].isin(validation_ids)
-        elif prior_df is None:
-            train_mask = np.ones(n, dtype=bool)
-            train_mask[val_idx] = False
-        else:
-            raise ValueError("prior_df requires id for leakage-safe exclusion")
-        if train_mask.any():
-            enc = fit_encoders(prior.loc[train_mask], smoothing, ppsqm_smoothing)
-        else:
-            enc = Encoders(0.0, float(smoothing), {}, 0.0, float(ppsqm_smoothing), {}, {}, list(FEATURE_ORDER))
-        rows = [record_to_features(rec, enc) for rec in df.iloc[val_idx].to_dict(orient="records")]
-        X[val_idx] = np.asarray(rows, dtype=np.float32)
-    return X
-
-
-def save_encoders(enc, path):
-    with open(path, "w", encoding="utf-8") as fh:
-        json.dump(enc.to_dict(), fh, indent=2)
-
-
-def load_encoders(path):
-    with open(path, "r", encoding="utf-8") as fh:
-        return Encoders.from_dict(json.load(fh))
+def training_features(training):
+    """Each row's price and linked group are absent from its historical evidence."""
+    training = training.reset_index(drop=True)
+    if training.group.nunique() < INNER_FOLDS:
+        raise ValueError(f"Training requires at least {INNER_FOLDS} distinct property groups.")
+    splitter = GroupKFold(n_splits=INNER_FOLDS, shuffle=True, random_state=INNER_SEED)
+    held_features = []
+    for fit_indices, held_indices in splitter.split(training, groups=training.group):
+        reference = build_reference(training.iloc[fit_indices])
+        held = training.iloc[held_indices]
+        features = pd.concat([aggregate_features(held, reference), comparable_features(held, reference)], axis=1)
+        features.index = held_indices
+        held_features.append(features)
+    return pd.concat([structural_features(training), pd.concat(held_features).sort_index()], axis=1)[FEATURE_COLUMNS]

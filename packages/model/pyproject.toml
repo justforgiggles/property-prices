@@ -4,12 +4,16 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "property-prices-model"
-version = "0.1.0"
-requires-python = ">=3.10,<3.13"
+version = "0.2.0"
+requires-python = ">=3.14,<3.15"
 dependencies = [
-  "catboost==1.2.8",
-  "numpy==2.2.6",
-  "pandas==2.2.3",
+  "catboost==1.2.10",
+  "lightgbm==4.7.0",
+  "numpy==2.5.3",
+  "pandas==3.0.6",
+  "scikit-learn==1.9.1",
+  "joblib==1.6.0",
+  "scipy==1.18.1",
 ]
 
 [tool.setuptools.packages.find]

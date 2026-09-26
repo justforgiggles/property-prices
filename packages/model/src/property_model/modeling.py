@@ -1,228 +1,106 @@
-"""CatBoost fitting, cross-validation, and interval calibration."""
+"""The final ten-direct-plus-one-residual ensemble, with no experimental branches."""
+import sys
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 import numpy as np
-from catboost import CatBoostRegressor, sum_models
+import pandas as pd
+from catboost import CatBoostRegressor
+from lightgbm import LGBMRegressor
 
-from . import features as F
-
-QUANTILE_LOW = "Quantile:alpha=0.1"
-QUANTILE_HIGH = "Quantile:alpha=0.9"
-CONFIDENCE_EXTRA_ORDER = [
-    "point_log",
-    "quantile_low_log",
-    "quantile_high_log",
-    "quantile_log_width",
-    "point_minus_low",
-    "high_minus_point",
-    "point_midpoint_offset",
-]
-CONFIDENCE_FEATURE_ORDER = F.FEATURE_ORDER + CONFIDENCE_EXTRA_ORDER
+from .comparables import comparable_features
+from .config import (BRANCH_WEIGHT, CATBOOST_PARAMS, CATEGORICAL, LIGHTGBM_PARAMS,
+                     MULTIPLIER, NUMERIC, SEEDS)
+from .data import inputs_frame
+from .features import build_reference, prediction_features, training_features
 
 
-def cb_kwargs(params, loss_function=None, seed=42):
-    """CatBoost constructor kwargs from a params dict (encoding keys ignored)."""
-    return dict(
-        iterations=int(params["iterations"]),
-        learning_rate=float(params["learning_rate"]),
-        depth=int(params["depth"]),
-        l2_leaf_reg=float(params["l2_leaf_reg"]),
-        min_data_in_leaf=int(params["min_data_in_leaf"]),
-        random_strength=float(params["random_strength"]),
-        bagging_temperature=float(params["bagging_temperature"]),
-        loss_function=loss_function or params["loss_function"],
-        random_seed=seed,
-        verbose=False,
-        allow_writing_files=False,
-    )
+def categorical_frame(features, categories):
+    frame = features.copy()
+    for column, levels in categories.items():
+        frame[column] = pd.Categorical(frame[column].fillna("__unknown__").astype(str).where(frame[column].isin(levels)), categories=levels)
+    return frame
 
 
-def _members(params):
-    ensemble = params.get("ensemble")
-    if not ensemble:
-        return [(params, 1.0)]
-    base = {key: value for key, value in params.items() if key != "ensemble"}
-    members = [({**base, **item.get("overrides", {})}, float(item["weight"])) for item in ensemble]
-    total = sum(weight for _, weight in members)
-    if total <= 0:
-        raise ValueError("Ensemble weights must have a positive sum")
-    return [(member, weight / total) for member, weight in members]
+@dataclass
+class AskingPriceModel:
+    """In-memory package; persistence stores native learners and plain reference data."""
+    direct: list
+    residual: CatBoostRegressor
+    categories: dict
+    residual_center: float
+    reference: dict
+
+    def predict_frame(self, query, details=False):
+        features = prediction_features(query, self.reference)
+        for column in CATEGORICAL:
+            features[column] = features[column].fillna("__unknown__").astype(str)
+        direct_features = categorical_frame(features, self.categories)
+        predictions = [np.exp(np.clip(learner.predict(direct_features, num_threads=4), 0, 25))
+                       for learner in self.direct]
+        correction = self.residual.predict(features) + self.residual_center
+        predictions.append(np.exp(np.clip(correction + features.comp_log, 0, 25)))
+        predictions = np.asarray(predictions)
+
+        # Preserve the production override without changing historical training features.
+        empty = query[NUMERIC].isna().all(axis=1).to_numpy()
+        metadata = comparable_features(query, self.reference, safe_empty=True) if details or empty.any() else None
+        if empty.any():
+            predictions[:, empty] = np.exp(metadata.comp_log.to_numpy()[empty])
+        weights = np.array([BRANCH_WEIGHT / len(self.direct)] * len(self.direct) + [BRANCH_WEIGHT])
+        prices = np.average(predictions, axis=0, weights=weights) * MULTIPLIER
+        if not details:
+            return prices
+
+        def nullable(value):
+            return None if pd.isna(value) else float(value)
+
+        output = []
+        for index, price in enumerate(prices):
+            comparable = metadata.iloc[index]
+            output.append(dict(
+                recommended_asking_price_zar=round(float(price), -3),
+                unrounded_prediction_zar=float(price),
+                comparable_count=int(comparable.comp_count),
+                historical_suburb_count=int(comparable.comp_suburb_key_n),
+                historical_city_count=int(comparable.comp_city_key_n),
+                historical_province_count=int(comparable.comp_province_n),
+                comparable_estimate_zar=float(np.exp(comparable.comp_log)),
+                closest_comparable_distance=nullable(comparable.comp_closest),
+                mean_comparable_distance=nullable(comparable.comp_distance),
+                comparable_price_per_m2_zar=nullable(np.exp(comparable.comp_logppm)),
+                geographic_fallback=["suburb", "city", "province", "global"][int(comparable.comp_fallback)],
+                comparable_log_dispersion=float(comparable.comp_dispersion),
+                model_log_std=None if empty[index] else float(np.std(np.log(predictions[:, index]))),
+                missing_inputs=[column for column in NUMERIC if pd.isna(query.iloc[index][column])],
+            ))
+        return output
+
+    def predict(self, records):
+        return self.predict_frame(inputs_frame(records), details=True)
 
 
-def _combine(models, weights):
-    return models[0] if len(models) == 1 else sum_models(models, weights=weights)
+def fit_model(training):
+    """Cross-fit features once, fit the frozen learners, then retain full-data references."""
+    print("Building grouped training features...", file=sys.stderr, flush=True)
+    features = training_features(training)
+    for column in CATEGORICAL:
+        features[column] = features[column].fillna("__unknown__").astype(str)
+    categories = {column: sorted(features[column].unique()) for column in CATEGORICAL}
+    direct_features = categorical_frame(features, categories)
+    log_prices = np.log(training.price.to_numpy())
 
+    def fit_direct(seed):
+        learner = LGBMRegressor(**LIGHTGBM_PARAMS, random_state=seed)
+        learner.fit(direct_features, log_prices)
+        print(f"Fitted LightGBM seed {seed}", file=sys.stderr, flush=True)
+        return learner.booster_
 
-def fit_point(X, y_log, params, seed=42, sample_weight=None):
-    members = _members(params)
-    models = [
-        CatBoostRegressor(**cb_kwargs(member, seed=seed)).fit(
-            X, y_log, sample_weight=sample_weight
-        )
-        for member, _ in members
-    ]
-    return _combine(models, [weight for _, weight in members])
-
-
-def fit_quantiles(X, y_log, params, seed=42, sample_weight=None):
-    members = _members(params)
-    weights = [weight for _, weight in members]
-    low = [
-        CatBoostRegressor(**cb_kwargs(member, loss_function=QUANTILE_LOW, seed=seed)).fit(
-            X, y_log, sample_weight=sample_weight
-        )
-        for member, _ in members
-    ]
-    high = [
-        CatBoostRegressor(**cb_kwargs(member, loss_function=QUANTILE_HIGH, seed=seed)).fit(
-            X, y_log, sample_weight=sample_weight
-        )
-        for member, _ in members
-    ]
-    return _combine(low, weights), _combine(high, weights)
-
-
-def confidence_matrix(X, point, lo_log, hi_log):
-    point_log = np.log1p(np.clip(point, 0, None))
-    low = np.minimum(lo_log, hi_log)
-    high = np.maximum(lo_log, hi_log)
-    extra = np.column_stack([
-        point_log,
-        low,
-        high,
-        high - low,
-        point_log - low,
-        high - point_log,
-        np.abs(point_log - (low + high) / 2),
-    ])
-    return np.column_stack([X, extra]).astype(np.float32)
-
-
-def fit_confidence(X, bad, seed=42):
-    """Fit a scalar tail-risk score that exports as a plain ONNX tensor."""
-    return CatBoostRegressor(
-        iterations=300,
-        learning_rate=0.03,
-        depth=3,
-        l2_leaf_reg=20,
-        loss_function="RMSE",
-        random_seed=seed,
-        verbose=False,
-        allow_writing_files=False,
-    ).fit(X, bad.astype(float))
-
-
-def training_weights(X, params):
-    missing_weight = float(params.get("missing_rates_weight", 1.0))
-    if not 0 < missing_weight <= 1:
-        raise ValueError("missing_rates_weight must be in (0, 1]")
-    missing = X[:, F.FEATURE_ORDER.index("rates_and_taxes_missing")]
-    return np.where(missing == 1, missing_weight, 1.0)
-
-
-def _temporal_folds(df, n_splits):
-    """Expanding-window folds; a publication date never crosses a boundary."""
-    if "date_posted" not in df:
-        raise ValueError("Temporal evaluation requires date_posted")
-    ordered = df.sort_values("date_posted", kind="stable")
-    dates = ordered["date_posted"].to_numpy()
-    boundaries = []
-    for position in np.linspace(0, len(ordered), n_splits + 2, dtype=int)[1:-1]:
-        if position < len(dates):
-            boundaries.append(dates[position])
-    boundaries = sorted(set(boundaries))
-    folds = []
-    for index, start in enumerate(boundaries):
-        end = boundaries[index + 1] if index + 1 < len(boundaries) else None
-        train = df.index[df["date_posted"] < start].to_numpy()
-        validation_mask = df["date_posted"] >= start
-        if end is not None:
-            validation_mask &= df["date_posted"] < end
-        validation_mask &= df[
-            [F.SIZE_COL, "bedrooms", "bathrooms", "rates_and_taxes"]
-        ].notna().all(axis=1)
-        validation = df.index[validation_mask].to_numpy()
-        if len(train) >= 20 and len(validation):
-            folds.append((train, validation))
-    if len(folds) < 3:
-        raise ValueError("Expected at least three usable temporal folds")
-    return folds
-
-
-def temporal_cv_predict(
-    df, params, n_splits=5, inner_splits=5, seed=42, quantiles=False,
-    train_missing_size=True, selection_only=False, matrix_cache=None,
-    include_features=False,
-):
-    """Forward predictions from expanding publication-date windows.
-
-    Missing-size and missing-rates rows may enrich training, but validation
-    mirrors the serving contract and contains only complete known-rates rows.
-    """
-    df = df.reset_index(drop=True)
-    sm = float(params["smoothing"])
-    pp = float(params["ppsqm_smoothing"])
-    output = {"point": [], "price": [], "fold": [], "index": []}
-    if quantiles:
-        output.update({"lo_log": [], "hi_log": []})
-    if include_features:
-        output["features"] = []
-
-    folds = _temporal_folds(df, n_splits)
-    if selection_only:
-        folds = folds[:-2]
-    for fold_number, (train_idx, val_idx) in enumerate(folds):
-        key = (fold_number, sm, pp, seed, inner_splits, train_missing_size)
-        if matrix_cache is not None and key in matrix_cache:
-            X_tr, y_tr, X_va = matrix_cache[key]
-        else:
-            prior = df.iloc[train_idx].reset_index(drop=True)
-            model_ready = prior[["bedrooms", "bathrooms"]].notna().all(axis=1)
-            if not train_missing_size:
-                model_ready &= prior[F.SIZE_COL].notna()
-            tr = prior[model_ready].reset_index(drop=True)
-            va = df.iloc[val_idx]
-            enc = F.fit_encoders(prior, sm, pp)
-            X_tr = F.build_oof_matrix(tr, inner_splits, seed, sm, pp, prior_df=prior)
-            y_tr = np.log1p(tr[F.TARGET_COL].to_numpy(dtype=float))
-            X_va = F.build_matrix(va, enc)
-            if matrix_cache is not None:
-                matrix_cache[key] = (X_tr, y_tr, X_va)
-
-        va = df.iloc[val_idx]
-
-        sample_weight = training_weights(X_tr, params)
-        output["point"].extend(
-            np.expm1(
-                fit_point(X_tr, y_tr, params, seed, sample_weight).predict(X_va)
-            )
-        )
-        output["price"].extend(va[F.TARGET_COL].to_numpy(dtype=float))
-        output["fold"].extend([fold_number] * len(va))
-        output["index"].extend(val_idx)
-        if include_features:
-            output["features"].extend(X_va)
-        if quantiles:
-            m_lo, m_hi = fit_quantiles(X_tr, y_tr, params, seed, sample_weight)
-            output["lo_log"].extend(m_lo.predict(X_va))
-            output["hi_log"].extend(m_hi.predict(X_va))
-    return {name: np.asarray(values) for name, values in output.items()}
-
-
-def conformal_widen(lo_log, hi_log, y_log, alpha=0.2):
-    """CQR widening so a [q_lo, q_hi] band reaches (1-alpha) coverage.
-
-    Returns the log-space amount to subtract from q_lo and add to q_hi.
-    """
-    a = np.minimum(lo_log, hi_log)
-    b = np.maximum(lo_log, hi_log)
-    scores = np.maximum(a - y_log, y_log - b)
-    n = len(scores)
-    q = min(1.0, np.ceil((n + 1) * (1 - alpha)) / n)
-    return max(0.0, float(np.quantile(scores, q, method="higher")))
-
-
-def apply_interval(lo_log, hi_log, widen):
-    """Calibrated price band from log-space quantiles and a widening amount."""
-    a = np.minimum(lo_log, hi_log)
-    b = np.maximum(lo_log, hi_log)
-    return np.maximum(0.0, np.expm1(a - widen)), np.expm1(b + widen)
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        direct = list(executor.map(fit_direct, SEEDS))
+    targets = log_prices - features.comp_log
+    center = float(np.median(targets))
+    residual = CatBoostRegressor(**CATBOOST_PARAMS)
+    residual.fit(features, targets - center, cat_features=CATEGORICAL)
+    print("Fitted CatBoost residual learner", file=sys.stderr, flush=True)
+    return AskingPriceModel(direct, residual, categories, center, build_reference(training))

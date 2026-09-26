@@ -2,12 +2,9 @@
 
 {{headline}}
 {{primaryLabel}}: {{primaryValue}}
-{{#if secondaryValue}}{{secondaryLabel}}: {{secondaryValue}}
-{{/if}}
-{{confidenceNote}}
+{{estimateNote}}
 
 Property details used
-Type: {{type}}
 Location: {{location}}
 Bedrooms: {{bedrooms}}
 Bathrooms: {{bathrooms}}
