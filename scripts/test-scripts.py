@@ -1,4 +1,4 @@
-"""Exercise shell entrypoints with stubbed tools; never deploy or send email."""
+"""Exercise shell entrypoints with stubbed tools; never deploy."""
 import os
 import shutil
 import subprocess
@@ -44,8 +44,9 @@ if os.environ.get("FAIL_VERIFY") and name == "python":
             self.assertIn("europe-west3-docker.pkg.dev/serverless-runtimes/google-24-full/runtimes/python314", deployments[0])
             self.assertIn("GOOGLE_FUNCTION_SOURCE=src/property_model/http/main.py", deployments[0])
             self.assertIn("packages/model", deployments[0])
-            self.assertIn("WORKERS=1,THREADS=1,RESEND_FROM_EMAIL=Peter <hello@frms.dev>", deployments[0])
-            self.assertIn("RESEND_API_KEY=resend-api-key:latest", deployments[0])
+            self.assertIn("WORKERS=1,THREADS=1", deployments[0])
+            self.assertIn("--remove-secrets", deployments[0])
+            self.assertIn("RESEND_API_KEY", deployments[0])
             self.assertEqual(len(calls), 2)
             self.assertEqual(calls[0][1:3], ["-m", "property_model.inference.main"])
             log.write_text("")

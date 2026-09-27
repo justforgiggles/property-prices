@@ -1,6 +1,6 @@
 # Property prices
 
-Property24 listings → trained asking-price model → valuation email.
+Property24 listings → trained asking-price model → estimate on the form completion screen.
 `packages/data` scrapes raw listings; `packages/model` trains and serves the
 Python HTTP function. Predictions describe advertised asking prices in ZAR.
 
@@ -12,7 +12,7 @@ on macOS if absent).
 ```sh
 npm ci
 python3.14 -m venv packages/model/.venv
-packages/model/.venv/bin/python -m pip install -e packages/model functions-framework==3.9.2 Jinja2==3.1.6
+packages/model/.venv/bin/python -m pip install -e packages/model functions-framework==3.9.2
 ```
 
 ## Workflow
@@ -73,27 +73,28 @@ packages/model/.venv/bin/python -m functions_framework \
   --source packages/model/src/property_model/http/main.py --target valuation --port 8080
 ```
 
-The function accepts completed form submissions:
+The function accepts partial webhook events after the property section is saved:
 
 ```json
-{"id":"submission-123","status":"completed","data":{"province":"Gauteng","city":"Johannesburg","suburb":"Berea","bedrooms":"2","bathrooms":"1","floor_area":"85","rates_and_taxes":"700","email":"owner@example.com"}}
+{"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","form_id":"ad3e54459","status":"partial","section_id":"property","data":{"province":"Gauteng","city":"Johannesburg","suburb":"Berea","bedrooms":"2","bathrooms":"1","floor_area":"85","rates_and_taxes":"700"}}
 ```
 
-It validates the location and required form fields, maps measurements to model
-inputs, predicts locally, renders HTML/text email and sends through Resend.
-Set `RESEND_API_KEY` and `RESEND_FROM_EMAIL` for local sending; valid requests
-with real credentials send real email. Submission IDs provide delivery
-idempotency. Success returns 204; invalid submissions return 400, other methods
-405, model failures 500 and email failures 502. The HTTP response does not
-contain prediction JSON.
+It validates the location and model inputs, predicts locally, and saves the
+prediction under `data.prediction` on the same frms.dev submission through the
+partial submission API. The nested `formatted_asking_price` is shown on the
+completion screen. Other section events return 204 without predicting.
+Success returns 204; invalid property events return 400, other methods 405,
+model failures 500 and frms.dev update failures 502. The webhook response does
+not contain prediction JSON. The final form submission does not wait for the
+prediction; a late or failed update shows the completion fallback.
 
 `deploy.sh` checks inference and deploys `property-prices-valuation` from
 `packages/model`, using the function source under `src/property_model/http/`.
 It uses Google's full Python 3.14 image for LightGBM's OpenMP library, project
 `hirebarend`, region `europe-west3`, one worker,
-concurrency one, 2 CPUs, 2 GiB memory and existing Resend secret configuration.
-Artifacts, location catalog and email templates are included in the upload;
-training is not run during deployment. Restart or redeploy to load new artifacts.
+concurrency one, 2 CPUs and 2 GiB memory. Artifacts and the location catalog
+are included in the upload; training is not run during deployment. Restart or
+redeploy to load new artifacts.
 
 ## Lightweight checks
 

@@ -15,6 +15,6 @@ gcloud run deploy property-prices-valuation \
   --region europe-west3 \
   --account hirebarend@gmail.com \
   --project hirebarend \
-  --set-env-vars 'WORKERS=1,THREADS=1,RESEND_FROM_EMAIL=Peter <hello@frms.dev>' \
-  --set-secrets RESEND_API_KEY=resend-api-key:latest \
+  --set-env-vars 'WORKERS=1,THREADS=1' \
+  --remove-secrets RESEND_API_KEY \
   --quiet
