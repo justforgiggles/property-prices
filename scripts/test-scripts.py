@@ -35,18 +35,19 @@ if os.environ.get("FAIL_VERIFY") and name == "python":
             subprocess.run(["sh", str(root / "scripts/train.sh"), "--output-dir", "relative output"], cwd="/tmp", env=env, check=True)
             import json
             calls = [json.loads(line) for line in log.read_text().splitlines()]
-            self.assertEqual(calls[0], ["python", "-m", "property_model", "train", "--output-dir", "relative output"])
+            self.assertEqual(calls[0], ["python", "-m", "property_model.train.main", "--output-dir", "relative output"])
             log.write_text("")
             subprocess.run(["sh", str(root / "scripts/deploy.sh")], cwd="/tmp", env=env, check=True)
             calls = [json.loads(line) for line in log.read_text().splitlines()]
             deployments = [call for call in calls if call[1:3] == ["run", "deploy"]]
             self.assertEqual([call[3] for call in deployments], ["property-prices-valuation"])
             self.assertIn("python314", deployments[0])
+            self.assertIn("GOOGLE_FUNCTION_SOURCE=src/property_model/http/main.py", deployments[0])
             self.assertIn("packages/model", deployments[0])
             self.assertIn("WORKERS=1,THREADS=1,RESEND_FROM_EMAIL=Peter <hello@frms.dev>", deployments[0])
             self.assertIn("RESEND_API_KEY=resend-api-key:latest", deployments[0])
             self.assertEqual(len(calls), 2)
-            self.assertEqual(calls[0][1:3], ["-m", "property_model.artifacts"])
+            self.assertEqual(calls[0][1:3], ["-m", "property_model.inference.main"])
             log.write_text("")
             result = subprocess.run(["sh", str(root / "scripts/deploy.sh")], env={**env, "FAIL_VERIFY": "1"})
             self.assertNotEqual(result.returncode, 0)

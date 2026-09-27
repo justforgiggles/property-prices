@@ -1,11 +1,32 @@
-"""The fixed 70-feature matrix, training-only summaries and grouped cross-fitting."""
+"""Shared geography, structural features and training-population market evidence."""
 import numpy as np
 import pandas as pd
-from sklearn.model_selection import GroupKFold
+import re
 
 from .comparables import comparable_features, numeric_coordinates
-from .config import (FEATURE_COLUMNS, INNER_FOLDS, INNER_SEED, LOCATIONS,
+from .config import (FEATURE_COLUMNS, LOCATIONS,
                      NUMERIC, RATIOS, SHRINKAGE, SIZE_EDGES, SUMMARY_KEYS)
+
+
+def normalize(value):
+    return (re.sub(r"\s+", " ", str(value or "").strip().casefold())
+            .replace("kwazulu-natal", "kwazulu natal") or "__unknown__")
+
+
+def add_geography(frame):
+    frame = frame.copy()
+    frame["city_key"] = frame.province + "|" + frame.city
+    frame["suburb_key"] = frame.city_key + "|" + frame.suburb
+    return frame
+
+
+def categorical_frame(features, categories):
+    frame = features.copy()
+    for column, levels in categories.items():
+        values = frame[column].fillna("__unknown__").astype(str)
+        known_values = values.where(frame[column].isin(levels))
+        frame[column] = pd.Categorical(known_values, categories=levels)
+    return frame
 
 
 def size_bands(area):
@@ -75,21 +96,7 @@ def aggregate_features(query, reference):
 
 
 def prediction_features(query, reference):
-    return pd.concat([structural_features(query), aggregate_features(query, reference),
-                      comparable_features(query, reference)], axis=1)[FEATURE_COLUMNS]
-
-
-def training_features(training):
-    """Each row's price and linked group are absent from its historical evidence."""
-    training = training.reset_index(drop=True)
-    if training.group.nunique() < INNER_FOLDS:
-        raise ValueError(f"Training requires at least {INNER_FOLDS} distinct property groups.")
-    splitter = GroupKFold(n_splits=INNER_FOLDS, shuffle=True, random_state=INNER_SEED)
-    held_features = []
-    for fit_indices, held_indices in splitter.split(training, groups=training.group):
-        reference = build_reference(training.iloc[fit_indices])
-        held = training.iloc[held_indices]
-        features = pd.concat([aggregate_features(held, reference), comparable_features(held, reference)], axis=1)
-        features.index = held_indices
-        held_features.append(features)
-    return pd.concat([structural_features(training), pd.concat(held_features).sort_index()], axis=1)[FEATURE_COLUMNS]
+    structural = structural_features(query)
+    summaries = aggregate_features(query, reference)
+    comparables = comparable_features(query, reference)
+    return pd.concat([structural, summaries, comparables], axis=1)[FEATURE_COLUMNS]

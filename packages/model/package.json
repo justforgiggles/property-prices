@@ -2,6 +2,6 @@
   "name": "@property-prices/model",
   "private": true,
   "scripts": {
-    "verify": ".venv/bin/python -m property_model.artifacts models"
+    "verify": ".venv/bin/python -m property_model.inference.main --model-dir models"
   }
 }

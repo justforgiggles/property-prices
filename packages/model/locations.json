@@ -201,6 +201,7 @@
       "Copperleaf Estate",
       "Cornwall Hill",
       "Die Hoewes",
+      "Doringkloof",
       "Eldoraigne",
       "Erasmia",
       "Golden Fields Estate",
@@ -274,7 +275,8 @@
     ],
     "Ga-Rankuwa": [
       "Ga-Rankuwa",
-      "Ga-rankuwa View"
+      "Ga-rankuwa View",
+      "Hebron"
     ],
     "Germiston": [
       "Albemarle",
@@ -285,6 +287,7 @@
       "Dawnview",
       "Denlee",
       "Dinwiddie",
+      "Elandsfontein Rail",
       "Elandshaven",
       "Elsburg",
       "Elspark",
@@ -916,7 +919,8 @@
       "Randgate",
       "Randpoort",
       "Robin Park",
-      "Toekomsrus"
+      "Toekomsrus",
+      "West Porges"
     ],
     "Rayton": [
       "Rayton"
@@ -931,6 +935,7 @@
       "Davidsonville",
       "Delarey",
       "Discovery",
+      "Eagle Canyon Golf Estate",
       "Fleurhof",
       "Florida",
       "Florida Glen",
@@ -1047,6 +1052,7 @@
       "Soshanguve KK",
       "Soshanguve L",
       "Soshanguve M",
+      "Soshanguve R",
       "Soshanguve SS",
       "Soshanguve South",
       "Soshanguve T",
@@ -1080,6 +1086,7 @@
       "Moroka",
       "Naledi",
       "Orlando",
+      "Phiri",
       "Pimville",
       "Protea City",
       "Protea Garden",
@@ -1087,12 +1094,14 @@
       "Protea North",
       "Senaoane",
       "Sol Plaatjie",
-      "Zola"
+      "Zola",
+      "Zondi"
     ],
     "Springs": [
       "Bakerton",
       "Casseldale",
       "Daggafontein",
+      "Dal Fouche",
       "Dersley",
       "East Geduld",
       "Edelweiss",
@@ -1622,6 +1631,7 @@
       "Woodview"
     ],
     "Pietermaritzburg": [
+      "Allandale",
       "Ashburton",
       "Athlone",
       "Belfort Estate",
@@ -1642,6 +1652,7 @@
       "Grange",
       "Hayfields",
       "Imbali",
+      "Kingston Park",
       "Lincoln Meade",
       "Montrose",
       "Mountain Rise",
@@ -1652,6 +1663,7 @@
       "Panorama Gardens",
       "Pelham",
       "Pietermaritzburg Central",
+      "Ridge Park",
       "Scottsville",
       "Scottsville Ext",
       "Town Hill",
@@ -2192,6 +2204,7 @@
       "Romansbaai Estate"
     ],
     "George": [
+      "Blanco",
       "Blue Mountain Village",
       "Bodorp",
       "Borchards",
@@ -2204,13 +2217,16 @@
       "George Central",
       "George East",
       "George Industrial",
+      "George South",
       "Groenkloof Retirement Village",
       "Hansmoeskraal AH",
       "Heather Park",
+      "Heatherlands",
       "King George Park",
       "Kingswood Golf Estate",
       "Kraaibosch",
       "Le Grand Estate",
+      "Loerie Park",
       "Oubaai",
       "Pacaltsdorp",
       "Parkdene"
@@ -2250,6 +2266,9 @@
       "Pine Acres",
       "Sea Breeze"
     ],
+    "Gouritsmond": [
+      "Gouritsmond"
+    ],
     "Graafwater": [
       "Graafwater"
     ],
@@ -2260,7 +2279,9 @@
       "Bergsig",
       "Die Eiland",
       "Dolphin Creek Golf Estate",
+      "Dwarswegstrand",
       "Glentana",
+      "Greenhaven",
       "Groot Brakrivier Central",
       "Grootbrakhoogte",
       "Hersham",
@@ -2319,6 +2340,7 @@
       "Overkloof",
       "Scott Estate",
       "Tarragona",
+      "The Meadows",
       "Valley Area",
       "Victorskloof"
     ],
@@ -2689,7 +2711,8 @@
       "Glen Marine",
       "Glencairn",
       "Glencairn Heights",
-      "Simons Town Central"
+      "Simons Town Central",
+      "The Boulders"
     ],
     "Somerset West": [
       "Acorn Creek Lifestyle Estate",
@@ -2732,6 +2755,7 @@
       "Da Gama Bay",
       "Duyker Eiland",
       "Golden Mile",
+      "Hannasbaai",
       "Harbour Heights",
       "Lampiesbaai",
       "Sandy Point",
@@ -2766,6 +2790,7 @@
     ],
     "Stilbaai": [
       "Stilbaai Oos",
+      "Stilbaai Rural",
       "Stilbaai Wes"
     ],
     "Strand": [

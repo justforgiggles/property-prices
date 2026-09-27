@@ -7,8 +7,6 @@ from pathlib import Path
 
 import pandas as pd
 
-from .data import load_data, normalize
-
 
 Locations = dict[str, dict[str, list[str]]]
 FIELDS_START = "      - id: city\n"
@@ -26,22 +24,6 @@ def build_locations(data: pd.DataFrame, labels: dict[str, str]) -> Locations:
         province: {city: sorted(suburbs) for city, suburbs in sorted(cities.items())}
         for province, cities in sorted(locations.items())
     }
-
-
-def location_labels(raw_directory: Path) -> dict[str, str]:
-    """Keep source spelling for display; prediction normalizes only at the model boundary."""
-    labels = {}
-    for path in sorted(raw_directory.glob("*.jsonl")):
-        for line in path.read_text().splitlines():
-            try:
-                listing = json.loads(line)["jsonld"][0]["@graph"][0]
-                for item in listing["breadcrumb"]["itemListElement"]:
-                    if item["position"] in (2, 3, 4) and isinstance(item["name"], str):
-                        labels.setdefault(normalize(item["name"]), " ".join(item["name"].split()))
-            except (KeyError, IndexError, TypeError, ValueError):
-                continue
-    labels.update({"gauteng": "Gauteng", "western cape": "Western Cape", "kwazulu natal": "KwaZulu Natal"})
-    return labels
 
 
 def _yaml(value: str) -> str:
@@ -105,28 +87,14 @@ def render_location_fields(locations: Locations) -> str:
     return "\n".join(lines)
 
 
-def sync_locations(root: Path, *, check: bool = False) -> None:
-    raw_directory = root / "data" / "raw"
-    data, _ = load_data(raw_directory)
-    locations = build_locations(data, location_labels(raw_directory))
-    locations_path = root / "packages" / "model" / "locations.json"
-    form_path = root / "forms" / "property-valuation.yaml"
-    expected_locations = json.dumps(locations, ensure_ascii=False, indent=2) + "\n"
+def prepare_location_updates(data, labels, locations_path, form_path):
+    """Render both files without changing them; publish only with a verified model."""
+    locations = build_locations(data, labels)
+    if not locations:
+        raise ValueError("Training data contains no supported form locations.")
+    catalog = json.dumps(locations, ensure_ascii=False, indent=2) + "\n"
     form = form_path.read_text(encoding="utf-8")
     start = form.index(FIELDS_START)
     end = form.index(FIELDS_END, start)
-    expected_form = form[:start] + render_location_fields(locations) + form[end:]
-
-    stale = [
-        str(path.relative_to(root))
-        for path, expected in ((locations_path, expected_locations), (form_path, expected_form))
-        if path.read_text(encoding="utf-8") != expected
-    ]
-    if check and stale:
-        paths = ", ".join(stale)
-        raise ValueError(
-            f"Location catalogs are stale: {paths}; run npm run sync:locations"
-        )
-    if not check:
-        locations_path.write_text(expected_locations, encoding="utf-8")
-        form_path.write_text(expected_form, encoding="utf-8")
+    updated_form = form[:start] + render_location_fields(locations) + form[end:]
+    return {locations_path: catalog, form_path: updated_form}

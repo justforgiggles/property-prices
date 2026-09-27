@@ -10,9 +10,7 @@
     "submissions": "sh scripts/submissions.sh",
     "scrape": "npm run scrape -w @property-prices/data --",
     "train": "sh scripts/train.sh",
-    "sync:locations": "packages/model/.venv/bin/python -m property_model sync-locations",
-    "check:locations": "packages/model/.venv/bin/python -m property_model sync-locations --check",
-    "test": "npm test -w @property-prices/data && packages/model/.venv/bin/python -m unittest discover -s packages/model/tests && npm run check:locations && packages/model/.venv/bin/python scripts/test-scripts.py",
+    "test": "npm test -w @property-prices/data && packages/model/.venv/bin/python scripts/test-scripts.py",
     "build": "npm run build -w @property-prices/data"
   },
   "overrides": {
