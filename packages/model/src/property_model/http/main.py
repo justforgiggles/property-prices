@@ -78,7 +78,7 @@ def save_prediction(identifier: str, estimate: dict) -> None:
         raise ValueError("Model returned an invalid rounded asking price")
     prediction = {**estimate, "formatted_asking_price": "R\u00a0" + f"{price:,.0f}".replace(",", "\u00a0")}
     request = Request(
-        f"{SUBMISSIONS_URL}?{urlencode({'id': identifier, 'partial': 'true'})}",
+        f"{SUBMISSIONS_URL}?{urlencode({'id': identifier, 'partial': 'true', 'section_id': 'prediction'})}",
         data=json.dumps({"prediction": prediction}, allow_nan=False).encode(),
         headers={"Content-Type": "application/json", "User-Agent": "property-prices/1.0"},
         method="POST",

@@ -41,7 +41,7 @@ class ValuationWebhookTests(unittest.TestCase):
         })
         request = urlopen.call_args.args[0]
         self.assertEqual(request.full_url,
-                         f"https://frms.dev/api/v1/forms/{FORM_ID}/submissions?id={'a' * 32}&partial=true")
+                         f"https://frms.dev/api/v1/forms/{FORM_ID}/submissions?id={'a' * 32}&partial=true&section_id=prediction")
         self.assertEqual(json.loads(request.data), {"prediction": {
             "recommended_asking_price_zar": 1844000.0,
             "comparable_count": 5,
@@ -50,7 +50,8 @@ class ValuationWebhookTests(unittest.TestCase):
 
     def test_other_events_do_not_predict(self):
         with patch("property_model.http.main.predict") as predict:
-            for update in ({"section_id": "location"}, {"section_id": None}, {"status": "completed"}):
+            for update in ({"section_id": "location"}, {"section_id": "prediction"},
+                           {"section_id": None}, {"status": "completed"}):
                 body = {**self.body, **update}
                 self.assertEqual(valuation(Mock(method="POST", get_json=lambda silent: body))[1], 204)
         predict.assert_not_called()
