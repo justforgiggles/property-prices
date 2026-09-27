@@ -8,7 +8,7 @@ gcloud run deploy property-prices-valuation \
   --source packages/model \
   --function valuation \
   --set-build-env-vars GOOGLE_FUNCTION_SOURCE=src/property_model/http/main.py \
-  --base-image python314 \
+  --base-image europe-west3-docker.pkg.dev/serverless-runtimes/google-24-full/runtimes/python314 \
   --concurrency 1 \
   --cpu 2 \
   --memory 2Gi \

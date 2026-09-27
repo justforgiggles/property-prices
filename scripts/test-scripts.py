@@ -41,7 +41,7 @@ if os.environ.get("FAIL_VERIFY") and name == "python":
             calls = [json.loads(line) for line in log.read_text().splitlines()]
             deployments = [call for call in calls if call[1:3] == ["run", "deploy"]]
             self.assertEqual([call[3] for call in deployments], ["property-prices-valuation"])
-            self.assertIn("python314", deployments[0])
+            self.assertIn("europe-west3-docker.pkg.dev/serverless-runtimes/google-24-full/runtimes/python314", deployments[0])
             self.assertIn("GOOGLE_FUNCTION_SOURCE=src/property_model/http/main.py", deployments[0])
             self.assertIn("packages/model", deployments[0])
             self.assertIn("WORKERS=1,THREADS=1,RESEND_FROM_EMAIL=Peter <hello@frms.dev>", deployments[0])

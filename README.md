@@ -89,7 +89,8 @@ contain prediction JSON.
 
 `deploy.sh` checks inference and deploys `property-prices-valuation` from
 `packages/model`, using the function source under `src/property_model/http/`.
-It preserves Python 3.14, project `hirebarend`, region `europe-west3`, one worker,
+It uses Google's full Python 3.14 image for LightGBM's OpenMP library, project
+`hirebarend`, region `europe-west3`, one worker,
 concurrency one, 2 CPUs, 2 GiB memory and existing Resend secret configuration.
 Artifacts, location catalog and email templates are included in the upload;
 training is not run during deployment. Restart or redeploy to load new artifacts.
