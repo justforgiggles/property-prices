@@ -39,7 +39,7 @@ def render_email(submission: dict, estimate: dict, template_directory=PACKAGE / 
 
 def send_email(identifier: str, email: dict) -> None:
     """Resend deduplicates retries using the original submission ID."""
-    api_key = os.environ.get("RESEND_API_KEY")
+    api_key = os.environ.get("RESEND_API_KEY", "").strip()
     sender = os.environ.get("RESEND_FROM_EMAIL")
     if not api_key or not sender:
         raise RuntimeError("Resend is not configured")
