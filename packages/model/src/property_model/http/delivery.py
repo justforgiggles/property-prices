@@ -47,7 +47,7 @@ def send_email(identifier: str, email: dict) -> None:
         "https://api.resend.com/emails",
         data=json.dumps({**email, "from": sender}).encode(),
         headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json",
-                 "Idempotency-Key": f"property-valuation/{identifier}"},
+                 "Idempotency-Key": f"property-valuation/{identifier}", "User-Agent": "property-prices/1.0"},
         method="POST",
     )
     try:
