@@ -3069,10 +3069,3 @@ connections:
   - type: webhook
     url: "https://property-prices-valuation-1008115912104.europe-west3.run.app"
     trigger_on: partial
-
-  - type: email
-    to: "hirebarend@gmail.com"
-    subject: "New property valuation submission"
-    body: "A completed property valuation form was submitted."
-    include_responses: true
-    trigger_on: completed
