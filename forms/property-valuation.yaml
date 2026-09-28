@@ -1,11 +1,11 @@
 # yaml-language-server: $schema=https://frms.dev/schema.json
 version: 1
-title: "South African property price estimate"
-description: "Get a free, data-driven estimate of what your home could list for, based on recent South African property listings."
+title: "Your home’s asking price, estimated"
+description: "Smart estimates, grounded in South African property data."
 
 start:
-  title: "What could you list your property for?"
-  description: "Answer a few questions in about two minutes to see a recommended asking price on screen, without needing to speak to an estate agent. This is an indicative estimate, not a formal valuation."
+  title: "Know your home. Discover its potential asking price."
+  description: "Thinking of selling, or just curious? Tell us a little about your home and let our model do the number crunching. Get a free asking-price estimate based on South African property listings, right here on screen."
   button: "Get my free estimate"
 
 measurements:
@@ -18,8 +18,8 @@ authentication:
 
 sections:
   - id: location
-    title: "Where is your property?"
-    description: "Select its province, city or town, and suburb. We currently cover Gauteng, KwaZulu-Natal and the Western Cape."
+    title: "Where do you call home?"
+    description: "Let’s start with your neighbourhood. Choose your province, city or town, and suburb. We currently cover Gauteng, KwaZulu-Natal and the Western Cape."
     fields:
       - id: province
         type: dropdown
@@ -2961,8 +2961,8 @@ sections:
     next: property
 
   - id: property
-    title: "Tell us about your property"
-    description: "Enter the details as accurately as you can. If you are unsure, use your best estimate."
+    title: "Tell us a little about your home"
+    description: "You bring the details. We’ll do the maths. Add your home’s details as accurately as you can, or use your best estimate if you’re unsure."
     fields:
       - id: bedrooms
         type: number
@@ -2999,7 +2999,7 @@ sections:
       - id: floor_area
         type: number
         label: "Floor size (m²)"
-        helper_text: "Enter the floor size of the house, apartment or townhouse, not the erf or plot size. Use a whole number."
+        helper_text: "The floor area of your home, excluding the erf or plot. Enter square metres as a whole number."
         validators:
           - type: required
             message: "Enter the floor size."
@@ -3016,7 +3016,7 @@ sections:
       - id: rates_and_taxes
         type: number
         label: "Monthly municipal rates and taxes (R)"
-        helper_text: "Enter the monthly municipal amount, excluding levies. Use whole rands."
+        helper_text: "Your monthly municipal rates and taxes, excluding levies. Enter whole rands."
         validators:
           - type: required
             message: "Enter the monthly rates and taxes."
@@ -3032,8 +3032,8 @@ sections:
     next: delivery
 
   - id: delivery
-    title: "Your contact details"
-    description: "Enter your details, then see your recommended asking price on the next screen."
+    title: "One last detail"
+    description: "Add your email address to finish. Your estimate will appear here on screen."
     fields:
       - id: first_name
         type: short_text
@@ -3048,7 +3048,7 @@ sections:
         type: email
         label: "Email address"
         placeholder: "thandi@example.com"
-        helper_text: "We will keep your email with your estimate. No marketing messages."
+        helper_text: "We’ll store your email with your estimate. No marketing messages."
         validators:
           - type: required
             message: "Enter your email address."
@@ -3060,10 +3060,13 @@ sections:
 
 completion:
   - when: "data.prediction && data.prediction.recommended_asking_price_zar"
-    title: "Your recommended asking price"
-    message: "{{data.prediction.formatted_asking_price}}. This estimate is based on advertised asking prices and is not a formal valuation or a prediction of the final sale price."
-  - title: "We could not show your estimate"
-    message: "Your details were saved, but the estimate is not available yet. Refresh this page to check again."
+    title: "{{data.prediction.formatted_asking_price}}"
+    message: >-
+      <p>Your home’s estimated asking price, based on the details you shared and South African property listings.
+      A useful starting point for planning your next move.</p>
+      <p>This estimate reflects advertised asking prices. It is not a formal valuation or a guarantee of the final sale price.</p>
+  - title: "Your estimate isn’t available right now"
+    message: "Your details have been saved, but we couldn’t display your estimate. Try refreshing this page in a moment."
 
 connections:
   - type: webhook
