@@ -3064,6 +3064,7 @@ completion:
     message: >-
       <p>Your home’s estimated asking price, based on the details you shared and South African property listings.
       A useful starting point for planning your next move.</p>
+      <br/>
       <p>This estimate reflects advertised asking prices. It is not a formal valuation or a guarantee of the final sale price.</p>
   - title: "Your estimate isn’t available right now"
     message: "Your details have been saved, but we couldn’t display your estimate. Try refreshing this page in a moment."
