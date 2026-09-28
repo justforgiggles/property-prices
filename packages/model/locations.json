@@ -118,6 +118,7 @@
       "Comet",
       "Dawn Park",
       "Dayanglen",
+      "Delmore Park",
       "Eveleigh",
       "Farrar Park",
       "Freeway Park",
@@ -196,6 +197,7 @@
       "Candlewoods Country Estate",
       "Celtisdal",
       "Centurion Central",
+      "Christoburg",
       "Claudius",
       "Clubview",
       "Copperleaf Estate",
@@ -545,6 +547,7 @@
       "A P Khumalo",
       "Katlehong South",
       "Kwenele",
+      "Likole",
       "Moleleki",
       "Monise",
       "Siluma View",
@@ -569,7 +572,9 @@
       "Glen Marais",
       "Kempton Park AH",
       "Kempton Park Central",
+      "Kempton Park Ext 1",
       "Kempton Park Ext 2",
+      "Kempton Park Ext 5",
       "Kempton Park West",
       "Nimrod Park",
       "Norkem Park",
@@ -578,7 +583,8 @@
       "Rhodesfield",
       "Serengeti Lifestyle Estate",
       "Terenure",
-      "Van Riebeeck Park"
+      "Van Riebeeck Park",
+      "Witfontein"
     ],
     "Krugersdorp": [
       "Avianto Estate",
@@ -614,6 +620,7 @@
       "Sugar Bush Estate",
       "Tshepisong",
       "Wentworth Park",
+      "West Rand Cons Mines",
       "West Village",
       "Wildtuin Park"
     ],
@@ -878,6 +885,7 @@
       "Fontainebleau",
       "Jackal Creek Golf Estate",
       "Johannesburg North",
+      "Jukskei Park",
       "Kelland",
       "Kensington B",
       "Kya Sands",
@@ -1175,6 +1183,7 @@
       "De Deur",
       "Duncanville",
       "Falcon Ridge",
+      "Homer",
       "Peacehaven",
       "Riverspray Lifestyle Estate",
       "Roshnee",
@@ -1616,6 +1625,7 @@
       "Caneside",
       "Clayfield",
       "Eastbury",
+      "Longcroft",
       "Northcroft",
       "Palmview",
       "Phoenix Industrial",
@@ -1663,6 +1673,7 @@
       "Panorama Gardens",
       "Pelham",
       "Pietermaritzburg Central",
+      "Raisethorpe",
       "Ridge Park",
       "Scottsville",
       "Scottsville Ext",
@@ -2466,7 +2477,8 @@
       "Long Acres Country Estate",
       "Middedorp",
       "Myburgh Park",
-      "Mykonos"
+      "Mykonos",
+      "Waterfront"
     ],
     "Lutzville": [
       "Lutzville"
@@ -2543,7 +2555,8 @@
       "Woodlands"
     ],
     "Montagu": [
-      "Montagu"
+      "Montagu",
+      "Montagu Rural"
     ],
     "Moorreesburg": [
       "Koringberg",
@@ -2725,6 +2738,7 @@
       "Fernwood",
       "Golden Acre",
       "Helderberg Village",
+      "Helderrand",
       "Helena Heights",
       "Heritage Park",
       "Kelderhof Country Village",
@@ -2770,6 +2784,7 @@
       "Aan de Wijnlanden",
       "Brandwacht",
       "Cloetesville",
+      "De Wijnlanden Residential Estate",
       "Dennesig",
       "Devonbosch Precinct",
       "Idasvallei",
