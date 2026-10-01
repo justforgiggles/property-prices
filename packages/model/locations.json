@@ -88,6 +88,7 @@
       "Mackenzie Park",
       "Marister",
       "Mayfield",
+      "Modderbee",
       "Morehill",
       "New Modder",
       "Northmead",
@@ -107,6 +108,7 @@
       "Atlasville",
       "Bardene",
       "Bartlett",
+      "Berton Park",
       "Beyers Park",
       "Boksburg Central",
       "Boksburg East",
@@ -130,6 +132,7 @@
       "Libradene",
       "Lilianton",
       "Mapleton",
+      "Morganridge",
       "Parkdene",
       "Parkhaven",
       "Parkrand",
@@ -144,9 +147,11 @@
       "Vosloorus",
       "Westwood",
       "Windmill Park",
-      "Witfield"
+      "Witfield",
+      "Witkoppie Ridge"
     ],
     "Brakpan": [
+      "Anzac",
       "Brakpan Central",
       "Brakpan North",
       "Brenthurst",
@@ -155,6 +160,7 @@
       "Denneoord",
       "Geluksdal",
       "Helderwyk",
+      "Huntingdon",
       "Kenleaf",
       "Langaville",
       "Leachville",
@@ -180,6 +186,7 @@
       "Masada",
       "Pronkbaai",
       "Riamar Park",
+      "Verster Park",
       "Zithobeni"
     ],
     "Carletonville": [
@@ -197,6 +204,7 @@
       "Candlewoods Country Estate",
       "Celtisdal",
       "Centurion Central",
+      "Centurion Golf Estate",
       "Christoburg",
       "Claudius",
       "Clubview",
@@ -287,6 +295,7 @@
       "Castleview",
       "Cruywagen Park",
       "Dawnview",
+      "Delville",
       "Denlee",
       "Dinwiddie",
       "Elandsfontein Rail",
@@ -296,6 +305,9 @@
       "Fishers Hill",
       "Gerdview",
       "Germiston Central",
+      "Germiston South",
+      "Hazeldene",
+      "Highway Gardens",
       "Homestead",
       "Klippoortje",
       "Klopperpark",
@@ -305,6 +317,7 @@
       "Malvern East",
       "Marlands",
       "Meadowbrook",
+      "Norton",
       "Parkhill Gardens",
       "Primrose",
       "Rondebult",
@@ -318,6 +331,7 @@
       "Union",
       "Wadeville",
       "Wannenburghoogte",
+      "Woodmere",
       "Wychwood"
     ],
     "Hammanskraal": [
@@ -491,6 +505,7 @@
       "Parktown North",
       "Parkview",
       "Parkwood",
+      "Randview",
       "Regents Park",
       "Rembrandt Park",
       "Rembrandt Ridge",
@@ -574,6 +589,7 @@
       "Kempton Park Central",
       "Kempton Park Ext 1",
       "Kempton Park Ext 2",
+      "Kempton Park Ext 4",
       "Kempton Park Ext 5",
       "Kempton Park West",
       "Nimrod Park",
@@ -587,6 +603,7 @@
       "Witfontein"
     ],
     "Krugersdorp": [
+      "Agavia",
       "Avianto Estate",
       "Azaadville",
       "Azaadville Gardens",
@@ -604,6 +621,7 @@
       "Krugersdorp Central",
       "Krugersdorp North",
       "Krugersdorp West",
+      "Luipaardsvlei",
       "Mindalore",
       "Monument",
       "Muldersdrift",
@@ -616,6 +634,7 @@
       "Rangeview",
       "Rant En Dal",
       "Rietfontein AH",
+      "Rietvallei AH",
       "Silverfields",
       "Sugar Bush Estate",
       "Tshepisong",
@@ -630,6 +649,7 @@
       "Winterveldt"
     ],
     "Meyerton": [
+      "Blue Saddle Ranches",
       "Daleside",
       "Golf Park",
       "Green Valley",
@@ -646,6 +666,7 @@
       "Rothdene"
     ],
     "Midrand": [
+      "Allandale",
       "Barbeque Downs",
       "Blue Hills",
       "Carlswald",
@@ -674,6 +695,8 @@
       "Phomolong",
       "President Park",
       "Rabie Ridge",
+      "Randjesfontein AH",
+      "Riversands",
       "Riverside View",
       "Sagewood",
       "Steyn City",
@@ -688,6 +711,7 @@
       "Duduza",
       "Dunnottar",
       "Ferryvale",
+      "Glenvarloch",
       "Jameson Park",
       "Nigel Central",
       "Nigel Ext 2",
@@ -760,6 +784,7 @@
       "Hillcrest",
       "Jan Niemand Park",
       "Kameeldrift East",
+      "Kameeldrift West",
       "Kameelfontein",
       "Kilner Park",
       "Kirkney",
@@ -823,6 +848,8 @@
       "Rietfontein SH",
       "Rietondale",
       "Rietvalleirand",
+      "Rietvlei Ridge Country Estate",
+      "Rietvlei View Country Estates",
       "Riviera",
       "Roodeplaat",
       "Roseville",
@@ -851,6 +878,7 @@
       "Waterkloof",
       "Waterkloof Glen",
       "Waterkloof Heights",
+      "Waterkloof Park",
       "Waterkloof Ridge",
       "Waterlake Farm Lifestyle Estate",
       "Waverley",
@@ -874,6 +902,7 @@
       "Blackheath",
       "Blairgowrie",
       "Bloubosrand",
+      "Bordeaux",
       "Boskruin",
       "Bromhof",
       "Cedar Creek",
@@ -894,19 +923,23 @@
       "Lion Pride",
       "Malanshof",
       "Maroeladal",
+      "Needwood",
       "Noordhang",
       "North Riding",
       "North Riding AH",
       "Northcliff",
       "Northgate",
       "Northwold",
+      "Northwold Gardens",
       "Olievenpoort",
       "Olivedale",
+      "Praegville",
       "President Ridge",
       "Randburg Central",
       "Randpark",
       "Randpark Ridge",
       "Robin Hills",
+      "Robindale",
       "Sharonlea",
       "Sonneglans",
       "Strijdompark",
@@ -918,8 +951,10 @@
     "Randfontein": [
       "Culemborg Park",
       "Eike Park",
+      "Finsbury",
       "Greenhills",
       "Helikon Park",
+      "Home Lake Industrial",
       "Homelake",
       "Kocksoord",
       "Mohlakeng",
@@ -928,7 +963,8 @@
       "Randpoort",
       "Robin Park",
       "Toekomsrus",
-      "West Porges"
+      "West Porges",
+      "Wilbotsdal AH"
     ],
     "Rayton": [
       "Rayton"
@@ -958,8 +994,10 @@
       "Honeydew",
       "Honeydew Grove",
       "Honeydew Manor",
+      "Honeydew Ridge",
       "Honeypark",
       "Horison",
+      "Horison Park",
       "Horizon View",
       "Laser Park",
       "Lindhaven",
@@ -971,6 +1009,7 @@
       "Princess AH",
       "Quellerina",
       "Radiokop",
+      "Reefhaven",
       "Roodekrans",
       "Roodepoort Central",
       "Roodepoort North",
@@ -1011,6 +1050,7 @@
       "Lonehill",
       "Longlake",
       "Magaliessig",
+      "Marlboro Gardens",
       "Morningside",
       "Morningside Manor",
       "Parkmore",
@@ -1088,7 +1128,9 @@
       "Klipspruit",
       "Kliptown",
       "Lufhereng",
+      "Mapetla",
       "Meadowlands",
+      "Mofolo North",
       "Molapo",
       "Moletsane",
       "Moroka",
@@ -1100,10 +1142,13 @@
       "Protea Garden",
       "Protea Glen",
       "Protea North",
+      "Protea South",
       "Senaoane",
       "Sol Plaatjie",
+      "Thulani",
       "Zola",
-      "Zondi"
+      "Zondi",
+      "Zuurbult"
     ],
     "Springs": [
       "Bakerton",
@@ -1127,6 +1172,7 @@
       "Selection Park",
       "Springs Central",
       "Strubenvale",
+      "Vischkuil",
       "Welgedag"
     ],
     "Temba": [
@@ -1140,6 +1186,7 @@
       "Emfihlweni",
       "Entshonalanga",
       "Hospital View",
+      "Ililiba",
       "Isekelo",
       "Isithame",
       "Leboeng",
@@ -1147,6 +1194,7 @@
       "Makulong",
       "Maokeng",
       "Mashimong",
+      "Moriting",
       "Moteong",
       "Motsu",
       "Olifantsfontein",
@@ -1163,6 +1211,7 @@
       "Bophelong",
       "Emfuleni Golf Estate",
       "Flora Gardens",
+      "Kaalplaats",
       "Lasiandra",
       "Mantevrede",
       "Northdene",
@@ -1173,6 +1222,8 @@
       "Vaaloewer",
       "Vanderbijlpark CE",
       "Vanderbijlpark CW",
+      "Vanderbijlpark Central",
+      "Vanderbijlpark NW",
       "Vanderbijlpark SE",
       "Vanderbijlpark SW",
       "Vanwaartshof"
@@ -1187,6 +1238,7 @@
       "Peacehaven",
       "Riverspray Lifestyle Estate",
       "Roshnee",
+      "Sharpeville",
       "Sonland Park",
       "Steel Park",
       "Three Rivers",
@@ -1205,6 +1257,7 @@
     "Westonaria": [
       "Glen Harvie",
       "Hillshaven",
+      "West Rand AH",
       "Westonaria",
       "Westonaria Rural"
     ],
@@ -1238,6 +1291,7 @@
       "Fairview Estates",
       "Lalela Estate",
       "Manor Estates",
+      "New Salt Rock City",
       "North Point",
       "Palm Lakes Estate",
       "Palm View Estate",
@@ -1290,6 +1344,8 @@
       "Risecliff",
       "Shallcross",
       "Silverglen",
+      "Umhlatuzana",
+      "Welbedacht",
       "Westcliff",
       "Woodhurst"
     ],
@@ -1300,6 +1356,7 @@
       "Cornubia"
     ],
     "Dannhauser": [
+      "Dannhauser",
       "Hattingspruit"
     ],
     "Darnall": [
@@ -1396,12 +1453,14 @@
       "Glenashley",
       "Park Hill",
       "Prospect Hall",
-      "Umgeni Park"
+      "Umgeni Park",
+      "Virginia"
     ],
     "Elysium": [
       "Bazley Beach",
       "Elysium",
-      "Ifafa Beach"
+      "Ifafa Beach",
+      "Ifafa marine"
     ],
     "Empangeni": [
       "Empangeni Central",
@@ -1428,11 +1487,15 @@
       "Estcourt",
       "Weenen"
     ],
+    "Gingindlovu": [
+      "Gingindlovu"
+    ],
     "Glencoe": [
       "Glencoe"
     ],
     "Greytown": [
-      "Greytown"
+      "Greytown",
+      "Greytown Rural"
     ],
     "Hammarsdale": [
       "Cliffdale",
@@ -1455,6 +1518,7 @@
       "Clifton Hill Estate",
       "Cotswold Downs Golf & Country Estate",
       "Cotswold Fenns",
+      "Crestview",
       "Hillcrest Central",
       "Hillcrest Park",
       "Hilldene",
@@ -1484,11 +1548,14 @@
       "Howick Central",
       "Howick North",
       "Karkloof",
+      "Merrivale",
+      "Merrivale Heights",
       "Mpophomeni",
       "River Goose Estate",
       "St Johns Village"
     ],
     "Isipingo": [
+      "Isipingo Beach",
       "Isipingo Hills",
       "Isipingo Rail",
       "Lotus Park",
@@ -1614,6 +1681,7 @@
       "Nkandla Rural"
     ],
     "Nottingham Road": [
+      "Gowrie Village",
       "Nottingham Road",
       "Rosetta",
       "The Bend Country Estate"
@@ -1630,6 +1698,7 @@
       "Palmview",
       "Phoenix Industrial",
       "Rainham",
+      "Rockford",
       "Rydalvale",
       "Southgate",
       "Stanmore",
@@ -1645,6 +1714,7 @@
       "Ashburton",
       "Athlone",
       "Belfort Estate",
+      "Bellevue",
       "Bishopstowe",
       "Bisley",
       "Blackridge",
@@ -1652,6 +1722,7 @@
       "Boughton",
       "Chase Valley",
       "Chase Valley Heights",
+      "Chasedene",
       "Clarendon",
       "Cleland",
       "Copesville",
@@ -1663,7 +1734,9 @@
       "Hayfields",
       "Imbali",
       "Kingston Park",
+      "Lester Park",
       "Lincoln Meade",
+      "Manor",
       "Montrose",
       "Mountain Rise",
       "Northdale",
@@ -1679,6 +1752,7 @@
       "Scottsville Ext",
       "Town Hill",
       "Wembley",
+      "Wensleydale",
       "Woodlands"
     ],
     "Pinetown": [
@@ -1688,11 +1762,13 @@
       "Cowies Hill",
       "Cowies Hill Park",
       "Farningham Ridge",
+      "Glen Park",
       "Hatton Estate",
       "Klaarwater",
       "Manors",
       "Mariannhill",
       "Moseley Park",
+      "Motala Heights",
       "Nagina",
       "New Germany",
       "Padfield Park",
@@ -1809,10 +1885,12 @@
       "Umdloti Beach"
     ],
     "Umhlanga": [
+      "Hawaan",
       "Izinga",
       "La Lucia",
       "Prestondale",
       "Sibaya Precinct",
+      "Somerset Park",
       "Sunningdale",
       "Umhlanga Central",
       "Umhlanga Ridge",
@@ -1840,14 +1918,17 @@
       "Utrecht"
     ],
     "Verulam": [
+      "Barrs Flats",
       "Brindhaven",
       "Dawncrest",
       "Everest Heights",
       "Lotusville",
+      "Mount Moreland",
       "Parkgate",
       "Riverview Park",
       "Riyadh",
       "Trenance Park",
+      "Valdin Heights",
       "Verulam Central"
     ],
     "Vryheid": [
@@ -1870,6 +1951,9 @@
     "Albertinia": [
       "Albertinia"
     ],
+    "Arniston": [
+      "Arniston"
+    ],
     "Ashton": [
       "Ashton"
     ],
@@ -1885,6 +1969,9 @@
     ],
     "Aurora": [
       "Aurora"
+    ],
+    "Baardskeerdersbos": [
+      "Baardskeerdersbos"
     ],
     "Beaufort West": [
       "Merweville",
@@ -2037,6 +2124,7 @@
       "Fisantekraal",
       "Foreshore",
       "Fresnaye",
+      "Frogmore Estate",
       "Gardens",
       "Gatesville",
       "Grassy Park",
@@ -2124,7 +2212,9 @@
       "Zonnebloem"
     ],
     "Ceres": [
-      "Ceres"
+      "Bella Vista",
+      "Ceres",
+      "Ceres Rural"
     ],
     "Citrusdal": [
       "Citrusdal"
@@ -2180,12 +2270,14 @@
     ],
     "Eersterivier": [
       "Devon Park",
+      "Devon Park Village",
       "Eersterivier South",
       "Electric City",
       "Forest Village",
       "Heather Park",
       "Hillview",
       "Kleinvlei",
+      "Palm Park",
       "Penhill",
       "Pine Place",
       "Rosedale",
@@ -2219,25 +2311,30 @@
       "Blue Mountain Village",
       "Bodorp",
       "Borchards",
+      "Delvillepark",
       "Denneoord",
       "Denver Park",
       "Dormehls Drift",
       "Earls Court Lifestyle Estate",
+      "Eden",
       "Eden Residential Estate",
       "Fancourt",
       "George Central",
       "George East",
       "George Industrial",
       "George South",
+      "Glenwood",
       "Groenkloof Retirement Village",
       "Hansmoeskraal AH",
       "Heather Park",
       "Heatherlands",
+      "Herolds Bay",
       "King George Park",
       "Kingswood Golf Estate",
       "Kraaibosch",
       "Le Grand Estate",
       "Loerie Park",
+      "Mooikloof Country Estate",
       "Oubaai",
       "Pacaltsdorp",
       "Parkdene"
@@ -2325,6 +2422,7 @@
       "Hawston",
       "Hemel en Aarde Estate",
       "Hermanus Beach Club",
+      "Hermanus Central",
       "Hermanus Heights",
       "Hermanus Rural",
       "Northcliff",
@@ -2346,6 +2444,7 @@
       "Hout Bay Central",
       "Hout Bay Heights",
       "Hughenden",
+      "Imizamo Yethu",
       "Kronenzicht",
       "Northshore",
       "Overkloof",
@@ -2375,18 +2474,21 @@
       "Klawer"
     ],
     "Klein Brak Rivier": [
-      "Fraaiuitsig"
+      "Fraaiuitsig",
+      "Klein Brak Rivier"
     ],
     "Kleinmond": [
       "Arabella",
       "Heuningkloof",
-      "Kleinmond Central"
+      "Kleinmond Central",
+      "Palmiet"
     ],
     "Knysna": [
       "Belvedere",
       "Brenton On Sea",
       "Buffalo Bay",
       "Costa Sarda",
+      "Eastford Glen",
       "Hornlee",
       "Hunters Estate",
       "Hunters Home",
@@ -2437,6 +2539,7 @@
       "Brandwood",
       "Camelot",
       "De Kuilen",
+      "Eensgevonden",
       "Eikenbosch",
       "Elim",
       "Gersham",
@@ -2444,6 +2547,7 @@
       "Hagley",
       "Highbury",
       "Jagtershof",
+      "Jakarandas",
       "Kalkfontein",
       "Klein Zevenwacht",
       "Klipdam",
@@ -2486,6 +2590,7 @@
     "Macassar": [
       "Chris Hani Park",
       "Deaconville",
+      "New Macassar Village",
       "New Scheme"
     ],
     "Malmesbury": [
@@ -2496,6 +2601,7 @@
       "Dalsig",
       "De Molen",
       "Die Wingerd",
+      "Glen Lilly",
       "Malmesbury Rural",
       "Mount Royal Golf Estate",
       "Panorama",
@@ -2564,6 +2670,7 @@
     ],
     "Mossel Bay": [
       "Aalwyndal",
+      "Blombosch",
       "Boggomsbaai",
       "Da Nova",
       "Dana Bay",
@@ -2576,6 +2683,7 @@
       "Mossel Bay Ext 15",
       "Mossel Bay Ext 26",
       "Mossel Bay Golf Estate",
+      "Mossel Bay Rural",
       "Paradise Coast",
       "Pinnacle Point Golf Estate",
       "Seemeeu Park",
@@ -2587,18 +2695,22 @@
     ],
     "Noordhoek": [
       "Belvedere",
+      "Crofters Valley",
       "Lake Michelle Security and Eco Estate",
       "Milkwood Park",
+      "Noordhoek Manor",
       "San Michel",
       "Sunnydale"
     ],
     "Oudtshoorn": [
       "Bridgeton",
+      "De Rust",
       "Oudtshoorn Central",
       "Oudtshoorn North",
       "West Bank"
     ],
     "Paarl": [
+      "Bertville",
       "Boschenmeer Golf & Country Estate",
       "Charleston Hill",
       "Courtrai",
@@ -2620,6 +2732,7 @@
       "Paarl South",
       "Paarl Valleij Lifestyle Estate",
       "Pearl Valley Golf & Country Estate",
+      "Sante Winelands Estate",
       "Val de Vie Estate",
       "Vrykyk"
     ],
@@ -2652,6 +2765,7 @@
       "Piketberg Rural"
     ],
     "Plettenberg Bay": [
+      "Baron View",
       "Bowtie",
       "Cutty Sark",
       "Goose Valley",
@@ -2663,6 +2777,7 @@
       "Seaside Longships",
       "Signal Hill",
       "The Hill",
+      "Twin Rivers",
       "Upper Robberg",
       "Whale Rock",
       "Wittedrift AH"
@@ -2730,17 +2845,23 @@
     "Somerset West": [
       "Acorn Creek Lifestyle Estate",
       "Audas Estate",
+      "Bel'aire",
+      "Bizweni",
       "Briza",
       "Croydon Gardens Estate",
       "Croydon Olive Estate",
       "Croydon Vineyard Estate",
+      "De Velde",
       "Dennegeur",
+      "Erinvale Golf Estate",
       "Fernwood",
       "Golden Acre",
+      "Heartland Beach Road Precinct",
       "Helderberg Village",
       "Helderrand",
       "Helena Heights",
       "Heritage Park",
+      "Jacques Hill Estate",
       "Kelderhof Country Village",
       "La Concorde",
       "Land & Zeezicht",
@@ -2760,12 +2881,14 @@
       "Somerset West Rural",
       "Spanish Farm",
       "The Huntsman",
+      "Van Der Stel",
       "Victoria Park",
       "Westridge"
     ],
     "St Helena Bay": [
       "Blueberry Hill",
       "Britannia Bay",
+      "Britannica Heights",
       "Da Gama Bay",
       "Duyker Eiland",
       "Golden Mile",
@@ -2791,6 +2914,7 @@
       "Johannesdal",
       "Klapmuts",
       "Koelenbosch Country Estate",
+      "Krigeville",
       "Kylemore",
       "La Colline",
       "Mostertsdrift",
@@ -2820,6 +2944,7 @@
       "Rusthof",
       "Southfork",
       "Strand Central",
+      "Strand Industria",
       "Strand North",
       "Strand South",
       "Van Ryneveld"
@@ -2894,13 +3019,16 @@
     "Worcester": [
       "Altona",
       "Avian Park",
+      "Hexpark",
       "Hospital Hill",
       "Hospital Park",
+      "Langerug",
       "Meiringspark",
       "Paglande",
       "Parkers Dam",
       "Rawsonville",
       "Rouxpark",
+      "Van Riebeeck Park",
       "Worcester Central",
       "Worcester West"
     ],
