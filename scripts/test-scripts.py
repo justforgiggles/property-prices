@@ -26,6 +26,8 @@ with open(os.environ["COMMAND_LOG"], "a") as stream:
     stream.write(json.dumps([name, *sys.argv[1:]]) + "\\n")
 if os.environ.get("FAIL_VERIFY") and name == "python":
     sys.exit(1)
+if os.environ.get("FAIL_DESCRIBE") and sys.argv[1:3] == ["run", "services"]:
+    sys.exit(1)
 '''
             for path in (root / "tools/gcloud", root / "packages/model/.venv/bin/python"):
                 path.write_text(stub)
@@ -47,10 +49,18 @@ if os.environ.get("FAIL_VERIFY") and name == "python":
             self.assertIn("WORKERS=1,THREADS=1", deployments[0])
             self.assertIn("--remove-secrets", deployments[0])
             self.assertIn("RESEND_API_KEY", deployments[0])
-            self.assertEqual(len(calls), 2)
+            self.assertEqual(len(calls), 3)
             self.assertEqual(calls[0][1:3], ["-m", "property_model.inference.main"])
+            self.assertEqual(calls[1][1:4], ["run", "services", "describe"])
+            self.assertEqual(calls[1][4], "property-prices-valuation")
+            self.assertIn("hirebarend@gmail.com", calls[1])
+            self.assertIn("hirebarend", calls[1])
             log.write_text("")
             result = subprocess.run(["sh", str(root / "scripts/deploy.sh")], env={**env, "FAIL_VERIFY": "1"})
+            self.assertNotEqual(result.returncode, 0)
+            self.assertNotIn('"deploy", "property-prices-valuation"', log.read_text())
+            log.write_text("")
+            result = subprocess.run(["sh", str(root / "scripts/deploy.sh")], env={**env, "FAIL_DESCRIBE": "1"})
             self.assertNotEqual(result.returncode, 0)
             self.assertNotIn('"deploy", "property-prices-valuation"', log.read_text())
 

@@ -4,6 +4,12 @@ set -eu
 cd "$(dirname "$0")/.."
 packages/model/.venv/bin/python -m property_model.inference.main --model-dir packages/model/models
 
+gcloud run services describe property-prices-valuation \
+  --region europe-west3 \
+  --account hirebarend@gmail.com \
+  --project hirebarend \
+  --format='value(metadata.name)' >/dev/null
+
 gcloud run deploy property-prices-valuation \
   --source packages/model \
   --function valuation \
