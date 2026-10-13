@@ -172,7 +172,8 @@
       "Sonneveld",
       "Sunair Park",
       "Tsakane",
-      "Weltevreden AH"
+      "Weltevreden AH",
+      "Witpoortjie AH"
     ],
     "Bronkhorstspruit": [
       "Aquavista Mountain Estate",
@@ -227,12 +228,14 @@
       "Heuwelsig Estate",
       "Highveld",
       "Irene",
+      "Kloofsig",
       "Kosmosdal",
       "Laudium",
       "Louwlardia",
       "Lyttelton Manor",
       "Midstream Estate",
       "Monavoni",
+      "Monavoni AH",
       "Olievenhoutbosch",
       "Pierre Van Ryneveld",
       "Raslouw",
@@ -272,7 +275,8 @@
       "Isandovale",
       "Marais Steyn Park",
       "Modderfontein",
-      "Sebenza"
+      "Sebenza",
+      "Westlake Eco Estate"
     ],
     "Eikenhof": [
       "Eye Of Africa Estate"
@@ -583,6 +587,7 @@
       "Likole",
       "Moleleki",
       "Monise",
+      "Moseleke East",
       "Siluma View",
       "Spruit View",
       "Tsolo",
@@ -598,11 +603,14 @@
       "Bonaero Park",
       "Bredell",
       "Brentwood Park AH",
+      "Caro Nome AH",
       "Chloorkop",
       "Clayville",
       "Cresslawn",
       "Croydon",
       "Edleen",
+      "Elandsfontein SH",
+      "Esselen Park",
       "Esther Park",
       "Glen Erasmia",
       "Glen Marais",
@@ -665,6 +673,7 @@
       "Rietvallei AH",
       "Silverfields",
       "Sugar Bush Estate",
+      "Tarlton",
       "Tshepisong",
       "Wentworth Park",
       "West Rand Cons Mines",
@@ -696,7 +705,8 @@
       "Meyerton South",
       "Risiville",
       "Riversdale",
-      "Rothdene"
+      "Rothdene",
+      "Witkop"
     ],
     "Midrand": [
       "Allandale",
@@ -1027,6 +1037,7 @@
       "Amorosa",
       "Bergbron",
       "Breaunanda",
+      "Carenvale",
       "Constantia Kloof",
       "Cosmo City",
       "Davidsonville",
@@ -1071,6 +1082,7 @@
       "Ruimsig",
       "Ruimsig AH",
       "Strubensvallei",
+      "Tres Jolie",
       "Weltevreden Park",
       "Whiteridge",
       "Wilfordon",
@@ -1094,6 +1106,7 @@
       "Dainfern",
       "Douglasdale",
       "Edenburg",
+      "Fairway",
       "Fourways",
       "Fourways Gardens",
       "Gallo Manor",
@@ -1256,6 +1269,7 @@
     ],
     "Tembisa": [
       "Ehlanzeni",
+      "Emangweni",
       "Emfihlweni",
       "Entshonalanga",
       "Hospital View",
@@ -1292,6 +1306,7 @@
       "Kaalplaats",
       "Lasiandra",
       "Mantevrede",
+      "Marlbank",
       "Northdene",
       "Rietspruit AH",
       "Stefano Park",
@@ -1316,6 +1331,7 @@
       "Peacehaven",
       "Riverspray Lifestyle Estate",
       "Roshnee",
+      "Rust Ter Vaal",
       "Sharpeville",
       "Sonland Park",
       "Steel Park",
@@ -1330,6 +1346,7 @@
     "Walkerville": [
       "Blignautsrus AH",
       "Golf View",
+      "Homestead Apple Orchards",
       "Kanana Park",
       "Savanna City",
       "Walker Fruit Farms",
@@ -1348,7 +1365,8 @@
       "Haakdoornboom AH",
       "Mont Lorraine AH",
       "Rooiwal AH",
-      "Walmansthal AH"
+      "Walmansthal AH",
+      "Waterval AH"
     ]
   },
   "KwaZulu Natal": {
@@ -1407,6 +1425,9 @@
     ],
     "Bulwer": [
       "Bulwer"
+    ],
+    "Byrne": [
+      "Byrne"
     ],
     "Camperdown": [
       "Camperdown",
@@ -1625,6 +1646,7 @@
       "Hilton Central",
       "Hilton Gardens",
       "Hilton Rural",
+      "Leonard",
       "Mount Michael",
       "Mountain Homes",
       "The Avenues",
@@ -1842,6 +1864,7 @@
       "Manor",
       "Montrose",
       "Mountain Rise",
+      "Napierville",
       "Northdale",
       "Northern Park",
       "Oribi Village",
@@ -1873,6 +1896,7 @@
       "Klaarwater",
       "Kwandengezi",
       "Manors",
+      "Mariannheights",
       "Mariannhill",
       "Mariannhill Park",
       "Moseley Park",
@@ -2014,6 +2038,7 @@
       "Waterloo"
     ],
     "Umkomaas": [
+      "Clansthal",
       "Craigieburn",
       "Saiccor Village",
       "Umkomaas",
@@ -2364,6 +2389,7 @@
       "Delft South",
       "Eindhoven",
       "Leiden",
+      "Roosendal",
       "The Hague",
       "Voorbrug"
     ],
@@ -2442,6 +2468,7 @@
       "Romansbaai Estate"
     ],
     "George": [
+      "Ballots Bay",
       "Bergsig",
       "Blanco",
       "Blue Mountain Village",
@@ -2536,6 +2563,7 @@
       "Groot Brakrivier Central",
       "Grootbrakhoogte",
       "Hersham",
+      "Mossienes",
       "Nature On Sea",
       "Outeniqua Strand",
       "Reebok",
@@ -2660,7 +2688,8 @@
       "The Heads",
       "Thesen Islands",
       "Welbedacht",
-      "Westford Bridge"
+      "Westford Bridge",
+      "Westhill"
     ],
     "Kommetjie": [
       "Kommetjie"
@@ -2669,6 +2698,7 @@
       "Belmont Park",
       "Bernadino Heights",
       "Bonnie Brae",
+      "Bonny Brook",
       "Buh Rein Estate",
       "Eikendal",
       "Joostenberg",
@@ -2709,6 +2739,7 @@
       "Klipdam",
       "Kuils River South",
       "Loucharmante",
+      "Mabille Park",
       "Marinda Park",
       "Mooiberge",
       "Oakdene",
@@ -2741,6 +2772,8 @@
       "Middedorp",
       "Myburgh Park",
       "Mykonos",
+      "Olifantskop",
+      "Sunset Estate",
       "Waterfront"
     ],
     "Lutzville": [
@@ -2843,6 +2876,7 @@
       "Diaz Beach",
       "Heiderand",
       "Island View",
+      "Linkside",
       "Menkenkop",
       "Mossel Bay Central",
       "Mossel Bay Ext 15",
@@ -2876,6 +2910,7 @@
       "Oudtshoorn Central",
       "Oudtshoorn North",
       "Oudtshoorn Rural",
+      "Oudtshoorn South",
       "Toekomsrus",
       "West Bank"
     ],
@@ -2996,6 +3031,7 @@
     "Sedgefield": [
       "Cola Beach",
       "Groenvallei",
+      "Kingfisher Creek",
       "Meedingsride",
       "Montage",
       "Myoli Beach",
@@ -3019,6 +3055,7 @@
       "Acorn Creek Lifestyle Estate",
       "Audas Estate",
       "Bel'aire",
+      "Berbago",
       "Bizweni",
       "Briza",
       "Croydon Gardens Estate",
@@ -3078,6 +3115,7 @@
       "Sandy Point",
       "Shelley Point",
       "St Helena Views",
+      "Steenbergs Cove",
       "Stompneus Bay"
     ],
     "Stanford": [
@@ -3124,6 +3162,7 @@
       "Guldenland",
       "Gustrouw",
       "Lochnerhof",
+      "Lwandle",
       "Nomzamo",
       "Onverwacht",
       "Rome",
@@ -3159,6 +3198,7 @@
       "Saron"
     ],
     "Vanrhynsdorp": [
+      "Nuwerus",
       "Vanrhynsdorp"
     ],
     "Velddrif": [
