@@ -36,7 +36,10 @@ def train(data_directory, output_directory):
     listings["group"] = property_groups(listings)
     audit = {**source_audit, **cleaning_audit, "groups": int(listings.group.nunique())}
 
-    location_updates = prepare_location_updates(listings, labels, PACKAGE / "locations.json", ROOT / "forms/property-valuation.yaml")
+    location_updates = prepare_location_updates(listings, labels, PACKAGE / "locations.json", {
+        ROOT / "forms/property-valuation.yaml": False,
+        ROOT / "forms/property-valuation-janique-kinnear.yaml": True,
+    })
     print(f"Cleaned {len(listings):,} listings in {audit['groups']:,} property groups.", flush=True)
 
     production_features = build_training_features(listings)

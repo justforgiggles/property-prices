@@ -1,8 +1,8 @@
 # yaml-language-server: $schema=https://frms.dev/schema.json
 version: 1
-# Unpublished: replace the privacy URL and enable the new form ID in the backend. See forms/README.md.
-title: "Janique Kinnear | Knight Frank | Free home asking-price estimate"
-description: "Your next move starts with Janique Kinnear at Knight Frank."
+# Unpublished: replace the privacy URL before launch. See forms/README.md.
+title: "Janique Kinnear | Knight Frank"
+description: "Get your free home asking-price estimate."
 
 theme:
   mode: light
@@ -11,7 +11,7 @@ theme:
 
 start:
   title: "Your home’s asking-price estimate with Janique Kinnear"
-  description: "Planning your next move? Get a free estimate with Janique at Knight Frank, based on South African property listings. Tell us about your home and add your email to see your estimate here. Available in Gauteng, KwaZulu-Natal and the Western Cape."
+  description: "Planning your next move? Get a free estimate with Janique at Knight Frank, based on South African property listings."
   button: "Get my free estimate"
 
 measurements:
@@ -24,13 +24,13 @@ authentication:
 
 sections:
   - id: location
-    title: "Where is your property?"
-    description: "Choose the province, city or town, and suburb of the home you’d like to estimate."
-    button: "Continue to property details"
+    title: "Property location"
+    description: "Select the location of the property you’d like to estimate."
+    button: "Continue"
     fields:
       - id: province
         type: dropdown
-        label: "Province"
+        label: "Which province is your property in?"
         options:
           - label: "Gauteng"
             value: "Gauteng"
@@ -44,7 +44,7 @@ sections:
 
       - id: city
         type: dropdown
-        label: "City or town"
+        label: "Which city or town?"
         searchable: true
         depends_on: province
         options_by_parent:
@@ -301,8 +301,7 @@ sections:
 
       - id: suburb
         type: dropdown
-        label: "Suburb"
-        helper_text: "If a province appears beside a suburb, choose one in your selected province."
+        label: "Which suburb?"
         searchable: true
         depends_on: city
         options_by_parent:
@@ -3346,13 +3345,13 @@ sections:
     next: property
 
   - id: property
-    title: "Tell us a little about your home"
-    description: "Your home’s floor area and monthly municipal rates help refine the estimate. Enter the details as accurately as you can."
-    button: "Continue to contact details"
+    title: "Property details"
+    description: "Accurate property details help produce a more useful estimate."
+    button: "Continue"
     fields:
       - id: bedrooms
         type: number
-        label: "Bedrooms"
+        label: "How many bedrooms does it have?"
         validators:
           - type: required
             message: "Enter the number of bedrooms."
@@ -3368,7 +3367,7 @@ sections:
 
       - id: bathrooms
         type: number
-        label: "Bathrooms"
+        label: "How many bathrooms does it have?"
         validators:
           - type: required
             message: "Enter the number of bathrooms."
@@ -3384,8 +3383,8 @@ sections:
 
       - id: floor_area
         type: number
-        label: "Floor size (m²)"
-        helper_text: "The floor area of your home, excluding the erf or plot. Enter square metres as a whole number."
+        label: "What is the floor size (m²)?"
+        helper_text: "Exclude the erf or plot."
         validators:
           - type: required
             message: "Enter the floor size."
@@ -3401,8 +3400,8 @@ sections:
 
       - id: rates_and_taxes
         type: number
-        label: "Monthly municipal rates and taxes (R)"
-        helper_text: "Your monthly municipal rates and taxes, excluding levies. Enter whole rands."
+        label: "What are the monthly municipal rates and taxes (R)?"
+        helper_text: "Exclude levies."
         validators:
           - type: required
             message: "Enter the monthly rates and taxes."
@@ -3418,13 +3417,13 @@ sections:
     next: delivery
 
   - id: delivery
-    title: "Your estimate, your next step"
-    description: "Add your email to view your estimate here. If you’d like to discuss your next move, you can also ask Janique to get in touch."
+    title: "Contact details"
+    description: "Enter your email to view your estimate. You can also request contact from Janique."
     button: "Show my estimate"
     fields:
       - id: first_name
         type: short_text
-        label: "First name (optional)"
+        label: "What is your first name?"
         placeholder: "Thandi"
         validators:
           - type: max_length
@@ -3433,7 +3432,7 @@ sections:
 
       - id: email
         type: email
-        label: "Email address"
+        label: "What is your email address?"
         placeholder: "thandi@example.com"
         validators:
           - type: required
@@ -3444,24 +3443,22 @@ sections:
 
       - id: phone
         type: mobile_number
-        label: "Phone number (optional)"
+        label: "What is your phone number?"
         placeholder: "082 123 4567"
-        helper_text: "For a call from Janique if you request contact. Include the country code for numbers outside South Africa."
         validators:
           - type: pattern
             regex: '^\+?(?:[ ()-]*[0-9]){7,15}[ ()-]*$'
-            message: "Enter 7–15 digits. Spaces, brackets, hyphens and a leading + are allowed."
+            message: "Enter a valid phone number."
 
       - id: privacy_notice
         type: text_block
         content: >-
-          Your details are used to prepare your estimate. They’re shared with Janique only if you request contact.
+          Your details are used for your estimate and shared with Janique only if you request contact.
           [Privacy notice](https://example.invalid/REPLACE_PRIVACY_NOTICE).
 
       - id: agent_contact_consent
         type: checkbox
-        label: "I’d like Janique Kinnear to contact me about my property."
-        helper_text: "Optional. You can get your estimate without requesting contact."
+        label: "I’d like Janique to contact me about my property."
 
     next: done
 
@@ -3469,15 +3466,14 @@ completion:
   - when: "data.prediction && data.prediction.recommended_asking_price_zar"
     title: "{{data.prediction.formatted_asking_price}}"
     message: >-
-      <p>Your home’s estimated asking price, based on the details you shared and South African property listings.
-      A useful starting point for planning your next move.</p>
-      <br/>
-      <p>This estimate reflects advertised asking prices. It is not a formal valuation or a guarantee of the final sale price.</p>
+      Estimated asking price based on South African property listings.
+      This is not a formal valuation or a guarantee of the sale price.
+      <br/><br/>Ready for your next move? Chat to Janique.
     button:
       label: "WhatsApp Janique"
       url: "https://wa.me/27760813275?text=Hi%20Janique%2C%20I%E2%80%99d%20like%20to%20discuss%20my%20property."
   - title: "Your estimate isn’t available right now"
-    message: "We couldn’t display an asking-price estimate for this submission. Please try again later. This screen does not confirm that an agent has received your details."
+    message: "We couldn’t display your estimate. Please try again later."
 
 connections:
   - type: webhook

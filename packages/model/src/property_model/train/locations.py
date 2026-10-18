@@ -1,4 +1,4 @@
-"""Keep the valuation form's location choices aligned with model data."""
+"""Keep both valuation forms' location choices aligned with model data."""
 
 from __future__ import annotations
 
@@ -30,11 +30,11 @@ def _yaml(value: str) -> str:
     return json.dumps(value, ensure_ascii=False)
 
 
-def render_location_fields(locations: Locations) -> str:
+def render_location_fields(locations: Locations, agent_form: bool = False) -> str:
     lines = [
         "      - id: city",
         "        type: dropdown",
-        '        label: "City or town"',
+        f'        label: {_yaml("Which city or town?" if agent_form else "City or town")}',
         "        searchable: true",
         "        depends_on: province",
         "        options_by_parent:",
@@ -49,7 +49,7 @@ def render_location_fields(locations: Locations) -> str:
         "",
         "      - id: suburb",
         "        type: dropdown",
-        '        label: "Suburb"',
+        f'        label: {_yaml("Which suburb?" if agent_form else "Suburb")}',
         "        searchable: true",
         "        depends_on: city",
         "        options_by_parent:",
@@ -82,19 +82,35 @@ def render_location_fields(locations: Locations) -> str:
         "        validators:",
         "          - type: required",
         '            message: "Select a suburb."',
-        "",
     ])
+    # shortcut: dropdowns support one parent; validate ambiguous cities until multi-parent filtering exists.
+    for city, provinces in city_provinces.items():
+        if not agent_form or len(provinces) < 2:
+            continue
+        matches = " || ".join(
+            f"(data.province === {_yaml(province)} && "
+            f"{json.dumps(locations[province][city], ensure_ascii=False)}.includes(data.suburb))"
+            for province in provinces
+        )
+        lines.extend([
+            "          - type: expression",
+            f"            expression: {_yaml(f'data.city !== {_yaml(city)} || {matches}')}",
+            '            message: "Choose a suburb in your selected province."',
+        ])
+    lines.append("")
     return "\n".join(lines)
 
 
-def prepare_location_updates(data, labels, locations_path, form_path):
-    """Render both files without changing them; publish only with a verified model."""
+def prepare_location_updates(data, labels, locations_path, form_paths: dict[Path, bool]):
+    """Render the catalog and forms without writing; publish only with a verified model."""
     locations = build_locations(data, labels)
     if not locations:
         raise ValueError("Training data contains no supported form locations.")
     catalog = json.dumps(locations, ensure_ascii=False, indent=2) + "\n"
-    form = form_path.read_text(encoding="utf-8")
-    start = form.index(FIELDS_START)
-    end = form.index(FIELDS_END, start)
-    updated_form = form[:start] + render_location_fields(locations) + form[end:]
-    return {locations_path: catalog, form_path: updated_form}
+    updates = {locations_path: catalog}
+    for form_path, agent_form in form_paths.items():
+        form = form_path.read_text(encoding="utf-8")
+        start = form.index(FIELDS_START)
+        end = form.index(FIELDS_END, start)
+        updates[form_path] = form[:start] + render_location_fields(locations, agent_form) + form[end:]
+    return updates

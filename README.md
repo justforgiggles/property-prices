@@ -36,10 +36,15 @@ training population and artifact checksums. It reloads and checks the bundle
 before replacing the current artifacts.
 
 The same training population determines the location catalog and city/suburb
-fields in `forms/property-valuation.yaml`, restricted to Gauteng, KwaZulu Natal
-and Western Cape. Model and location publication restores previous outputs on
-caught failures. This supports one local writer and is not crash-atomic across
+fields in both `forms/property-valuation.yaml` and
+`forms/property-valuation-janique-kinnear.yaml`, restricted to Gauteng, KwaZulu Natal
+and Western Cape. The original keeps its existing presentation; Janique's form
+also validates province membership for duplicate city names. Model and location
+publication restores previous outputs on caught failures. This supports one
+local writer and is not crash-atomic across
 files. Updating the hosted form remains a separate external publication step.
+See the [form launch guide](forms/README.md) for Janique's branding, consent fields
+and the placeholders and service prerequisites to resolve before publication.
 
 Optional `--data-dir` and `--output-dir` paths resolve from the caller's working
 directory; defaults are anchored to the source checkout. A custom output path
@@ -79,9 +84,13 @@ The function accepts partial webhook events after the property section is saved:
 {"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","form_id":"ad3e54459","status":"partial","section_id":"property","data":{"province":"Gauteng","city":"Johannesburg","suburb":"Berea","bedrooms":"2","bathrooms":"1","floor_area":"85","rates_and_taxes":"700"}}
 ```
 
-It validates the location and model inputs, predicts locally, and saves the
-prediction under `data.prediction` on the same frms.dev submission through the
-partial submission API. The nested `formatted_asking_price` is shown on the
+It validates the incoming form ID (`a` plus eight lowercase hex characters),
+submission ID, location and model inputs, then predicts locally and saves the
+prediction under `data.prediction` on that exact frms.dev form/submission pair.
+The original, Janique's and future forms use the same handler without an allowlist
+or registration, provided they use the same property fields. IDs are validated,
+not authenticated; the update destination is always the fixed frms.dev host.
+The nested `formatted_asking_price` is shown on the
 completion screen. Other section events return 204 without predicting.
 Success returns 204; invalid property events return 400, other methods 405,
 model failures 500 and frms.dev update failures 502. The webhook response does
