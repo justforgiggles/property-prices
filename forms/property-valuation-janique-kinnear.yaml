@@ -8,6 +8,10 @@ theme:
   mode: light
   primary: "#D0103A"
   logo: "https://d21tw07c6rnmp0.cloudfront.net/media/uploads/612/themesettings/2024/5/612_18a002bedb9744feb200e13d84baa439.svg"
+  icon: "https://raw.githubusercontent.com/justforgiggles/property-prices/main/forms/assets/janique-kinnear-icon.png"
+
+open_graph:
+  image: "https://raw.githubusercontent.com/justforgiggles/property-prices/main/forms/assets/janique-kinnear-og.png"
 
 start:
   title: "Your home’s asking-price estimate with Janique Kinnear"
