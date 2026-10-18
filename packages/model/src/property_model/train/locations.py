@@ -35,10 +35,14 @@ def render_location_fields(locations: Locations, agent_form: bool = False) -> st
         "      - id: city",
         "        type: dropdown",
         f'        label: {_yaml("Which city or town?" if agent_form else "City or town")}',
+    ]
+    if agent_form:
+        lines.append('        placeholder: "Select a city or town"')
+    lines.extend([
         "        searchable: true",
         "        depends_on: province",
         "        options_by_parent:",
-    ]
+    ])
     for province, cities in locations.items():
         lines.append(f"          {_yaml(province)}:")
         lines.extend(f"            - {_yaml(city)}" for city in cities)
@@ -50,6 +54,10 @@ def render_location_fields(locations: Locations, agent_form: bool = False) -> st
         "      - id: suburb",
         "        type: dropdown",
         f'        label: {_yaml("Which suburb?" if agent_form else "Suburb")}',
+    ])
+    if agent_form:
+        lines.append('        placeholder: "Select a suburb"')
+    lines.extend([
         "        searchable: true",
         "        depends_on: city",
         "        options_by_parent:",

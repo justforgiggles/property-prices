@@ -31,6 +31,7 @@ sections:
       - id: province
         type: dropdown
         label: "Which province is your property in?"
+        placeholder: "Select a province"
         options:
           - label: "Gauteng"
             value: "Gauteng"
@@ -45,6 +46,7 @@ sections:
       - id: city
         type: dropdown
         label: "Which city or town?"
+        placeholder: "Select a city or town"
         searchable: true
         depends_on: province
         options_by_parent:
@@ -303,6 +305,7 @@ sections:
       - id: suburb
         type: dropdown
         label: "Which suburb?"
+        placeholder: "Select a suburb"
         searchable: true
         depends_on: city
         options_by_parent:
