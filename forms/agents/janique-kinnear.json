@@ -1,0 +1,27 @@
+{
+  "privacy_url": "https://example.invalid/REPLACE_PRIVACY_NOTICE",
+  "name": "Janique Kinnear",
+  "short_name": "Janique",
+  "agency": "Knight Frank",
+  "whatsapp": "27760813275",
+  "primary": "#D0103A",
+  "logo": {
+    "source": "janique-kinnear/logo.svg",
+    "height": 56
+  },
+  "icon": "janique-kinnear/icon.png",
+  "portrait": {
+    "source": "janique-kinnear/portrait.jpg",
+    "crop": {
+      "left": 650,
+      "top": 500,
+      "width": 2743,
+      "height": 3456
+    }
+  },
+  "sources": {
+    "portrait": "https://d21tw07c6rnmp0.cloudfront.net/media/uploads/612/undefined/2026/2/612_6d9e84d5d5fe430bbd2b4db8ed3cc3a3.jpg",
+    "logo": "https://d21tw07c6rnmp0.cloudfront.net/media/uploads/612/themesettings/2024/5/612_18a002bedb9744feb200e13d84baa439.svg",
+    "icon": "https://d21tw07c6rnmp0.cloudfront.net/media/uploads/612/themesettings/2024/5/612_aa03f678c82e45a59f17891f49a394cf.png"
+  }
+}

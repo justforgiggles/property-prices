@@ -1,39 +1,81 @@
-# Agent artwork
+# Agent forms and artwork
 
-## Janique Kinnear
+Agent profiles in `forms/agents/*.json` supply identity, branding, contact details,
+privacy URL, and local source-artwork paths. Their `sources` objects record the
+official URLs. The source directories are inputs; files in this directory and
+`forms/property-valuation-{slug}.yaml` are generated outputs.
 
-- `janique-kinnear-icon.png`: official Knight Frank icon, unchanged (480 × 480, transparent PNG).
-- `janique-kinnear-og.png`: sharing image (1200 × 630 PNG), used for Open Graph and Twitter previews.
-- `janique-kinnear-og.svg`: editable composition with the portrait and logo embedded; text uses Arial with a sans-serif fallback. Export at 1200 × 630 after editing.
+Use the repository skill at `.agents/skills/add-agent-form/SKILL.md` to onboard an
+agent from an official profile. It researches missing details, prepares the local
+profile and artwork, generates outputs, and reviews them.
 
-The form’s `theme.icon` and `open_graph.image` point to these PNGs on this repository’s `main` branch through GitHub’s raw-file host. Commit and push the assets and YAML together before publishing the updated form. The URLs will not resolve while the files exist only locally. After publishing, check the live favicon and sharing preview; social platforms may cache older images.
+## Generate and verify
 
-Official source artwork retrieved on 18 October 2026:
+Follow the root README’s Node/Python setup first. All dependencies belong to this
+repository; generation never needs another checkout, network access, or files in
+`/tmp`.
 
-- [Knight Frank icon](https://d21tw07c6rnmp0.cloudfront.net/media/uploads/612/themesettings/2024/5/612_aa03f678c82e45a59f17891f49a394cf.png)
-- [Knight Frank wordmark](https://d21tw07c6rnmp0.cloudfront.net/media/uploads/612/themesettings/2024/5/612_18a002bedb9744feb200e13d84baa439.svg)
-- [Janique Kinnear’s portrait](https://d21tw07c6rnmp0.cloudfront.net/media/uploads/612/undefined/2026/2/612_6d9e84d5d5fe430bbd2b4db8ed3cc3a3.jpg)
+```sh
+npm run generate:agents -- --agent janique-kinnear
+npm run generate:agents                 # regenerate every profile
+npm run check:agents                    # report stale outputs without writing
+npm run test:agents                     # generator and location regression tests
+npm run validate:agents                 # fetch and validate against frms.dev/schema.json
+npx playwright install chromium        # once, for browser previews
+npm run preview:agent -- janique-kinnear
+```
 
-The portrait is cropped and resized from the official photograph. It is not AI-generated.
+The preview loads the hosted frms.dev renderer with local YAML and artwork, blocks
+analytics and external requests, and mocks every submission. It checks mobile and
+desktop layouts, required email, both consent choices, and the completion link;
+screenshots are saved in a temporary directory printed by the command. Use
+`--output /path/to/screenshots` to choose a directory. An existing Chromium can be
+selected with `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. Inspect the screenshots as
+well as the full-size and reduced sharing artwork before publishing.
 
-## Vito Wiechmann
+Change the profile for agent-specific details. Change `forms/templates/agent-form.yaml`
+or `forms/templates/agent-og.svg` for shared copy or layout, then regenerate all
+agents. Each generation validates the selected profiles and prepares all outputs
+before replacing files. A missing or unsuitable portrait leaves existing outputs
+untouched. Generation, schema validation, and preview commands accept
+`--root /path/to/workspace` for isolated trials.
 
-- `vito-wiechmann-logo.png`: official RE/MAX Property Associates office logo with uneven white margins trimmed; artwork and colours preserved.
-- `vito-wiechmann-icon.png`: official RE/MAX icon rendered as a transparent 480 × 480 PNG.
-- `vito-wiechmann-og.png`: 1200 × 630 sharing image, with Vito’s individual portrait at its native 300 × 400 size.
-- `vito-wiechmann-og.svg`: editable composition with the portrait and logo embedded; export at 1200 × 630 after editing. Text uses Arial with a sans-serif fallback.
+The generator safely substitutes quoted text into the YAML template. Preserve its
+`${...}` tokens and `@@LOCATION_FIELDS@@` marker. Locations come from
+`packages/model/locations.json` through the existing Python location renderer.
+Training discovers profiles automatically and keeps their city/suburb choices
+aligned with the two legacy forms. It does not rebuild artwork.
 
-Vito’s form follows the same GitHub asset publishing process described above. Its primary colour is `#dc1b2e`, with light mode and WhatsApp contact `27736058190`. Its centred logo uses `theme.logo.height: 80`; deploy frms.dev support for this setting before publishing the updated YAML. Forms without this setting, including Janique’s, retain the existing 56-pixel logo area. Before launch, replace `https://example.invalid/REPLACE_PRIVACY_NOTICE` with the privacy notice covering this form’s collection and sharing of leads. The existing placeholder is intentional for this unpublished draft.
+## Shared visual pattern
 
-Official sources retrieved on 18 October 2026:
+- Light forms with centred official logos. Logo height is an agent setting:
+  Janique retains 56px; Vito uses 80px. Agency colours remain agent-specific.
+- A 1200×630 sharing image with a 700px text column and full-height 500×630 portrait.
+  The typography, headline, dark text, and logo bounding box are shared. There is
+  no frame or location caption. The brand colour supplies the accent.
+- Real portraits are cropped to fill. An optional source crop keeps a face within
+  the frame; coordinates apply after EXIF orientation. Prefer at least 500×630
+  usable pixels. Conventional enlargement is limited to 2×, so Vito’s 300×400
+  source is accepted. Judge both the full export and a 600×315 sharing preview.
+- Names fit within the shared title area: reduce the single-line font if needed,
+  then use two lines. Names that still cannot fit require a shorter display name.
+- Output: `*-logo.png`, transparent 480×480 `*-icon.png`, `*-og.svg` with embedded
+  artwork and editable text, and `*-og.png`. Text uses Arial with Helvetica and
+  sans-serif fallbacks; raster pixels can differ across systems with different
+  fonts or image-library versions. Generate and check in the same environment.
 
-- [Vito’s individual profile](https://www.remax.co.za/agents/vito-wiechmann/880203)
-- [Vito’s portrait](https://cdn.remax.co.za/images/agents/880203/member/agent_image_1733820957.jpg)
-- [Property Associates office logo](https://s3.eu-west-1.amazonaws.com/cdn.remax.co.za/images/offices/800562/a0f0c99ec0c10e92.png)
-- [RE/MAX icon](https://www.remax.co.za/icon.svg)
+Janique’s source portrait retains its selected crop; Vito’s trimmed office-logo
+source retains its official colours. Source assets and their provenance live
+with the profiles, rather than inside temporary generation scripts.
 
-The portrait is the official photograph, not an AI-generated likeness. The team page’s sharing image depicts another agent and is not used.
+## Publishing
 
-## Shared location choices
+The form’s logo, icon, and sharing image use raw GitHub URLs on this repository’s
+`main` branch. Publish each YAML with its generated assets. A new agent’s URLs
+will not resolve before those files are pushed. `theme.logo.image` and
+`theme.logo.height` require a frms.dev version supporting logo objects.
 
-All valuation forms use the same location catalog. When adding another form, register its filename in `FORM_VARIANTS` in `packages/model/src/property_model/train/locations.py` (`True` for the agent form wording). Training updates every registered form; the location tests detect missing registrations or stale generated fields. Each form keeps its own branding, contact details, and other copy.
+Both existing agents still use `https://example.invalid/REPLACE_PRIVACY_NOTICE`.
+Replace it in each profile with the applicable notice before launch and regenerate.
+After publication, check the actual favicon and sharing preview; social platforms
+may cache older images. Generating files does not publish them or send leads.

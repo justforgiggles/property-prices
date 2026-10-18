@@ -1,0 +1,24 @@
+{
+  "privacy_url": "https://example.invalid/REPLACE_PRIVACY_NOTICE",
+  "name": "Vito Wiechmann",
+  "short_name": "Vito",
+  "agency": "RE/MAX Property Associates",
+  "office": "Table View",
+  "whatsapp": "27736058190",
+  "primary": "#dc1b2e",
+  "logo": {
+    "source": "vito-wiechmann/logo.png",
+    "height": 80
+  },
+  "icon": "vito-wiechmann/icon.svg",
+  "portrait": {
+    "source": "vito-wiechmann/portrait.jpg"
+  },
+  "sources": {
+    "profile": "https://www.remax.co.za/agents/vito-wiechmann/880203",
+    "portrait": "https://cdn.remax.co.za/images/agents/880203/member/agent_image_1733820957.jpg",
+    "logo": "https://s3.eu-west-1.amazonaws.com/cdn.remax.co.za/images/offices/800562/a0f0c99ec0c10e92.png",
+    "icon": "https://www.remax.co.za/icon.svg"
+  },
+  "notes": "Logo source has uneven blank margins trimmed; artwork colours preserved."
+}

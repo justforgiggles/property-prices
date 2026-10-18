@@ -11,12 +11,15 @@ import pandas as pd
 Locations = dict[str, dict[str, list[str]]]
 FIELDS_START = "      - id: city\n"
 FIELDS_END = "    next: property\n"
-FORM_VARIANTS = {
-    "property-valuation.yaml": False,
-    "property-valuation copy.yaml": False,
-    "property-valuation-janique-kinnear.yaml": True,
-    "property-valuation-vito-wiechmann.yaml": True,
-}
+
+
+def form_variants(root: Path) -> dict[str, bool]:
+    return {
+        "property-valuation.yaml": False,
+        "property-valuation copy.yaml": False,
+        **{f"property-valuation-{profile.stem}.yaml": True
+           for profile in sorted((root / "forms/agents").glob("*.json"))},
+    }
 
 
 def build_locations(data: pd.DataFrame, labels: dict[str, str]) -> Locations:

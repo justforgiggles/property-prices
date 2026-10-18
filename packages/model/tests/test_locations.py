@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from property_model.train.locations import FORM_VARIANTS, FIELDS_END, FIELDS_START, prepare_location_updates, render_location_fields
+from property_model.train.locations import form_variants, FIELDS_END, FIELDS_START, prepare_location_updates, render_location_fields
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -44,8 +44,8 @@ for (const { data, expected } of cases) {
 
     def test_checked_in_fields_match_generator(self):
         locations = json.loads((ROOT / "packages/model/locations.json").read_text())
-        self.assertEqual(set(FORM_VARIANTS), {path.name for path in (ROOT / "forms").glob("property-valuation*.yaml")})
-        for filename, agent_form in FORM_VARIANTS.items():
+        self.assertEqual(set(form_variants(ROOT)), {path.name for path in (ROOT / "forms").glob("property-valuation*.yaml")})
+        for filename, agent_form in form_variants(ROOT).items():
             with self.subTest(form=filename):
                 form = (ROOT / "forms" / filename).read_text()
                 self.assertEqual(form[form.index(FIELDS_START):form.index(FIELDS_END)],

@@ -105,6 +105,12 @@ concurrency one, 2 CPUs and 2 GiB memory. Artifacts and the location catalog
 are included in the upload; training is not run during deployment. Restart or
 redeploy to load new artifacts.
 
+## Agent forms
+
+Use `$add-agent-form` to create an agent's form and sharing artwork from an
+official profile. Agent details live separately from the shared templates;
+see [the generation guide](forms/assets/README.md) for commands and publishing.
+
 ## Lightweight checks
 
 ```sh
@@ -114,8 +120,8 @@ npm run verify -w @property-prices/model
 packages/model/.venv/bin/python -m property_model.train.main --help
 ```
 
-`npm test` runs data-package and shell-wiring checks; `npm run build` checks the
-data package's TypeScript. Model verification loads the existing bundle and
+`npm test` runs data-package, shell-wiring, agent-generator, and form-location
+checks; `npm run build` checks the data package's TypeScript. Model verification loads the existing bundle and
 runs an example prediction. Only load trusted artifacts: reference data uses
 Joblib. Existing minimal manifests are supported with compatibility checks,
 while explicitly warning that provenance and checksums are unavailable.

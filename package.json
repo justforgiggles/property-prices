@@ -10,10 +10,22 @@
     "submissions": "sh scripts/submissions.sh",
     "scrape": "npm run scrape -w @property-prices/data --",
     "train": "sh scripts/train.sh",
-    "test": "npm test -w @property-prices/data && packages/model/.venv/bin/python scripts/test-scripts.py",
-    "build": "npm run build -w @property-prices/data"
+    "test": "npm test -w @property-prices/data && packages/model/.venv/bin/python scripts/test-scripts.py && npm run test:agents",
+    "build": "npm run build -w @property-prices/data",
+    "generate:agents": "packages/model/.venv/bin/python scripts/generate-agent-forms.py",
+    "check:agents": "npm run generate:agents -- --check",
+    "validate:agents": "node scripts/validate-agent-forms.mjs",
+    "test:agents": "packages/model/.venv/bin/python scripts/test-agent-forms.py && PYTHONPATH=packages/model/src packages/model/.venv/bin/python -m unittest discover -s packages/model/tests -p test_locations.py",
+    "preview:agent": "node scripts/preview-agent-form.mjs"
   },
   "overrides": {
     "uuid": "^11.1.1"
+  },
+  "devDependencies": {
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "js-yaml": "^5.5.0",
+    "playwright": "^1.64.1",
+    "sharp": "^0.35.5"
   }
 }
