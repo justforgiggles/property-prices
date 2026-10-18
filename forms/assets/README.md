@@ -18,12 +18,12 @@ The portrait is cropped and resized from the official photograph. It is not AI-g
 
 ## Vito Wiechmann
 
-- `vito-wiechmann-logo.png`: official RE/MAX Property Associates office logo, unchanged.
+- `vito-wiechmann-logo.png`: official RE/MAX Property Associates office logo with uneven white margins trimmed; artwork and colours preserved.
 - `vito-wiechmann-icon.png`: official RE/MAX icon rendered as a transparent 480 × 480 PNG.
 - `vito-wiechmann-og.png`: 1200 × 630 sharing image, with Vito’s individual portrait at its native 300 × 400 size.
 - `vito-wiechmann-og.svg`: editable composition with the portrait and logo embedded; export at 1200 × 630 after editing. Text uses Arial with a sans-serif fallback.
 
-Vito’s form follows the same GitHub asset publishing process described above. Its primary colour is RE/MAX red (`#FF1200`), with light mode and WhatsApp contact `27736058190`. Before launch, replace `https://example.invalid/REPLACE_PRIVACY_NOTICE` with the privacy notice covering this form’s collection and sharing of leads. The existing placeholder is intentional for this unpublished draft.
+Vito’s form follows the same GitHub asset publishing process described above. Its primary colour is `#dc1b2e`, with light mode and WhatsApp contact `27736058190`. Its centred logo uses `theme.logo.height: 80`; deploy frms.dev support for this setting before publishing the updated YAML. Forms without this setting, including Janique’s, retain the existing 56-pixel logo area. Before launch, replace `https://example.invalid/REPLACE_PRIVACY_NOTICE` with the privacy notice covering this form’s collection and sharing of leads. The existing placeholder is intentional for this unpublished draft.
 
 Official sources retrieved on 18 October 2026:
 

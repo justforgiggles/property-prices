@@ -6,8 +6,10 @@ description: "Get your free home asking-price estimate."
 
 theme:
   mode: light
-  primary: "#FF1200"
-  logo: "https://raw.githubusercontent.com/justforgiggles/property-prices/main/forms/assets/vito-wiechmann-logo.png"
+  primary: "#dc1b2e"
+  logo:
+    image: "https://raw.githubusercontent.com/justforgiggles/property-prices/main/forms/assets/vito-wiechmann-logo.png"
+    height: 80
   icon: "https://raw.githubusercontent.com/justforgiggles/property-prices/main/forms/assets/vito-wiechmann-icon.png"
 
 open_graph:
