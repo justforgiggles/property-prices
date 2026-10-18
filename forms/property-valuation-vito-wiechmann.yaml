@@ -1,15 +1,11 @@
 # yaml-language-server: $schema=https://frms.dev/schema.json
 version: 1
-# Unpublished: replace the privacy URL before launch. See forms/assets/README.md.
 title: "Vito Wiechmann | RE/MAX Property Associates"
 description: "Get your free home asking-price estimate."
 
 theme:
   mode: light
   primary: "#dc1b2e"
-  logo:
-    image: "https://raw.githubusercontent.com/justforgiggles/property-prices/main/forms/assets/vito-wiechmann-logo.png"
-    height: 80
   icon: "https://raw.githubusercontent.com/justforgiggles/property-prices/main/forms/assets/vito-wiechmann-icon.png"
 
 open_graph:
