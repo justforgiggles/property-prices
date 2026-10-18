@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from property_model.train.locations import FIELDS_END, FIELDS_START, prepare_location_updates, render_location_fields
+from property_model.train.locations import FORM_VARIANTS, FIELDS_END, FIELDS_START, prepare_location_updates, render_location_fields
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -44,14 +44,14 @@ for (const { data, expected } of cases) {
 
     def test_checked_in_fields_match_generator(self):
         locations = json.loads((ROOT / "packages/model/locations.json").read_text())
-        for filename, agent_form in (("property-valuation.yaml", False),
-                                            ("property-valuation-janique-kinnear.yaml", True)):
+        self.assertEqual(set(FORM_VARIANTS), {path.name for path in (ROOT / "forms").glob("property-valuation*.yaml")})
+        for filename, agent_form in FORM_VARIANTS.items():
             with self.subTest(form=filename):
                 form = (ROOT / "forms" / filename).read_text()
                 self.assertEqual(form[form.index(FIELDS_START):form.index(FIELDS_END)],
                                  render_location_fields(locations, agent_form))
 
-    def test_preparation_updates_both_forms_and_preserves_agent_copy_without_writing(self):
+    def test_preparation_updates_all_forms_and_preserves_agent_copy_without_writing(self):
         data = pd.DataFrame([
             {"province": "gauteng", "city": "shared", "suburb": "north"},
             {"province": "western cape", "city": "shared", "suburb": "south"},
@@ -60,15 +60,16 @@ for (const { data, expected } of cases) {
             catalog = Path(directory) / "locations.json"
             original = Path(directory) / "original.yaml"
             agent = Path(directory) / "janique.yaml"
-            for path, title in ((original, "Original"), (agent, "Janique Kinnear")):
+            vito = Path(directory) / "vito.yaml"
+            for path, title in ((original, "Original"), (agent, "Janique Kinnear"), (vito, "Vito Wiechmann")):
                 path.write_text(f'title: "{title}"\n{FIELDS_START}        stale: true\n{FIELDS_END}# keep consent and completion\n')
-            before = {path: path.read_text() for path in (original, agent)}
-            updates = prepare_location_updates(data, {}, catalog, {original: False, agent: True})
-            self.assertEqual(set(updates), {catalog, original, agent})
+            before = {path: path.read_text() for path in (original, agent, vito)}
+            updates = prepare_location_updates(data, {}, catalog, {original: False, agent: True, vito: True})
+            self.assertEqual(set(updates), {catalog, original, agent, vito})
             self.assertEqual(json.loads(updates[catalog]), {
                 "gauteng": {"shared": ["north"]}, "western cape": {"shared": ["south"]},
             })
-            for path in (original, agent):
+            for path in (original, agent, vito):
                 self.assertEqual(path.read_text(), before[path])
                 self.assertTrue(updates[path].startswith(before[path].split(FIELDS_START)[0]))
                 self.assertTrue(updates[path].endswith(FIELDS_END + "# keep consent and completion\n"))
@@ -78,6 +79,7 @@ for (const { data, expected } of cases) {
             self.assertNotIn("helper_text:", updates[agent])
             self.assertNotIn("type: expression", updates[original])
             self.assertIn("type: expression", updates[agent])
+            self.assertIn("type: expression", updates[vito])
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Keep both valuation forms' location choices aligned with model data."""
+"""Keep all valuation forms' location choices aligned with model data."""
 
 from __future__ import annotations
 
@@ -11,6 +11,12 @@ import pandas as pd
 Locations = dict[str, dict[str, list[str]]]
 FIELDS_START = "      - id: city\n"
 FIELDS_END = "    next: property\n"
+FORM_VARIANTS = {
+    "property-valuation.yaml": False,
+    "property-valuation copy.yaml": False,
+    "property-valuation-janique-kinnear.yaml": True,
+    "property-valuation-vito-wiechmann.yaml": True,
+}
 
 
 def build_locations(data: pd.DataFrame, labels: dict[str, str]) -> Locations:

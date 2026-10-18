@@ -16,7 +16,7 @@ from ..config import (CATBOOST_PARAMS, CATEGORICAL, FEATURE_COLUMNS, INNER_FOLDS
                       INNER_SEED, LIGHTGBM_PARAMS, PACKAGE, ROOT, SEEDS)
 from ..features import aggregate_features, build_reference, categorical_frame, structural_features
 from .data import clean_listings, property_groups, read_listings
-from .locations import prepare_location_updates
+from .locations import FORM_VARIANTS, prepare_location_updates
 
 
 def main(argv=None):
@@ -37,8 +37,7 @@ def train(data_directory, output_directory):
     audit = {**source_audit, **cleaning_audit, "groups": int(listings.group.nunique())}
 
     location_updates = prepare_location_updates(listings, labels, PACKAGE / "locations.json", {
-        ROOT / "forms/property-valuation.yaml": False,
-        ROOT / "forms/property-valuation-janique-kinnear.yaml": True,
+        ROOT / "forms" / filename: agent_form for filename, agent_form in FORM_VARIANTS.items()
     })
     print(f"Cleaned {len(listings):,} listings in {audit['groups']:,} property groups.", flush=True)
 
