@@ -1,0 +1,24 @@
+{
+  "privacy_url": "https://example.invalid/REPLACE_PRIVACY_NOTICE",
+  "name": "Wihan van Wyk",
+  "short_name": "Wihan",
+  "agency": "Simply Real Estate",
+  "office": "Blouberg",
+  "whatsapp": "27845586006",
+  "primary": "#1F3D2B",
+  "logo": {
+    "source": "wihan-van-wyk/logo.png",
+    "height": 56
+  },
+  "icon": "wihan-van-wyk/logo.png",
+  "portrait": {
+    "source": "wihan-van-wyk/portrait.jpg"
+  },
+  "sources": {
+    "profile": "https://www.property24.com/estate-agents/simply-real-estate/wihan-van-wyk/572970",
+    "portrait": "https://images.prop24.com/387032457",
+    "logo": "https://images.prop24.com/384223611",
+    "icon": "https://images.prop24.com/384223611"
+  },
+  "notes": "User confirmed Simply Real Estate, Blouberg, WhatsApp 27845586006, and primary colour #1F3D2B. The current agency profile identifies Wihan as Founder and Principal. Transparent margins trimmed from the complete official logo; the same mark supplies the icon."
+}
