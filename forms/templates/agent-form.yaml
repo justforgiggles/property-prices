@@ -7,9 +7,11 @@ description: "Get your free home asking-price estimate."
 theme:
   mode: light
   primary: "${primary}"
+@@FORM_LOGO@@
   logo:
     image: "${logo_url}"
     height: ${logo_height}
+@@END_FORM_LOGO@@
   icon: "${icon_url}"
 
 open_graph:

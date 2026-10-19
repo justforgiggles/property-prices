@@ -58,6 +58,32 @@ class AgentFormTests(unittest.TestCase):
         self.assertEqual(forms[0]["sections"][:-1], forms[1]["sections"][:-1])
         self.assertEqual(forms[0]["sections"][-1]["fields"][:3], forms[1]["sections"][-1]["fields"][:3])
 
+    def test_form_logo_visibility_preserves_other_outputs(self):
+        path = self.root / "forms/agents/vito-wiechmann.json"
+        profile = json.loads(path.read_text())
+        generator.generate(self.root, "vito-wiechmann")
+        output = self.root / "forms/property-valuation-vito-wiechmann.yaml"
+        original = parse_yaml(output.read_text())
+        self.assertEqual(original["theme"]["logo"]["height"], profile["logo"]["height"])
+        profile["logo"]["show_in_form"] = True
+        path.write_text(json.dumps(profile))
+        self.assertEqual(generator.generate(self.root, "vito-wiechmann"), [])
+        profile["logo"]["show_in_form"] = False
+        path.write_text(json.dumps(profile))
+        self.assertEqual(generator.generate(self.root, "vito-wiechmann"), [str(output.relative_to(self.root))])
+        del original["theme"]["logo"]
+        self.assertEqual(parse_yaml(output.read_text()), original)
+
+    def test_form_logo_visibility_requires_a_boolean(self):
+        path = self.root / "forms/agents/vito-wiechmann.json"
+        profile = json.loads(path.read_text())
+        for value in (None, 0, 1, "false", [], {}):
+            with self.subTest(value=value):
+                profile["logo"]["show_in_form"] = value
+                path.write_text(json.dumps(profile))
+                with self.assertRaisesRegex(ValueError, "show_in_form must be a boolean"):
+                    generator.load_profile(path)
+
     def test_names_are_safely_quoted_and_long_names_fit_the_shared_layout(self):
         path = self.root / "forms/agents/janique-kinnear.json"
         profile = json.loads(path.read_text())

@@ -43,7 +43,11 @@ try {
     });
     const page = await context.newPage();
     async function capture(step) {
-      await page.waitForFunction(() => [...document.images].some(img => img.alt === '' && img.complete && img.naturalWidth > 0));
+      if (form.theme.logo) {
+        await page.waitForFunction(url => [...document.images].some(img => img.src === url && img.complete && img.naturalWidth > 0), form.theme.logo.image);
+      } else {
+        assert.equal(await page.locator('img[src$="-logo.png"]').count(), 0);
+      }
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
       await page.screenshot({ path: path.join(output, `${slug}-${step}-${width}.png`), fullPage: true });
     }

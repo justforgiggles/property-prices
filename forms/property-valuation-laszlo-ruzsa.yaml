@@ -7,9 +7,6 @@ description: "Get your free home asking-price estimate."
 theme:
   mode: light
   primary: "#000000"
-  logo:
-    image: "https://raw.githubusercontent.com/justforgiggles/property-prices/main/forms/assets/laszlo-ruzsa-logo.png"
-    height: 80
   icon: "https://raw.githubusercontent.com/justforgiggles/property-prices/main/forms/assets/laszlo-ruzsa-icon.png"
 
 open_graph:

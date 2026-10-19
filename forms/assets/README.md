@@ -41,7 +41,8 @@ untouched. Generation, schema validation, and preview commands accept
 `--root /path/to/workspace` for isolated trials.
 
 The generator safely substitutes quoted text into the YAML template. Preserve its
-`${...}` tokens and `@@LOCATION_FIELDS@@` marker. Locations come from
+`${...}` tokens, `@@FORM_LOGO@@` / `@@END_FORM_LOGO@@` markers, and
+`@@LOCATION_FIELDS@@` marker. Locations come from
 `packages/model/locations.json` through the existing Python location renderer.
 Training discovers profiles automatically and keeps their city/suburb choices
 aligned with the two legacy forms. It does not rebuild artwork.
@@ -50,6 +51,8 @@ aligned with the two legacy forms. It does not rebuild artwork.
 
 - Light forms with centred official logos. Logo height is an agent setting:
   Janique retains 56px; Vito uses 80px. Agency colours remain agent-specific.
+  Set `logo.show_in_form` to `false` to omit the form logo, as Laszlo does;
+  it defaults to `true`. Sharing artwork and the browser-tab icon are unaffected.
 - A 1200×630 sharing image with a 700px text column and full-height 500×630 portrait.
   The typography, headline, dark text, and logo bounding box are shared. There is
   no frame or location caption. The brand colour supplies the accent.

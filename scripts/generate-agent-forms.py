@@ -42,8 +42,10 @@ def load_profile(path):
     if not isinstance(profile["sources"], dict) or not {"logo", "icon", "portrait"} <= profile["sources"].keys() or not all(https_url(v) for v in profile["sources"].values()):
         raise ValueError("Record official HTTPS source URLs for the logo, icon and portrait")
     logo, portrait = profile["logo"], profile["portrait"]
-    if not isinstance(logo, dict) or set(logo) != {"source", "height"} or type(logo["height"]) is not int or not 32 <= logo["height"] <= 120:
+    if not isinstance(logo, dict) or not {"source", "height"} <= logo.keys() or logo.keys() - {"source", "height", "show_in_form"} or type(logo["height"]) is not int or not 32 <= logo["height"] <= 120:
         raise ValueError("Logo requires source and an integer height from 32 to 120")
+    if type(logo.get("show_in_form", True)) is not bool:
+        raise ValueError("Logo show_in_form must be a boolean")
     if not isinstance(portrait, dict) or "source" not in portrait or set(portrait) - {"source", "crop"}:
         raise ValueError("Portrait requires source and an optional crop")
     if "crop" in portrait:
@@ -62,6 +64,7 @@ def load_profile(path):
 def render_form(root, slug, profile):
     locations = json.loads((root / "packages/model/locations.json").read_text())
     template = (root / "forms/templates/agent-form.yaml").read_text()
+    template = re.sub(r"@@FORM_LOGO@@\n(.*?)@@END_FORM_LOGO@@\n", lambda match: match[1] if profile["logo"].get("show_in_form", True) else "", template, flags=re.DOTALL)
     values = {key: profile[key] for key in ("name", "short_name", "agency", "primary", "privacy_url")}
     values.update(
         agency_office=profile["agency"] + (f' ({profile["office"]})' if profile.get("office") else ""),
