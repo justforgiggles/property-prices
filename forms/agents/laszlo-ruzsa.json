@@ -1,0 +1,23 @@
+{
+  "privacy_url": "https://newworldprop.co.za/privacy-and-cookies",
+  "name": "Laszlo Ruzsa",
+  "short_name": "Laszlo",
+  "agency": "New World Property Group",
+  "whatsapp": "27720256112",
+  "primary": "#000000",
+  "logo": {
+    "source": "laszlo-ruzsa/logo.png",
+    "height": 80
+  },
+  "icon": "laszlo-ruzsa/icon.png",
+  "portrait": {
+    "source": "laszlo-ruzsa/portrait.jpg"
+  },
+  "sources": {
+    "profile": "https://newworldprop.co.za/agents",
+    "portrait": "https://firebasestorage.googleapis.com/v0/b/sites-storage-za/o/profiles%2Ffebab1e4-4d67-478e-bbb3-2ff3257727fd%2Fmedium?alt=media",
+    "logo": "https://newworldprop.co.za/logo.png",
+    "icon": "https://newworldprop.co.za/icon-128x128.png"
+  },
+  "notes": "WhatsApp number and black accent confirmed by the user. The complete official white logo is placed on a black background for readability on the light form. Portrait is the 600×600 version of the photograph linked to Laszlo on the official team page."
+}
