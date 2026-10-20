@@ -1,5 +1,7 @@
 import * as cheerio from "cheerio";
 
+import { sortCitiesByRecentListings } from "./location-order.js";
+
 const HEADERS = {
   accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
   "accept-language": "en-US,en;q=0.9",
@@ -144,14 +146,16 @@ export class Autocomplete {
       throw new Error(`Property24 returned no city locations for: ${missingProvinces.join(", ")}`);
     }
 
-    return [...new Set(cities.map((city) => {
+    const orderedCities = await sortCitiesByRecentListings(cities);
+
+    return [...new Set(orderedCities.map((city) => {
       const citySlug = city.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       const provinceSlug = city.parentName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
       const url = new URL(`https://www.property24.com/for-sale/${citySlug}/${provinceSlug}/${city.id}`);
       url.searchParams.set("PropertyCategory", "House,ApartmentOrFlat,Townhouse");
       url.searchParams.set("sp", "so=Newest");
       return url.href;
-    }))].sort(() => Math.random() - Math.random());
+    }))];
   }
 }
 

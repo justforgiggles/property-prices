@@ -61,6 +61,9 @@ test("newest searches stop at the first old organic listing without using promot
         { id: 1, name: "Cape Town", parentName: "Western Cape", type: 2 },
         { id: 2, name: "Johannesburg", parentName: "Gauteng", type: 2 },
         { id: 3, name: "Durban", parentName: "KwaZulu Natal", type: 2 },
+        { id: 3, name: "Durban", parentName: "KwaZulu Natal", type: 2 },
+        { id: 4, name: "Bloemfontein", parentName: "Free State", type: 2 },
+        { id: 5, name: "Sandown", parentName: "Gauteng", type: 3 },
       ] });
     }
 
@@ -95,6 +98,12 @@ test("newest searches stop at the first old organic listing without using promot
     const progress: Array<string> = [];
     assert.equal(searches.length, 3);
     assert.ok(searches.every((url) => new URL(url).searchParams.get("sp") === "so=Newest"));
+    assert.ok(searches.every((url) => new URL(url).searchParams.get("PropertyCategory") === "House,ApartmentOrFlat,Townhouse"));
+    assert.deepEqual(searches.map((url) => new URL(url).pathname).sort(), [
+      "/for-sale/cape-town/western-cape/1",
+      "/for-sale/durban/kwazulu-natal/3",
+      "/for-sale/johannesburg/gauteng/2",
+    ]);
     assert.equal(await crawlSearch("https://www.property24.com/search", storage, "2026-09-01", 0, (message) => progress.push(message)), 3);
     assert.deepEqual(progress, [
       "page 1 started",
