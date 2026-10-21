@@ -16,6 +16,7 @@ def publish(final=False):
     if git("diff", "HEAD..origin/main", "--name-only", "--", "data/raw"):
         raise RuntimeError("Another writer changed raw data; stopping to avoid overwriting it")
     git("rebase", "origin/main")
+    remote_revision = git("rev-parse", "origin/main")
     source = Path(os.environ.get("SCRAPE_RAW_DIRECTORY", "data/raw"))
     for path in source.glob("*.jsonl"):
         content = path.read_bytes()
@@ -43,6 +44,8 @@ def publish(final=False):
     if git("diff", "--cached", "--name-only"):
         git("commit", "-m", "Scrape completed" if final else "Scrape checkpoint [skip ci]")
     git("fetch", "origin", "main")
+    if git("diff", f"{remote_revision}..origin/main", "--name-only", "--", "data/raw"):
+        raise RuntimeError("Raw data changed during checkpoint; stopping before push")
     git("rebase", "origin/main")
     git("push", "origin", "HEAD:main")
 

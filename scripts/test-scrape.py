@@ -74,6 +74,14 @@ class CheckpointTests(unittest.TestCase):
             subprocess.run([*command, "complete"], cwd=worker, env=env, check=True, stdout=subprocess.DEVNULL)
             self.assertNotIn("[skip ci]", git(worker, "log", "-1", "--format=%s"))
             self.assertEqual(json.loads((worker / "data/scrape-completed.json").read_text())["droplet_id"], 456)
+            source = root / "live-raw"
+            source.mkdir()
+            (source / "2026-10-21.jsonl").write_text('{"id":123,"jsonld":[]}\n{"id":456')
+            snapshot_env = {**env, "SCRAPE_RAW_DIRECTORY": str(source)}
+            subprocess.run([*command, "checkpoint"], cwd=worker, env=snapshot_env, check=True, stdout=subprocess.DEVNULL)
+            self.assertEqual((raw / "2026-10-21.jsonl").read_text(), '{"id":123,"jsonld":[]}\n')
+            result = subprocess.run([*command, "complete"], cwd=worker, env=snapshot_env, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
             (raw / "2026-10-21.jsonl").write_text('{"id":123')
             result = subprocess.run([*command, "checkpoint"], cwd=worker, capture_output=True)
             self.assertNotEqual(result.returncode, 0)
