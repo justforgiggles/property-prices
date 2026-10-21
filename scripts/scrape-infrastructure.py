@@ -1,4 +1,5 @@
 """Short-lived Actions controller; credentials never enter droplet user data."""
+import datetime
 import json
 import os
 from pathlib import Path
@@ -77,6 +78,7 @@ def start():
             "ssh_keys": {"ed25519_private": (root / "host").read_text(), "ed25519_public": (root / "host.pub").read_text()},
             "ssh_pwauth": False,
             "disable_root": False,
+            "runcmd": [["passwd", "-l", "root"], ["chage", "-d", datetime.date.today().isoformat(), "root"]],
         }
         result = api("POST", "droplets", {
             "name": f"property-scrape-{run_id}", "region": "lon1", "size": "s-1vcpu-2gb",
@@ -97,7 +99,7 @@ def start():
         if address is None:
             raise RuntimeError("Droplet did not become active")
         (root / "known_hosts").write_text(address + " " + (root / "host.pub").read_text())
-        ssh = ["ssh", "-i", str(root / "access"), "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes", "-o", f"UserKnownHostsFile={root / 'known_hosts'}", "-o", "ConnectTimeout=10", f"root@{address}"]
+        ssh = ["ssh", "-i", str(root / "access"), "-o", "IdentitiesOnly=yes", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=yes", "-o", f"UserKnownHostsFile={root / 'known_hosts'}", "-o", "ConnectTimeout=10", f"root@{address}"]
         for attempt in range(30):
             connection = subprocess.run([*ssh, "true"], capture_output=True, text=True)
             if connection.returncode == 0:
