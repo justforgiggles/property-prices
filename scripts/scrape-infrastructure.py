@@ -76,6 +76,7 @@ def start():
             "ssh_authorized_keys": [(root / "access.pub").read_text().strip()],
             "ssh_keys": {"ed25519_private": (root / "host").read_text(), "ed25519_public": (root / "host.pub").read_text()},
             "ssh_pwauth": False,
+            "disable_root": False,
         }
         result = api("POST", "droplets", {
             "name": f"property-scrape-{run_id}", "region": "lon1", "size": "s-1vcpu-2gb",
@@ -98,10 +99,11 @@ def start():
         (root / "known_hosts").write_text(address + " " + (root / "host.pub").read_text())
         ssh = ["ssh", "-i", str(root / "access"), "-o", "IdentitiesOnly=yes", "-o", "StrictHostKeyChecking=yes", "-o", f"UserKnownHostsFile={root / 'known_hosts'}", "-o", "ConnectTimeout=10", f"root@{address}"]
         for attempt in range(30):
-            if subprocess.run([*ssh, "true"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0:
+            connection = subprocess.run([*ssh, "true"], capture_output=True, text=True)
+            if connection.returncode == 0:
                 break
             if attempt == 29:
-                raise RuntimeError("SSH never became available")
+                raise RuntimeError("SSH never became available: " + connection.stderr.strip())
             time.sleep(5)
         subprocess.run([*ssh, "cloud-init status --wait"], check=True, timeout=300)
         # Obtain GitHub's published SSH host keys over authenticated HTTPS, not ssh-keyscan.
@@ -136,6 +138,9 @@ git checkout -B main {sha}
 git clone git@github.com:{REPOSITORY}.git /opt/scrape-publish
 git -C /opt/scrape-publish checkout -B main {sha}
 systemd-run --unit=property-scraper --property=Restart=no --property=RuntimeMaxSec=90000 /bin/bash /opt/property-prices/scripts/scrape-worker.sh
+sleep 5
+systemctl is-active property-scraper
+journalctl -u property-scraper --no-pager -n 10
 """
         subprocess.run([*ssh, "bash -s"], input=bootstrap, text=True, check=True, timeout=600)
         print("Detached scraper started; this GitHub job can now finish", flush=True)
