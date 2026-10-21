@@ -29,7 +29,7 @@ class ValuationWebhookTests(unittest.TestCase):
               patch("property_model.http.main.predict", return_value=[{"recommended_asking_price_zar": 1000000}]),
               patch("pathlib.Path.read_bytes", return_value=b"manifest"),
               patch("property_model.http.main.urlopen") as urlopen):
-            body, status, headers = valuation(Mock(method="GET", path="/healthz"))
+            body, status, headers = valuation(Mock(method="GET", path="/health"))
             self.assertEqual(status, 200)
             self.assertEqual(json.loads(body)["status"], "ok")
             self.assertEqual(headers["Cache-Control"], "no-store")
@@ -38,7 +38,7 @@ class ValuationWebhookTests(unittest.TestCase):
     def test_broken_model_is_unhealthy(self):
         with (patch("property_model.http.main.get_model", side_effect=ValueError("bad artifact")),
               patch("property_model.http.main.urlopen") as urlopen):
-            self.assertEqual(valuation(Mock(method="GET", path="/healthz"))[1], 503)
+            self.assertEqual(valuation(Mock(method="GET", path="/health"))[1], 503)
             urlopen.assert_not_called()
 
     def test_property_save_predicts_and_updates_same_submission(self):

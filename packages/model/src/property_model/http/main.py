@@ -18,7 +18,7 @@ LOCATIONS = json.loads((PACKAGE / "locations.json").read_text())
 
 def valuation(request):
     headers = {"Cache-Control": "no-store", "Content-Type": "application/json"}
-    if request.method == "GET" and request.path == "/healthz":
+    if request.method == "GET" and request.path == "/health":
         try:
             estimate = predict(EXAMPLE, get_model(PACKAGE / "models"))[0]
             price = estimate["recommended_asking_price_zar"]

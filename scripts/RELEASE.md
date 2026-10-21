@@ -15,14 +15,15 @@ cloud credentials or write repository contents.
 3. Confirm every base/agent form intended for hosting is already registered. The
    legacy `property-valuation copy.yaml` is validated and synchronized but not hosted.
 4. Authenticate with OIDC. Deploy the existing Cloud Run function with no traffic
-   and a `release-candidate` tag. `/healthz` loads the actual bundle and runs an
+   and a `release-candidate` tag. `/health` loads the actual bundle and runs an
    example prediction without writing a submission. Match revision and manifest hash.
+   Use `/health`, since Cloud Run reserves some paths ending in `z`.
 5. Check `main` again, route 100% of traffic to the candidate, and verify the service.
 6. Commit only generated catalog/YAML/artwork paths. A normal Git push rejects
    concurrent updates. `GITHUB_TOKEN` commits do not trigger another workflow;
    `[skip ci]` additionally prevents recursive push checks.
 7. Compare every registered hosted form with its local YAML and check exact artwork
-   bytes. Retry briefly for GitHub CDN propagation. Save release diagnostics and the
+   bytes. Allow up to six minutes of retry delays for GitHub CDN propagation. Save release diagnostics and the
    model bundle as GitHub artifacts for 30 days.
 
 Publishing is a push to GitHub `main`: frms.dev fetches its registered YAML directly.

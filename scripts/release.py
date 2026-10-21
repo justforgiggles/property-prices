@@ -82,7 +82,7 @@ def check_health(url, revision, manifest_hash):
     last_error = None
     for attempt in range(12):
         try:
-            with urlopen(url + '/healthz', timeout=60) as response:
+            with urlopen(url + '/health', timeout=60) as response:
                 body = json.load(response)
             if (body.get('status'), body.get('revision'), body.get('manifest_sha256')) != ('ok', revision, manifest_hash):
                 raise RuntimeError('Health response does not match the deployed revision and model.')

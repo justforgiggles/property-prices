@@ -110,7 +110,7 @@ redeploy to load new artifacts.
 GitHub Actions retrains committed data on relevant `main` changes or manual dispatch,
 verifies a candidate Cloud Run revision, then publishes regenerated base/agent forms
 and artwork to `main`. See [release operation and recovery](scripts/RELEASE.md).
-The read-only `GET /healthz` endpoint verifies model inference and returns the revision
+The read-only `GET /health` endpoint verifies model inference and returns the revision
 and manifest SHA-256; it never updates a submission.
 
 ## Agent forms

@@ -10,7 +10,7 @@ for (const stem of stems) {
   const id = 'a' + crypto.createHash('md5').update(`forms/justforgiggles/property-prices/forms/${stem}@main`).digest('hex').slice(0, 8);
   const expected = { ...load(await fs.readFile(`forms/${stem}.yaml`, 'utf8')), id };
   let failure;
-  for (let attempt = 0; attempt < (registeredOnly ? 1 : 12); attempt++) {
+  for (let attempt = 0; attempt < (registeredOnly ? 1 : 36); attempt++) {
     try {
       const response = await fetch(`https://frms.dev/api/v1/forms/${id}`, { signal: AbortSignal.timeout(30000), cache: 'no-store' });
       assert.equal(response.status, 200, `${stem} (${id}) must already be registered on frms.dev`);
