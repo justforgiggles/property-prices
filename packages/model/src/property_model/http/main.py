@@ -3,11 +3,14 @@ import json
 import logging
 import math
 import re
+import os
+import hashlib
 from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from property_model.inference.main import get_model, predict
+from property_model.config import EXAMPLE
 
 PACKAGE = Path(__file__).resolve().parents[3]
 LOCATIONS = json.loads((PACKAGE / "locations.json").read_text())
@@ -15,6 +18,20 @@ LOCATIONS = json.loads((PACKAGE / "locations.json").read_text())
 
 def valuation(request):
     headers = {"Cache-Control": "no-store", "Content-Type": "application/json"}
+    if request.method == "GET" and request.path == "/healthz":
+        try:
+            estimate = predict(EXAMPLE, get_model(PACKAGE / "models"))[0]
+            price = estimate["recommended_asking_price_zar"]
+            if not math.isfinite(price) or price <= 0:
+                raise ValueError("Health prediction is invalid")
+            manifest = (PACKAGE / "models/manifest.json").read_bytes()
+            return json.dumps({
+                "status": "ok", "revision": os.environ.get("K_REVISION"),
+                "manifest_sha256": hashlib.sha256(manifest).hexdigest(),
+            }), 200, headers
+        except Exception:
+            logging.exception("Model health check failed")
+            return json.dumps({"status": "unhealthy"}), 503, headers
     if request.method != "POST":
         return json.dumps({"error": "Method not allowed"}), 405, {**headers, "Allow": "POST"}
     body = request.get_json(silent=True)

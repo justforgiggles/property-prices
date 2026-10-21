@@ -105,6 +105,14 @@ concurrency one, 2 CPUs and 2 GiB memory. Artifacts and the location catalog
 are included in the upload; training is not run during deployment. Restart or
 redeploy to load new artifacts.
 
+## Automated releases
+
+GitHub Actions retrains committed data on relevant `main` changes or manual dispatch,
+verifies a candidate Cloud Run revision, then publishes regenerated base/agent forms
+and artwork to `main`. See [release operation and recovery](scripts/RELEASE.md).
+The read-only `GET /healthz` endpoint verifies model inference and returns the revision
+and manifest SHA-256; it never updates a submission.
+
 ## Agent forms
 
 Use `$add-agent-form` to create an agent's form and sharing artwork from an

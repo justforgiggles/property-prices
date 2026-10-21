@@ -12,3 +12,5 @@ packages/model/models/
 __pycache__/
 *.egg-info/
 :memory:.ses
+.release/
+gha-creds-*.json
