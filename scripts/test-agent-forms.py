@@ -20,6 +20,19 @@ def parse_yaml(text):
     return json.loads(result.stdout)
 
 
+def render_email(template, data):
+    result = subprocess.run(["node", "--input-type=module", "-e", r"""
+        let input = '';
+        for await (const chunk of process.stdin) input += chunk;
+        const {template, data} = JSON.parse(input);
+        const rendered = template.replace(/\{\{calculate ("(?:\\.|[^"\\])*")\}\}/g,
+            (_, expression) => String(new Function('data', 'return ' + JSON.parse(expression))(data)));
+        if (rendered.includes('{{')) throw new Error('Unrendered template expression');
+        console.log(JSON.stringify(rendered));
+    """], input=json.dumps({"template": template, "data": data}), text=True, capture_output=True, check=True)
+    return json.loads(result.stdout)
+
+
 class AgentFormTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -73,6 +86,69 @@ class AgentFormTests(unittest.TestCase):
         self.assertEqual(generator.generate(self.root, "vito-wiechmann"), [str(output.relative_to(self.root))])
         del original["theme"]["logo"]
         self.assertEqual(parse_yaml(output.read_text()), original)
+
+    def test_lead_email_is_wihan_only_and_keeps_form_content(self):
+        for path in (self.root / "forms/agents").glob("*.json"):
+            profile = generator.load_profile(path)
+            form = parse_yaml(generator.render_form(self.root, path.stem, profile))
+            emails = [connection for connection in form["connections"] if connection["type"] == "email"]
+            self.assertEqual(len(emails), int(path.stem == "wihan-van-wyk"))
+            if emails:
+                email = emails[0]
+                self.assertEqual(email["to"], "wihan@simplyre.co.za")
+                self.assertEqual(email["trigger_on"], "completed")
+                self.assertFalse(email["include_responses"])
+                self.assertNotIn("when", email)
+                self.assertNotIn("delay_minutes", email)
+                del profile["lead_notification_email"]
+                original = parse_yaml(generator.render_form(self.root, path.stem, profile))
+                form["connections"].remove(email)
+                self.assertEqual(form, original)
+
+    def test_lead_email_content_and_consent(self):
+        profile = generator.load_profile(self.root / "forms/agents/wihan-van-wyk.json")
+        email = parse_yaml(generator.render_form(self.root, "wihan-van-wyk", profile))["connections"][-1]
+        data = dict(first_name="Jane", email="jane@example.com", phone="0821234567", province="Western Cape",
+                    city="Cape Town", suburb="Durbanville", bedrooms=3, bathrooms=2, floor_area=180,
+                    rates_and_taxes=1250, prediction={"recommended_asking_price_zar": 2450000, "comparable_count": 12})
+        for consent in (True, False):
+            with self.subTest(consent=consent):
+                body = render_email(email["body"], {**data, "agent_contact_consent": consent})
+                self.assertIn("Contact requested</th><td>" + ("Yes" if consent else "No"), body)
+                for value in ("Jane", "jane@example.com", "0821234567", "Western Cape", "Cape Town", "Durbanville", "180", "1250"):
+                    self.assertIn(value, body)
+                self.assertIn("R2", body)
+                self.assertIn("450", body)
+                self.assertIn("<strong>Comparable properties:</strong> 12", body)
+                self.assertNotIn("Estimate unavailable", body)
+        self.assertEqual(render_email(email["subject"], data), "New valuation lead — Jane — Durbanville")
+
+    def test_lead_email_missing_values_zero_and_html_escaping(self):
+        profile = generator.load_profile(self.root / "forms/agents/wihan-van-wyk.json")
+        email = parse_yaml(generator.render_form(self.root, "wihan-van-wyk", profile))["connections"][-1]
+        data = {"first_name": '<script>"Jane" & \'Co\'</script>', "phone": " ", "rates_and_taxes": 0,
+                "prediction": {"comparable_count": 0}}
+        body = render_email(email["body"], data)
+        self.assertIn('&lt;script&gt;&quot;Jane&quot; &amp; &#39;Co&#39;&lt;/script&gt;', body)
+        self.assertNotIn("<script>", body)
+        self.assertIn("Phone</th><td>Not provided", body)
+        self.assertIn("Rates and taxes (R per month)</th><td>0", body)
+        self.assertIn("<strong>Comparable properties:</strong> 0", body)
+        self.assertIn("Estimate unavailable when this notification was sent.", body)
+        for prediction in (None, {}):
+            self.assertIn("Estimate unavailable when this notification was sent.", render_email(email["body"], {"prediction": prediction}))
+        self.assertIn("Contact requested</th><td>No", render_email(email["body"], {}))
+        self.assertEqual(render_email(email["subject"], {}), "New valuation lead — Name not provided — Not provided")
+        self.assertNotIn("\n", render_email(email["subject"], {"first_name": "Jane\nSmith", "suburb": "Test\rPlace"}))
+
+    def test_notification_email_validation(self):
+        path = self.root / "forms/agents/wihan-van-wyk.json"
+        profile = json.loads(path.read_text())
+        for value in (None, 123, "", "invalid", "a@example.com,b@example.com", "a@example.com\nBcc: b@example.com"):
+            with self.subTest(value=value):
+                path.write_text(json.dumps({**profile, "lead_notification_email": value}))
+                with self.assertRaisesRegex(ValueError, "single email address"):
+                    generator.load_profile(path)
 
     def test_form_logo_visibility_requires_a_boolean(self):
         path = self.root / "forms/agents/vito-wiechmann.json"

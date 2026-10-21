@@ -1,0 +1,31 @@
+  - type: email
+    to: "${lead_notification_email}"
+    trigger_on: completed
+    include_responses: false
+    subject: >-
+      New valuation lead — {{calculate "String(data.first_name || '').trim().replaceAll(String.fromCharCode(13), ' ').replaceAll(String.fromCharCode(10), ' ') || 'Name not provided'"}} — {{calculate "String(data.suburb || '').trim().replaceAll(String.fromCharCode(13), ' ').replaceAll(String.fromCharCode(10), ' ') || 'Not provided'"}}
+    body: |
+      <div style="font-family:Arial,sans-serif;color:#24352b;line-height:1.6;max-width:640px">
+        <h1 style="font-size:24px">New property valuation lead</h1>
+        <p>A completed property valuation submission has been received.</p>
+        <h2 style="font-size:18px">Contact details</h2>
+        <table cellpadding="6" cellspacing="0" style="text-align:left">
+          <tr><th scope="row">First name</th><td>{{calculate "String(data.first_name == null || String(data.first_name).trim() === '' ? 'Not provided' : data.first_name).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+          <tr><th scope="row">Email</th><td>{{calculate "String(data.email == null || String(data.email).trim() === '' ? 'Not provided' : data.email).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+          <tr><th scope="row">Phone</th><td>{{calculate "String(data.phone == null || String(data.phone).trim() === '' ? 'Not provided' : data.phone).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+          <tr><th scope="row">Contact requested</th><td>{{calculate "data.agent_contact_consent === true ? 'Yes' : 'No'"}}</td></tr>
+        </table>
+        <h2 style="font-size:18px">Property details</h2>
+        <table cellpadding="6" cellspacing="0" style="text-align:left">
+          <tr><th scope="row">Province</th><td>{{calculate "String(data.province == null || String(data.province).trim() === '' ? 'Not provided' : data.province).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+          <tr><th scope="row">City</th><td>{{calculate "String(data.city == null || String(data.city).trim() === '' ? 'Not provided' : data.city).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+          <tr><th scope="row">Suburb</th><td>{{calculate "String(data.suburb == null || String(data.suburb).trim() === '' ? 'Not provided' : data.suburb).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+          <tr><th scope="row">Bedrooms</th><td>{{calculate "String(data.bedrooms == null || String(data.bedrooms).trim() === '' ? 'Not provided' : data.bedrooms).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+          <tr><th scope="row">Bathrooms</th><td>{{calculate "String(data.bathrooms == null || String(data.bathrooms).trim() === '' ? 'Not provided' : data.bathrooms).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+          <tr><th scope="row">Floor area (m²)</th><td>{{calculate "String(data.floor_area == null || String(data.floor_area).trim() === '' ? 'Not provided' : data.floor_area).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+          <tr><th scope="row">Rates and taxes (R per month)</th><td>{{calculate "String(data.rates_and_taxes == null || String(data.rates_and_taxes).trim() === '' ? 'Not provided' : data.rates_and_taxes).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</td></tr>
+        </table>
+        <h2 style="font-size:18px">Estimate</h2>
+        <p><strong>Estimated asking price:</strong> {{calculate "String(typeof data.prediction?.recommended_asking_price_zar === 'number' && Number.isFinite(data.prediction.recommended_asking_price_zar) ? 'R' + data.prediction.recommended_asking_price_zar.toLocaleString('en-ZA', {maximumFractionDigits: 0}) : 'Estimate unavailable when this notification was sent.').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</p>
+        <p><strong>Comparable properties:</strong> {{calculate "String(data.prediction?.comparable_count ?? 'Not provided').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll(String.fromCharCode(34), '&quot;').replaceAll(String.fromCharCode(39), '&#39;')"}}</p>
+      </div>

@@ -25,8 +25,12 @@ def https_url(value):
 def load_profile(path):
     profile = json.loads(path.read_text())
     required = {"name", "short_name", "agency", "whatsapp", "primary", "logo", "icon", "portrait", "privacy_url", "sources"}
-    if not isinstance(profile, dict) or not required <= profile.keys() or profile.keys() - required - {"office", "notes"}:
+    if not isinstance(profile, dict) or not required <= profile.keys() or profile.keys() - required - {"office", "notes", "lead_notification_email"}:
         raise ValueError(f"{path.name}: missing or unknown profile fields")
+    if "lead_notification_email" in profile:
+        email = profile["lead_notification_email"]
+        if not isinstance(email, str) or not re.fullmatch(r"[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+", email):
+            raise ValueError("lead_notification_email must be a single email address")
     if not re.fullmatch(r"[a-z0-9]+(?:-[a-z0-9]+)*", path.stem):
         raise ValueError("Profile filename must be a lowercase hyphenated slug")
     for key in ("name", "short_name", "agency", "office"):
@@ -64,8 +68,12 @@ def load_profile(path):
 def render_form(root, slug, profile):
     locations = json.loads((root / "packages/model/locations.json").read_text())
     template = (root / "forms/templates/agent-form.yaml").read_text()
+    if "lead_notification_email" in profile:
+        template += (root / "forms/templates/agent-lead-email.yaml").read_text()
     template = re.sub(r"@@FORM_LOGO@@\n(.*?)@@END_FORM_LOGO@@\n", lambda match: match[1] if profile["logo"].get("show_in_form", True) else "", template, flags=re.DOTALL)
     values = {key: profile[key] for key in ("name", "short_name", "agency", "primary", "privacy_url")}
+    if "lead_notification_email" in profile:
+        values["lead_notification_email"] = profile["lead_notification_email"]
     values.update(
         agency_office=profile["agency"] + (f' ({profile["office"]})' if profile.get("office") else ""),
         logo_height=profile["logo"]["height"],
