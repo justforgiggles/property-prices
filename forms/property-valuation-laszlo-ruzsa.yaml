@@ -625,6 +625,7 @@ sections:
             - "Germiston Central"
             - "Germiston South"
             - "Gosforth Park"
+            - "Harmelia"
             - "Hazeldene"
             - "Highway Gardens"
             - "Homestead"
@@ -668,6 +669,8 @@ sections:
               value: "Heidelberg Central"
             - label: "Heidelberg Ext 5 (Gauteng)"
               value: "Heidelberg Ext 5"
+            - label: "Heidelberg Industrial (Gauteng)"
+              value: "Heidelberg Industrial"
             - label: "Heidelberg Kloof Estate (Gauteng)"
               value: "Heidelberg Kloof Estate"
             - label: "Heidelberg Proper (Gauteng)"
@@ -946,6 +949,7 @@ sections:
             - "Witfontein"
           "Krugersdorp":
             - "Agavia"
+            - "Apple Park"
             - "Avianto Estate"
             - "Azaadville"
             - "Azaadville Gardens"
@@ -1023,6 +1027,7 @@ sections:
           "Midrand":
             - "Allandale"
             - "Barbeque Downs"
+            - "Beaulieu"
             - "Blue Hills"
             - "Carlswald"
             - "Carlswald Estate"
@@ -1231,6 +1236,7 @@ sections:
             - "Sunnyside"
             - "The Hills Game Reserve Estate"
             - "The Wilds"
+            - "Tiegerpoort AH"
             - "Tijger Vallei"
             - "Tileba"
             - "Trevenna"
@@ -1343,6 +1349,7 @@ sections:
             - "Rayton"
           "Roodepoort":
             - "Allen's Nek"
+            - "Ambot"
             - "Amorosa"
             - "Bergbron"
             - "Breaunanda"
@@ -1421,6 +1428,7 @@ sections:
             - "Fourways Gardens"
             - "Gallo Manor"
             - "Glen Atholl"
+            - "Glenadrienne"
             - "Hurlingham"
             - "Hyde Park"
             - "Illovo"
@@ -1428,6 +1436,7 @@ sections:
             - "Kengies"
             - "Kentview"
             - "Khyber Rock"
+            - "Klevehill Park"
             - "Linbro Park"
             - "Lonehill"
             - "Longlake"
@@ -1438,6 +1447,7 @@ sections:
             - "Parkmore"
             - "Paulshof"
             - "Petervale"
+            - "Riepen Park"
             - "River Club"
             - "Rivonia"
             - "Sandhurst"
@@ -1656,12 +1666,14 @@ sections:
           "Walkerville":
             - "Blignautsrus AH"
             - "Golf View"
+            - "Hartzenbergfontein"
             - "Homestead Apple Orchards"
             - "Kanana Park"
             - "Savanna City"
             - "Walker Fruit Farms"
             - "Walkerville Central"
           "Westonaria":
+            - "Bekkersdal"
             - "Glen Harvie"
             - "Hillshaven"
             - "Venterspos"
@@ -1735,6 +1747,7 @@ sections:
           "Chatsworth":
             - "Arena Park"
             - "Bayview"
+            - "Burlington Heights"
             - "Chatsworth Central"
             - "Crossmoor"
             - "Havenside"
@@ -2110,8 +2123,10 @@ sections:
             - "Copesville"
             - "Dunveria"
             - "Eastwood"
+            - "Epworth"
             - "Ferncliffe"
             - "Fillan Park"
+            - "Glenwood"
             - "Grange"
             - "Hayfields"
             - "Imbali"
@@ -2123,6 +2138,7 @@ sections:
             - "Montrose"
             - "Mountain Rise"
             - "Napierville"
+            - "Newholme"
             - "Northdale"
             - "Northern Park"
             - "Oribi Village"
@@ -2135,6 +2151,7 @@ sections:
             - "Ridge Park"
             - "Scottsville"
             - "Scottsville Ext"
+            - "Sobantu"
             - "Sweetwaters"
             - "Town Bush Valley"
             - "Town Hill"
@@ -2372,6 +2389,7 @@ sections:
             - "Kanonberg"
             - "Kempenville"
             - "Kenridge"
+            - "Labiance"
             - "Loevenstein"
             - "O'Kennedyville"
             - "Oakdale"
@@ -2711,6 +2729,7 @@ sections:
             - "Oubaai"
             - "Pacaltsdorp"
             - "Parkdene"
+            - "Thembalethu"
             - "Victoria Bay"
           "Goodwood":
             - "Avonwood"
@@ -3137,6 +3156,7 @@ sections:
             - "Fairfield Estate"
             - "Florida"
             - "Glenlilly"
+            - "Kleinbosch"
             - "Klipkop"
             - "Oostersee"
             - "Panorama"
@@ -3229,6 +3249,7 @@ sections:
             - "Bizweni"
             - "Boskloof Eco Estate"
             - "Briza"
+            - "Croydon"
             - "Croydon Gardens Estate"
             - "Croydon Olive Estate"
             - "Croydon Vineyard Estate"
@@ -3381,6 +3402,7 @@ sections:
             - "Vleesbaai"
           "Vredenburg":
             - "Vredenburg"
+            - "Vredenburg Rural"
           "Vredendal":
             - "Vredendal"
           "Wellington":
@@ -3417,7 +3439,9 @@ sections:
             - "Rouxpark"
             - "Van Riebeeck Park"
             - "Worcester Central"
+            - "Worcester Rural"
             - "Worcester West"
+            - "Zweletemba"
           "Yzerfontein":
             - "Grotto Bay"
             - "Jakkalsfontein"
@@ -3426,7 +3450,7 @@ sections:
           - type: required
             message: "Select a suburb."
           - type: expression
-            expression: "data.city !== \"Heidelberg\" || (data.province === \"Gauteng\" && [\"Berg En Dal\", \"Bergsig\", \"Heidelberg AH\", \"Heidelberg Central\", \"Heidelberg Ext 5\", \"Heidelberg Kloof Estate\", \"Heidelberg Proper\", \"Jordaan Park\", \"Obed Mthombeni Nkosi\", \"Overkruin\", \"Ratanda\", \"Rensburg\", \"Spaarwater AH\"].includes(data.suburb)) || (data.province === \"Western Cape\" && [\"Heidelberg\"].includes(data.suburb))"
+            expression: "data.city !== \"Heidelberg\" || (data.province === \"Gauteng\" && [\"Berg En Dal\", \"Bergsig\", \"Heidelberg AH\", \"Heidelberg Central\", \"Heidelberg Ext 5\", \"Heidelberg Industrial\", \"Heidelberg Kloof Estate\", \"Heidelberg Proper\", \"Jordaan Park\", \"Obed Mthombeni Nkosi\", \"Overkruin\", \"Ratanda\", \"Rensburg\", \"Spaarwater AH\"].includes(data.suburb)) || (data.province === \"Western Cape\" && [\"Heidelberg\"].includes(data.suburb))"
             message: "Choose a suburb in your selected province."
     next: property
 

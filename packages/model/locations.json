@@ -328,6 +328,7 @@
       "Germiston Central",
       "Germiston South",
       "Gosforth Park",
+      "Harmelia",
       "Hazeldene",
       "Highway Gardens",
       "Homestead",
@@ -368,6 +369,7 @@
       "Heidelberg AH",
       "Heidelberg Central",
       "Heidelberg Ext 5",
+      "Heidelberg Industrial",
       "Heidelberg Kloof Estate",
       "Heidelberg Proper",
       "Jordaan Park",
@@ -640,6 +642,7 @@
     ],
     "Krugersdorp": [
       "Agavia",
+      "Apple Park",
       "Avianto Estate",
       "Azaadville",
       "Azaadville Gardens",
@@ -720,6 +723,7 @@
     "Midrand": [
       "Allandale",
       "Barbeque Downs",
+      "Beaulieu",
       "Blue Hills",
       "Carlswald",
       "Carlswald Estate",
@@ -930,6 +934,7 @@
       "Sunnyside",
       "The Hills Game Reserve Estate",
       "The Wilds",
+      "Tiegerpoort AH",
       "Tijger Vallei",
       "Tileba",
       "Trevenna",
@@ -1046,6 +1051,7 @@
     ],
     "Roodepoort": [
       "Allen's Nek",
+      "Ambot",
       "Amorosa",
       "Bergbron",
       "Breaunanda",
@@ -1125,6 +1131,7 @@
       "Fourways Gardens",
       "Gallo Manor",
       "Glen Atholl",
+      "Glenadrienne",
       "Hurlingham",
       "Hyde Park",
       "Illovo",
@@ -1132,6 +1139,7 @@
       "Kengies",
       "Kentview",
       "Khyber Rock",
+      "Klevehill Park",
       "Linbro Park",
       "Lonehill",
       "Longlake",
@@ -1142,6 +1150,7 @@
       "Parkmore",
       "Paulshof",
       "Petervale",
+      "Riepen Park",
       "River Club",
       "Rivonia",
       "Sandhurst",
@@ -1370,6 +1379,7 @@
     "Walkerville": [
       "Blignautsrus AH",
       "Golf View",
+      "Hartzenbergfontein",
       "Homestead Apple Orchards",
       "Kanana Park",
       "Savanna City",
@@ -1377,6 +1387,7 @@
       "Walkerville Central"
     ],
     "Westonaria": [
+      "Bekkersdal",
       "Glen Harvie",
       "Hillshaven",
       "Venterspos",
@@ -1463,6 +1474,7 @@
     "Chatsworth": [
       "Arena Park",
       "Bayview",
+      "Burlington Heights",
       "Chatsworth Central",
       "Crossmoor",
       "Havenside",
@@ -1887,8 +1899,10 @@
       "Copesville",
       "Dunveria",
       "Eastwood",
+      "Epworth",
       "Ferncliffe",
       "Fillan Park",
+      "Glenwood",
       "Grange",
       "Hayfields",
       "Imbali",
@@ -1900,6 +1914,7 @@
       "Montrose",
       "Mountain Rise",
       "Napierville",
+      "Newholme",
       "Northdale",
       "Northern Park",
       "Oribi Village",
@@ -1912,6 +1927,7 @@
       "Ridge Park",
       "Scottsville",
       "Scottsville Ext",
+      "Sobantu",
       "Sweetwaters",
       "Town Bush Valley",
       "Town Hill",
@@ -2190,6 +2206,7 @@
       "Kanonberg",
       "Kempenville",
       "Kenridge",
+      "Labiance",
       "Loevenstein",
       "O'Kennedyville",
       "Oakdale",
@@ -2553,6 +2570,7 @@
       "Oubaai",
       "Pacaltsdorp",
       "Parkdene",
+      "Thembalethu",
       "Victoria Bay"
     ],
     "Goodwood": [
@@ -3020,6 +3038,7 @@
       "Fairfield Estate",
       "Florida",
       "Glenlilly",
+      "Kleinbosch",
       "Klipkop",
       "Oostersee",
       "Panorama",
@@ -3128,6 +3147,7 @@
       "Bizweni",
       "Boskloof Eco Estate",
       "Briza",
+      "Croydon",
       "Croydon Gardens Estate",
       "Croydon Olive Estate",
       "Croydon Vineyard Estate",
@@ -3296,7 +3316,8 @@
       "Vleesbaai"
     ],
     "Vredenburg": [
-      "Vredenburg"
+      "Vredenburg",
+      "Vredenburg Rural"
     ],
     "Vredendal": [
       "Vredendal"
@@ -3339,7 +3360,9 @@
       "Rouxpark",
       "Van Riebeeck Park",
       "Worcester Central",
-      "Worcester West"
+      "Worcester Rural",
+      "Worcester West",
+      "Zweletemba"
     ],
     "Yzerfontein": [
       "Grotto Bay",
