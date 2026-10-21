@@ -71,6 +71,10 @@ def start():
     run_id = os.environ["GITHUB_RUN_ID"] + "-" + os.environ["GITHUB_RUN_ATTEMPT"]
     with tempfile.TemporaryDirectory() as directory:
         root = Path(directory)
+        deploy_key = os.environ["SCRAPE_DEPLOY_KEY"].strip() + "\n"
+        (root / "deploy").write_text(deploy_key)
+        (root / "deploy").chmod(0o600)
+        subprocess.run(["ssh-keygen", "-y", "-f", str(root / "deploy")], check=True, stdout=subprocess.DEVNULL)
         for name in ("access", "host"):
             subprocess.run(["ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", str(root / name)], check=True)
         cloud = {
@@ -112,7 +116,7 @@ def start():
         with urllib.request.urlopen("https://api.github.com/meta", timeout=30) as response:
             github_keys = json.load(response)["ssh_keys"]
         files = {
-            "/root/.ssh/scrape-deploy": os.environ["SCRAPE_DEPLOY_KEY"],
+            "/root/.ssh/scrape-deploy": deploy_key,
             "/root/.ssh/known_hosts": "".join("github.com " + key + "\n" for key in github_keys),
             "/root/scrape.env": "\n".join(f"{key}={shlex.quote(value)}" for key, value in {
                 "OXYLABS_USERNAME": os.environ["OXYLABS_USERNAME"], "OXYLABS_PASSWORD": os.environ["OXYLABS_PASSWORD"],
