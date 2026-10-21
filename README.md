@@ -133,3 +133,5 @@ checks; `npm run build` checks the data package's TypeScript. Model verification
 runs an example prediction. Only load trusted artifacts: reference data uses
 Joblib. Existing minimal manifests are supported with compatibility checks,
 while explicitly warning that provenance and checksums are unavailable.
+
+Scheduled DigitalOcean scraping: see [setup and operation](scripts/SCRAPING.md).

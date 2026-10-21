@@ -8,7 +8,8 @@
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "cheerio": "^1.2.0"
+    "cheerio": "^1.2.0",
+    "undici": "^8.12.3"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",
