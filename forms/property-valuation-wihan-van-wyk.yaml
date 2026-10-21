@@ -586,6 +586,7 @@ sections:
             - "Sebenza"
             - "Westlake Eco Estate"
           "Eikenhof":
+            - "Alewynspoort"
             - "Eye Of Africa Estate"
           "Evaton":
             - "Beverley Hills"
@@ -947,6 +948,7 @@ sections:
             - "Restonvale AH"
             - "Rhodesfield"
             - "Serengeti Lifestyle Estate"
+            - "Spartan"
             - "Terenure"
             - "Van Riebeeck Park"
             - "Witfontein"
@@ -1038,6 +1040,7 @@ sections:
             - "Commercia"
             - "Country View"
             - "Crowthorne AH"
+            - "Diepsloot"
             - "Diepsloot Wes"
             - "Ebony Park"
             - "Erand Gardens"
@@ -1287,6 +1290,7 @@ sections:
             - "Fairland"
             - "Ferndale"
             - "Fontainebleau"
+            - "Jacanlee"
             - "Jackal Creek Golf Estate"
             - "Johannesburg North"
             - "Jukskei Park"
@@ -1338,6 +1342,7 @@ sections:
             - "Home Lake Industrial"
             - "Homelake"
             - "Kocksoord"
+            - "Middelvlei AH"
             - "Mohlakeng"
             - "Randfontein Central"
             - "Randfontein Rural"
@@ -1435,6 +1440,7 @@ sections:
             - "Hurlingham"
             - "Hyde Park"
             - "Illovo"
+            - "Inanda"
             - "Kelvin"
             - "Kengies"
             - "Kentview"
@@ -1556,6 +1562,7 @@ sections:
             - "Zondi"
             - "Zuurbult"
           "Springs":
+            - "Aston Lake"
             - "Bakerton"
             - "Casseldale"
             - "Daggafontein"
@@ -1663,6 +1670,7 @@ sections:
             - "Three Rivers East"
             - "Tshepong"
             - "Unitas Park"
+            - "Vaalkop AH"
             - "Van Der Westhuizen"
             - "Vereeniging Central"
             - "Waldrift"
@@ -1752,6 +1760,7 @@ sections:
             - "Bayview"
             - "Burlington Heights"
             - "Chatsworth Central"
+            - "Croftdene"
             - "Crossmoor"
             - "Havenside"
             - "Kharwastan"
@@ -1820,6 +1829,7 @@ sections:
             - "Jacobs"
             - "Kenville"
             - "Kwamashu"
+            - "Lamontville"
             - "Manor Gardens"
             - "Mobeni"
             - "Mobeni Heights"
@@ -2006,7 +2016,9 @@ sections:
             - "Leonardsville"
             - "Limit Hill"
             - "Observation Hill"
+            - "Reservoir Hills"
             - "Rose Park"
+            - "Van Riebeeck Park"
           "Louwsburg":
             - "Louwsburg"
           "Mandeni":
@@ -2074,6 +2086,7 @@ sections:
           "Nkandla":
             - "Nkandla Rural"
           "Nottingham Road":
+            - "Gowrie Farm Golf Estate"
             - "Gowrie Village"
             - "Nottingham Road"
             - "Rosetta"
@@ -2119,6 +2132,7 @@ sections:
             - "Bombay Heights"
             - "Boughton"
             - "Chase Valley"
+            - "Chase Valley Downs"
             - "Chase Valley Heights"
             - "Chasedene"
             - "Clarendon"
@@ -2235,6 +2249,7 @@ sections:
             - "Mzingazi Golf Estate"
             - "Richards Bay Central"
             - "Richards Bay Rural"
+            - "Tuzi-Gazi"
             - "Veld En Vlei"
             - "Wild en Weide"
           "Richmond":
@@ -2356,6 +2371,7 @@ sections:
             - "Atlantis Central"
             - "Avondale"
             - "Beacon Hill"
+            - "Klein Dassenberg"
             - "Mamre"
             - "Protea Park"
             - "Robinvale"
@@ -2375,6 +2391,7 @@ sections:
             - "Amanda Glen"
             - "Belgravia"
             - "Bellair"
+            - "Bellrail"
             - "Bellville Central"
             - "Bellville South"
             - "Bloemhof"
@@ -2452,6 +2469,7 @@ sections:
             - "Sunset Glen"
             - "The Conifers"
             - "Tuscany Glen"
+            - "Vogelvlei"
             - "Wesbank"
           "Bonnievale":
             - "Bonnievale"
@@ -2734,6 +2752,7 @@ sections:
             - "Parkdene"
             - "Thembalethu"
             - "Victoria Bay"
+            - "Welgelegen"
           "Goodwood":
             - "Avonwood"
             - "Edgemead"
@@ -2806,6 +2825,7 @@ sections:
             - "Monte Christo"
             - "Outeniquasbosch"
           "Hermanus":
+            - "Benguela Cove Lagoon Wine Estate"
             - "Berghof"
             - "Chanteclair"
             - "Eastcliff"
@@ -2825,6 +2845,7 @@ sections:
             - "Westcliff"
           "Hopefield":
             - "Hopefield"
+            - "Hopefield Rural"
           "Hout Bay":
             - "Beach Estate"
             - "Berg En Dal"
@@ -2960,6 +2981,7 @@ sections:
             - "Sarepta"
             - "Silver Oaks"
             - "Soneike"
+            - "Sonnekuil"
             - "St Dumas"
             - "Sunbird Park"
             - "Zevendal"
@@ -2983,6 +3005,7 @@ sections:
             - "Myburgh Park"
             - "Mykonos"
             - "Olifantskop"
+            - "Skiathos"
             - "Sunset Estate"
             - "Waterfront"
           "Lutzville":
@@ -3072,6 +3095,7 @@ sections:
             - "Blombosch"
             - "Blue Ridge"
             - "Boggomsbaai"
+            - "Boland Park"
             - "Da Nova"
             - "Dana Bay"
             - "De Almeida"
@@ -3294,6 +3318,7 @@ sections:
             - "Spanish Farm"
             - "Steynsrust"
             - "The Huntsman"
+            - "The Links"
             - "Van Der Stel"
             - "Victoria Park"
             - "Westridge"

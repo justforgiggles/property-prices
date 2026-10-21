@@ -282,6 +282,7 @@
       "Westlake Eco Estate"
     ],
     "Eikenhof": [
+      "Alewynspoort",
       "Eye Of Africa Estate"
     ],
     "Evaton": [
@@ -636,6 +637,7 @@
       "Restonvale AH",
       "Rhodesfield",
       "Serengeti Lifestyle Estate",
+      "Spartan",
       "Terenure",
       "Van Riebeeck Park",
       "Witfontein"
@@ -731,6 +733,7 @@
       "Commercia",
       "Country View",
       "Crowthorne AH",
+      "Diepsloot",
       "Diepsloot Wes",
       "Ebony Park",
       "Erand Gardens",
@@ -983,6 +986,7 @@
       "Fairland",
       "Ferndale",
       "Fontainebleau",
+      "Jacanlee",
       "Jackal Creek Golf Estate",
       "Johannesburg North",
       "Jukskei Park",
@@ -1035,6 +1039,7 @@
       "Home Lake Industrial",
       "Homelake",
       "Kocksoord",
+      "Middelvlei AH",
       "Mohlakeng",
       "Randfontein Central",
       "Randfontein Rural",
@@ -1135,6 +1140,7 @@
       "Hurlingham",
       "Hyde Park",
       "Illovo",
+      "Inanda",
       "Kelvin",
       "Kengies",
       "Kentview",
@@ -1260,6 +1266,7 @@
       "Zuurbult"
     ],
     "Springs": [
+      "Aston Lake",
       "Bakerton",
       "Casseldale",
       "Daggafontein",
@@ -1372,6 +1379,7 @@
       "Three Rivers East",
       "Tshepong",
       "Unitas Park",
+      "Vaalkop AH",
       "Van Der Westhuizen",
       "Vereeniging Central",
       "Waldrift"
@@ -1476,6 +1484,7 @@
       "Bayview",
       "Burlington Heights",
       "Chatsworth Central",
+      "Croftdene",
       "Crossmoor",
       "Havenside",
       "Kharwastan",
@@ -1551,6 +1560,7 @@
       "Jacobs",
       "Kenville",
       "Kwamashu",
+      "Lamontville",
       "Manor Gardens",
       "Mobeni",
       "Mobeni Heights",
@@ -1762,7 +1772,9 @@
       "Leonardsville",
       "Limit Hill",
       "Observation Hill",
-      "Rose Park"
+      "Reservoir Hills",
+      "Rose Park",
+      "Van Riebeeck Park"
     ],
     "Louwsburg": [
       "Louwsburg"
@@ -1844,6 +1856,7 @@
       "Nkandla Rural"
     ],
     "Nottingham Road": [
+      "Gowrie Farm Golf Estate",
       "Gowrie Village",
       "Nottingham Road",
       "Rosetta",
@@ -1892,6 +1905,7 @@
       "Bombay Heights",
       "Boughton",
       "Chase Valley",
+      "Chase Valley Downs",
       "Chase Valley Heights",
       "Chasedene",
       "Clarendon",
@@ -2014,6 +2028,7 @@
       "Mzingazi Golf Estate",
       "Richards Bay Central",
       "Richards Bay Rural",
+      "Tuzi-Gazi",
       "Veld En Vlei",
       "Wild en Weide"
     ],
@@ -2165,6 +2180,7 @@
       "Atlantis Central",
       "Avondale",
       "Beacon Hill",
+      "Klein Dassenberg",
       "Mamre",
       "Protea Park",
       "Robinvale",
@@ -2189,6 +2205,7 @@
       "Amanda Glen",
       "Belgravia",
       "Bellair",
+      "Bellrail",
       "Bellville Central",
       "Bellville South",
       "Bloemhof",
@@ -2270,6 +2287,7 @@
       "Sunset Glen",
       "The Conifers",
       "Tuscany Glen",
+      "Vogelvlei",
       "Wesbank"
     ],
     "Bonnievale": [
@@ -2571,7 +2589,8 @@
       "Pacaltsdorp",
       "Parkdene",
       "Thembalethu",
-      "Victoria Bay"
+      "Victoria Bay",
+      "Welgelegen"
     ],
     "Goodwood": [
       "Avonwood",
@@ -2655,6 +2674,7 @@
       "Heidelberg"
     ],
     "Hermanus": [
+      "Benguela Cove Lagoon Wine Estate",
       "Berghof",
       "Chanteclair",
       "Eastcliff",
@@ -2674,7 +2694,8 @@
       "Westcliff"
     ],
     "Hopefield": [
-      "Hopefield"
+      "Hopefield",
+      "Hopefield Rural"
     ],
     "Hout Bay": [
       "Beach Estate",
@@ -2821,6 +2842,7 @@
       "Sarepta",
       "Silver Oaks",
       "Soneike",
+      "Sonnekuil",
       "St Dumas",
       "Sunbird Park",
       "Zevendal",
@@ -2847,6 +2869,7 @@
       "Myburgh Park",
       "Mykonos",
       "Olifantskop",
+      "Skiathos",
       "Sunset Estate",
       "Waterfront"
     ],
@@ -2946,6 +2969,7 @@
       "Blombosch",
       "Blue Ridge",
       "Boggomsbaai",
+      "Boland Park",
       "Da Nova",
       "Dana Bay",
       "De Almeida",
@@ -3189,6 +3213,7 @@
       "Spanish Farm",
       "Steynsrust",
       "The Huntsman",
+      "The Links",
       "Van Der Stel",
       "Victoria Park",
       "Westridge"
