@@ -40,19 +40,22 @@ class InfrastructureTests(unittest.TestCase):
                 infra.delete(123)
 
 
-class CheckpointTests(unittest.TestCase):
-    def test_publish_preserves_remote_changes_and_final_without_new_data(self):
+class ScrapeTests(unittest.TestCase):
+    def test_failure_publishes_nothing_and_success_commits_once(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
-            remote = root / "remote.git"
-            worker = root / "worker"
-            other = root / "other"
+            remote, worker, other = (root / name for name in ("remote.git", "worker", "other"))
             def git(cwd, *args):
                 return subprocess.check_output(["git", "-C", str(cwd), *args], text=True, stderr=subprocess.DEVNULL).strip()
             subprocess.run(["git", "init", "--bare", "--initial-branch=main", str(remote)], check=True, stdout=subprocess.DEVNULL)
             subprocess.run(["git", "clone", str(remote), str(worker)], check=True, stderr=subprocess.DEVNULL)
             git(worker, "config", "user.name", "Test")
             git(worker, "config", "user.email", "test@example.com")
+            (worker / "scripts").mkdir()
+            (worker / "scripts/scrape.sh").write_bytes((ROOT / "scripts/scrape.sh").read_bytes())
+            raw = worker / "data/raw/2026-10-21.jsonl"
+            raw.parent.mkdir(parents=True)
+            raw.write_text('{"id":1,"jsonld":[]}\n')
             (worker / "README").write_text("initial")
             git(worker, "add", ".")
             git(worker, "commit", "-m", "Initial")
@@ -63,29 +66,41 @@ class CheckpointTests(unittest.TestCase):
             (other / "README").write_text("independent")
             git(other, "commit", "-am", "Independent change")
             git(other, "push", "origin", "main")
-            raw = worker / "data/raw"
-            raw.mkdir(parents=True)
-            (raw / "2026-10-21.jsonl").write_text('{"id":123,"jsonld":[]}\n')
-            command = ["python3", str(ROOT / "scripts/scrape-checkpoint.py")]
-            subprocess.run([*command, "checkpoint"], cwd=worker, check=True, stdout=subprocess.DEVNULL)
-            self.assertIn("[skip ci]", git(worker, "log", "-1", "--format=%s"))
+            tools = root / "tools"
+            tools.mkdir()
+            stub = """#!/usr/bin/env python3
+import os, sys
+from pathlib import Path
+if Path(sys.argv[0]).name == 'timeout':
+    os.execvp(sys.argv[4], sys.argv[4:])
+if sys.argv[1:] == ['run', 'scrape']:
+    if os.environ.get('FAIL_SCRAPE'):
+        sys.exit(1)
+    if os.environ.get('NEW_DATA'):
+        with open('data/raw/2026-10-21.jsonl','a') as stream:
+            stream.write('{"id":2,"jsonld":[]}\\n')
+"""
+            for name in ("npm", "timeout"):
+                tool = tools / name
+                tool.write_text(stub)
+                tool.chmod(0o755)
+            env = {**os.environ, "PATH": str(tools) + os.pathsep + os.environ["PATH"], "SCRAPE_RUN_ID": "123-1", "SCRAPE_DROPLET_ID": "456"}
+            command = ["bash", str(worker / "scripts/scrape.sh")]
+            before = git(worker, "rev-parse", "HEAD")
+            result = subprocess.run(command, env={**env, "FAIL_SCRAPE": "1"}, capture_output=True)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertFalse((worker / "data/scrape-completed.json").exists())
+            self.assertEqual(git(worker, "rev-parse", "HEAD"), before)
+            subprocess.run(command, env={**env, "NEW_DATA": "1"}, check=True, capture_output=True)
+            self.assertEqual(len(raw.read_text().splitlines()), 2)
             self.assertEqual((worker / "README").read_text(), "independent")
-            env = {**os.environ, "SCRAPE_RUN_ID": "123-1", "SCRAPE_DROPLET_ID": "456"}
-            subprocess.run([*command, "complete"], cwd=worker, env=env, check=True, stdout=subprocess.DEVNULL)
-            self.assertNotIn("[skip ci]", git(worker, "log", "-1", "--format=%s"))
-            self.assertEqual(json.loads((worker / "data/scrape-completed.json").read_text())["droplet_id"], 456)
-            source = root / "live-raw"
-            source.mkdir()
-            (source / "2026-10-21.jsonl").write_text('{"id":123,"jsonld":[]}\n{"id":456')
-            snapshot_env = {**env, "SCRAPE_RAW_DIRECTORY": str(source)}
-            subprocess.run([*command, "checkpoint"], cwd=worker, env=snapshot_env, check=True, stdout=subprocess.DEVNULL)
-            self.assertEqual((raw / "2026-10-21.jsonl").read_text(), '{"id":123,"jsonld":[]}\n')
-            result = subprocess.run([*command, "complete"], cwd=worker, env=snapshot_env, capture_output=True)
-            self.assertNotEqual(result.returncode, 0)
-            (raw / "2026-10-21.jsonl").write_text('{"id":123')
-            result = subprocess.run([*command, "checkpoint"], cwd=worker, capture_output=True)
-            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(git(worker, "log", "-1", "--format=%s"), "Scrape completed")
             self.assertEqual(git(worker, "rev-parse", "HEAD"), git(worker, "rev-parse", "origin/main"))
+            subprocess.run(command, env={**env, "SCRAPE_RUN_ID": "124-1"}, check=True, capture_output=True)
+            marker = json.loads((worker / "data/scrape-completed.json").read_text())
+            self.assertEqual(marker["run_id"], "124-1")
+            self.assertEqual(marker["droplet_id"], 456)
+            self.assertEqual(len(raw.read_text().splitlines()), 2)
 
 
 if __name__ == "__main__":

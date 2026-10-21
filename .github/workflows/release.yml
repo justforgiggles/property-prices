@@ -5,11 +5,6 @@ on:
     paths:
       - 'data/raw/**'
       - 'data/scrape-completed.json'
-      - 'packages/**'
-      - 'forms/**'
-      - 'scripts/**'
-      - 'package*.json'
-      - '.github/**'
   workflow_dispatch:
 permissions:
   contents: read
@@ -32,43 +27,27 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: main
           fetch-depth: 0
-      - name: Reject stale releases
-        run: python3 scripts/release.py current
       - uses: ./.github/actions/setup
-      - name: Test and generate initial forms
-        run: bash scripts/check-ci.sh
-      - name: Train and validate the complete release
+      - name: Train and generate forms
         run: |
           ./scripts/train.sh
-          npm run generate:agents
-          npm run check:agents
-          npm run validate:agents
-          npm test
-          npm run verify -w @property-prices/model
-          packages/model/.venv/bin/python scripts/release.py prepare
+          npm run agents
       - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
         with:
           workload_identity_provider: ${{ vars.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ vars.GCP_DEPLOY_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
-      - name: Deploy, promote, and publish
-        run: packages/model/.venv/bin/python scripts/release.py deploy
-      - name: Recover failed release
-        if: ${{ !success() }}
-        run: python3 scripts/release.py recover
-      - name: Release summary
-        if: always()
-        run: python3 scripts/release.py summary >> "$GITHUB_STEP_SUMMARY"
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        if: always()
-        with:
-          name: release-${{ github.run_id }}-${{ github.run_attempt }}
-          retention-days: 30
-          include-hidden-files: true
-          path: |
-            .release/
-            packages/model/models/
-            packages/model/locations.json
-            forms/*.yaml
-            forms/assets/*
+      - name: Verify and deploy model
+        run: ./scripts/deploy.sh
+      - name: Publish generated locations, forms, and artwork
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- packages/model/locations.json forms/property-valuation*.yaml forms/assets/*
+          if ! git diff --cached --quiet; then
+            git commit -m 'Update generated forms and locations [skip ci]'
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi

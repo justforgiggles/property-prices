@@ -1,13 +1,13 @@
 # Property prices
 
-Property24 listings → trained asking-price model → estimate on the form completion screen.
-`packages/data` scrapes raw listings; `packages/model` trains and serves the
-Python HTTP function. Predictions describe advertised asking prices in ZAR.
+Property24 listings → trained asking-price model → valuations on frms.dev.
+`packages/data` scrapes listings. `packages/model` trains the model and serves
+inference through the API/webhook. `forms` contains the shared template, agent
+profiles, source artwork, and generated live forms.
 
 ## Setup
 
-Use Node.js 22 and Python 3.14. LightGBM needs OpenMP (`brew install libomp`
-on macOS if absent).
+Use Node.js 22 and Python 3.14. On macOS, LightGBM needs `brew install libomp`.
 
 ```sh
 npm ci
@@ -15,123 +15,74 @@ python3.14 -m venv packages/model/.venv
 packages/model/.venv/bin/python -m pip install -e packages/model functions-framework==3.9.2
 ```
 
-## Workflow
+## Commands
 
 ```sh
-npm run scrape
-./scripts/train.sh
-./scripts/deploy.sh
+npm run scrape       # run the existing scraper locally
+npm run train        # train the model and write locations.json
+npm run agents       # generate the base/agent forms and artwork
+npm run deploy       # verify and deploy the trained model
+npm run submissions  # download base-form submissions using ACCESS_KEY in .env
+npm test
+npm run build        # TypeScript check
 ```
 
-Training reads `data/raw/*.jsonl`, extracts and cleans residential listings,
-links related properties, constructs features, and fits ten LightGBM learners
-plus one CatBoost residual learner on all valid listings. Internal four-fold
-grouped cross-fitting keeps a property's own price out of its historical
-features. There is no separate development model, saved split file or held-out
-accuracy report.
+Training reads `data/raw/*.jsonl`, cleans residential listings, links related
+properties, and fits ten LightGBM learners plus a CatBoost residual learner.
+Grouped cross-fitting keeps a property's own price out of its historical
+features. Predictions estimate advertised asking prices in ZAR.
 
-Training saves native learners, historical reference data and a manifest under
-`packages/model/models/`. The manifest contains the recipe, data-quality audit,
-training population and artifact checksums. It reloads and checks the bundle
-before replacing the current artifacts.
+Artifacts are saved under `packages/model/models/` and ignored by Git. The bundle
+includes native learners, reference data, and a manifest with the recipe, data
+audit, and checksums. Training verifies the saved model before publishing it and
+`packages/model/locations.json`. It does not edit forms: run `npm run agents`
+after training. Optional `--data-dir` and `--output-dir` arguments can be passed
+to `npm run train -- ...`; locations still belong to this checkout.
 
-The same training population determines the location catalog and city/suburb
-fields in both `forms/property-valuation.yaml` and
-`forms/property-valuation-janique-kinnear.yaml`, restricted to Gauteng, KwaZulu Natal
-and Western Cape. The original keeps its existing presentation; Janique's form
-also validates province membership for duplicate city names. Model and location
-publication restores previous outputs on caught failures. This supports one
-local writer and is not crash-atomic across
-files. Updating the hosted form remains a separate external publication step.
-See the [form launch guide](forms/README.md) for Janique's branding, consent fields
-and the placeholders and service prerequisites to resolve before publication.
+## Forms
 
-Optional `--data-dir` and `--output-dir` paths resolve from the caller's working
-directory; defaults are anchored to the source checkout. A custom output path
-does not change what HTTP or deployment loads. Training still updates local
-form locations when a custom output path is used. Model artifacts are ignored
-by Git.
+`forms/template.json` defines the shared form, agent contact fields, and lead
+email. `forms/agents/*.json` supplies branding, contact details, and local artwork.
+One script, `scripts/agents.mjs`, generates the base form, agent forms, icons,
+logos, and sharing images using the latest location catalog.
 
-Read the three entry points to follow the implementation:
+See [agent setup](forms/assets/README.md). Generated form filenames and asset URLs
+are live public interfaces; preserve them when editing profiles or the template.
+The hosted forms read the generated YAML and artwork from `main`.
 
-- [Training](packages/model/src/property_model/train/main.py)
-- [Inference](packages/model/src/property_model/inference/main.py)
-- [HTTP](packages/model/src/property_model/http/main.py)
+## Automation
 
-## Prediction
+[Scraping](scripts/SCRAPING.md) starts a detached DigitalOcean worker daily at
+15:00 UTC. A successful scrape commits its data once and triggers independent
+cleanup and [release](scripts/RELEASE.md).
+
+Release runs train → agents → deploy → commit generated outputs. Only data and
+scrape-completion changes trigger it automatically. After changing model code,
+agent profiles, templates, or deployment scripts, run the release workflow
+manually to publish those changes. Commands stop on failure; rerun after fixing
+the problem. There is no automatic rollback.
+
+## Inference and webhook
 
 ```sh
-packages/model/.venv/bin/python -m property_model.inference.main
+npm run verify -w @property-prices/model
 packages/model/.venv/bin/python -m property_model.inference.main --input '{"province":"Gauteng","city":"Johannesburg","suburb":"Berea","bedrooms":2,"bathrooms":1,"floor_size":85,"rates":700}'
-```
-
-`--input` accepts an object, a nonempty list, or a JSON filename. Results contain
-the rounded asking price, unrounded prediction and comparable diagnostics.
-Use `--model-dir` to inspect another bundle. Omitted inputs remain unknown; if
-all measurements are missing, inference uses the geographic-median fallback.
-Display the rounded recommendation without further adjustment.
-
-## HTTP and deployment
-
-```sh
 packages/model/.venv/bin/python -m functions_framework \
   --source packages/model/src/property_model/http/main.py --target valuation --port 8080
 ```
 
-The function accepts partial webhook events after the property section is saved:
+Inference accepts an object, a nonempty list, or a JSON filename; `--model-dir`
+selects another trusted bundle. Results include a rounded asking price and
+comparable diagnostics. Display the rounded recommendation without adjustment.
+Missing measurements use the existing geographic-median fallback.
 
-```json
-{"id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","form_id":"ad3e54459","status":"partial","section_id":"property","data":{"province":"Gauteng","city":"Johannesburg","suburb":"Berea","bedrooms":"2","bathrooms":"1","floor_area":"85","rates_and_taxes":"700"}}
-```
+The webhook handles partial property-section events, validates their form and
+submission IDs, predicts, and writes `data.prediction` to that submission on
+frms.dev. Other section events return 204. It does not send prediction JSON in
+the HTTP response. The completion screen reads `formatted_asking_price` and can
+show its existing fallback if the update arrives late.
 
-It validates the incoming form ID (`a` plus eight lowercase hex characters),
-submission ID, location and model inputs, then predicts locally and saves the
-prediction under `data.prediction` on that exact frms.dev form/submission pair.
-The original, Janique's and future forms use the same handler without an allowlist
-or registration, provided they use the same property fields. IDs are validated,
-not authenticated; the update destination is always the fixed frms.dev host.
-The nested `formatted_asking_price` is shown on the
-completion screen. Other section events return 204 without predicting.
-Success returns 204; invalid property events return 400, other methods 405,
-model failures 500 and frms.dev update failures 502. The webhook response does
-not contain prediction JSON. The final form submission does not wait for the
-prediction; a late or failed update shows the completion fallback.
-
-`deploy.sh` checks inference and deploys `property-prices-valuation` from
-`packages/model`, using the function source under `src/property_model/http/`.
-It uses Google's full Python 3.14 image for LightGBM's OpenMP library, project
-`hirebarend`, region `europe-west3`, one worker,
-concurrency one, 2 CPUs and 2 GiB memory. Artifacts and the location catalog
-are included in the upload; training is not run during deployment. Restart or
-redeploy to load new artifacts.
-
-## Automated releases
-
-GitHub Actions retrains committed data on relevant `main` changes or manual dispatch,
-verifies a candidate Cloud Run revision, then publishes regenerated base/agent forms
-and artwork to `main`. See [release operation and recovery](scripts/RELEASE.md).
-The read-only `GET /health` endpoint verifies model inference and returns the revision
-and manifest SHA-256; it never updates a submission.
-
-## Agent forms
-
-Use `$add-agent-form` to create an agent's form and sharing artwork from an
-official profile. Agent details live separately from the shared templates;
-see [the generation guide](forms/assets/README.md) for commands and publishing.
-
-## Lightweight checks
-
-```sh
-npm test
-npm run build
-npm run verify -w @property-prices/model
-packages/model/.venv/bin/python -m property_model.train.main --help
-```
-
-`npm test` runs data-package, shell-wiring, agent-generator, and form-location
-checks; `npm run build` checks the data package's TypeScript. Model verification loads the existing bundle and
-runs an example prediction. Only load trusted artifacts: reference data uses
-Joblib. Existing minimal manifests are supported with compatibility checks,
-while explicitly warning that provenance and checksums are unavailable.
-
-Scheduled DigitalOcean scraping: see [setup and operation](scripts/SCRAPING.md).
+Deployment updates the existing `property-prices-valuation` Cloud Run function in
+project `hirebarend`, region `europe-west3`. It uses Python 3.14, 2 CPUs, 2 GiB,
+concurrency one, and one worker. `GET /health` checks inference without writing
+a submission. Restart or redeploy to load new model artifacts.

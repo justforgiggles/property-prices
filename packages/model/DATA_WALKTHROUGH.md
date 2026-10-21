@@ -773,7 +773,7 @@ Source: [`artifacts.py`](src/property_model/artifacts.py), [`train/locations.py`
 
 Saving reloads the native bundle and compares predictions before publication. The loader checks the recipe, hashes, and feature order for a full manifest. This walkthrough uses the existing trusted local bundle; it does not retrain or publish it.
 
-Training also generates location display labels/catalog and local form choices from cleaned listings, restricted to Gauteng, KwaZulu Natal, and Western Cape. This restriction applies to form options, not an additional province filter inside `clean_records`. The catalog and form are side outputs, not learned features. Hosted form publication is separate.
+Training also generates the location display catalog from cleaned listings, restricted to Gauteng, KwaZulu Natal, and Western Cape. `npm run agents` then uses that catalog to generate the base and agent forms. This restriction applies to form options, not an additional province filter inside `clean_records`. The catalog and forms are outputs, not learned features; committing the generated files publishes them to the hosted forms.
 
 ### A form submission crosses another validation boundary
 

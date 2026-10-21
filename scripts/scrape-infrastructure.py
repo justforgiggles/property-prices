@@ -141,9 +141,7 @@ export GIT_SSH_COMMAND='ssh -i /root/.ssh/scrape-deploy -o IdentitiesOnly=yes -o
 git clone git@github.com:{REPOSITORY}.git /opt/property-prices
 cd /opt/property-prices
 git checkout -B main {sha}
-git clone git@github.com:{REPOSITORY}.git /opt/scrape-publish
-git -C /opt/scrape-publish checkout -B main {sha}
-systemd-run --unit=property-scraper --property=Restart=no --property=RuntimeMaxSec=90000 /bin/bash /opt/property-prices/scripts/scrape-worker.sh
+systemd-run --unit=property-scraper --property=Restart=no --property=RuntimeMaxSec=90000 /bin/bash /opt/property-prices/scripts/scrape.sh
 sleep 5
 systemctl is-active property-scraper
 journalctl -u property-scraper --no-pager -n 10

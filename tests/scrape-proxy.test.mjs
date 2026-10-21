@@ -16,7 +16,7 @@ test("proxy retries three times, buffers response bodies and redacts failures", 
     return new Response("success");
   };
   try {
-    await import("./scrape-proxy.mjs");
+    await import("../scripts/scrape-proxy.mjs");
     const response = await fetch("https://example.com");
     assert.equal(await response.text(), "success");
     assert.equal(calls, 3);

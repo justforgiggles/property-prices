@@ -1,5 +1,6 @@
-"""Raw listings → production training → artifacts and form locations."""
+"""Raw listings → production training → artifacts and location catalog."""
 import argparse
+import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -16,7 +17,7 @@ from ..config import (CATBOOST_PARAMS, CATEGORICAL, FEATURE_COLUMNS, INNER_FOLDS
                       INNER_SEED, LIGHTGBM_PARAMS, PACKAGE, ROOT, SEEDS)
 from ..features import aggregate_features, build_reference, categorical_frame, structural_features
 from .data import clean_listings, property_groups, read_listings
-from .locations import form_variants, prepare_location_updates
+from .locations import build_locations
 
 
 def main(argv=None):
@@ -36,9 +37,10 @@ def train(data_directory, output_directory):
     listings["group"] = property_groups(listings)
     audit = {**source_audit, **cleaning_audit, "groups": int(listings.group.nunique())}
 
-    location_updates = prepare_location_updates(listings, labels, PACKAGE / "locations.json", {
-        ROOT / "forms" / filename: agent_form for filename, agent_form in form_variants(ROOT).items()
-    })
+    locations = build_locations(listings, labels)
+    if not locations:
+        raise ValueError("Training data contains no supported form locations.")
+    location_updates = {PACKAGE / "locations.json": json.dumps(locations, ensure_ascii=False, indent=2) + "\n"}
     print(f"Cleaned {len(listings):,} listings in {audit['groups']:,} property groups.", flush=True)
 
     production_features = build_training_features(listings)
@@ -47,7 +49,7 @@ def train(data_directory, output_directory):
                     training_rows=len(listings), training_groups=audit["groups"],
                     training_ids=listings.id.tolist())
     save_model(production_model, output_directory, metadata, location_updates)
-    print(f"Saved model to {output_directory} and updated local form locations.", flush=True)
+    print(f"Saved model to {output_directory} and updated the location catalog.", flush=True)
 
 
 def build_training_features(training):

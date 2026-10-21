@@ -33,7 +33,7 @@ if os.environ.get("FAIL_DESCRIBE") and sys.argv[1:3] == ["run", "services"]:
                 path.write_text(stub)
                 path.chmod(0o755)
             log = root / "commands.jsonl"
-            env = {**{key: value for key, value in os.environ.items() if key not in ("GCLOUD_ACCOUNT", "GCLOUD_BUILD_SERVICE_ACCOUNT", "RELEASE_REVISION_SUFFIX")}, "PATH": str(root / "tools") + os.pathsep + os.environ["PATH"], "COMMAND_LOG": str(log)}
+            env = {**{key: value for key, value in os.environ.items() if key not in ("GCLOUD_ACCOUNT", "GCLOUD_BUILD_SERVICE_ACCOUNT")}, "PATH": str(root / "tools") + os.pathsep + os.environ["PATH"], "COMMAND_LOG": str(log)}
             subprocess.run(["sh", str(root / "scripts/train.sh"), "--output-dir", "relative output"], cwd="/tmp", env=env, check=True)
             import json
             calls = [json.loads(line) for line in log.read_text().splitlines()]
@@ -49,19 +49,18 @@ if os.environ.get("FAIL_DESCRIBE") and sys.argv[1:3] == ["run", "services"]:
             self.assertIn("WORKERS=1,THREADS=1", deployments[0])
             self.assertIn("--remove-secrets", deployments[0])
             self.assertIn("RESEND_API_KEY", deployments[0])
-            self.assertEqual(len(calls), 3)
+            self.assertEqual(len(calls), 4)
             self.assertEqual(calls[0][1:3], ["-m", "property_model.inference.main"])
             self.assertEqual(calls[1][1:4], ["run", "services", "describe"])
             self.assertEqual(calls[1][4], "property-prices-valuation")
             self.assertIn("hirebarend@gmail.com", calls[1])
             self.assertIn("hirebarend", calls[1])
             log.write_text("")
-            subprocess.run(["sh", str(root / "scripts/deploy.sh")], env={**env, "GCLOUD_ACCOUNT": "", "RELEASE_REVISION_SUFFIX": "r1-1", "GCLOUD_BUILD_SERVICE_ACCOUNT": "projects/test/serviceAccounts/build@test"}, check=True)
+            subprocess.run(["sh", str(root / "scripts/deploy.sh")], env={**env, "GCLOUD_ACCOUNT": "", "GCLOUD_BUILD_SERVICE_ACCOUNT": "projects/test/serviceAccounts/build@test"}, check=True)
             calls = [json.loads(line) for line in log.read_text().splitlines()]
             self.assertNotIn("--account", calls[1])
             self.assertNotIn("--account", calls[2])
-            self.assertIn("--no-traffic", calls[2])
-            self.assertIn("release-candidate", calls[2])
+            self.assertIn("--to-latest", calls[3])
             self.assertIn("projects/test/serviceAccounts/build@test", calls[2])
             log.write_text("")
             result = subprocess.run(["sh", str(root / "scripts/deploy.sh")], env={**env, "FAIL_VERIFY": "1"})
