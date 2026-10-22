@@ -3,7 +3,8 @@
 Property24 listings → trained asking-price model → valuations on frms.dev.
 `packages/data` scrapes listings. `packages/model` trains the model and serves
 inference through the API/webhook. `forms` contains the shared template, agent
-profiles, source artwork, and generated live forms.
+profiles, source artwork, and generated live forms. `packages/website` builds
+Home Atlas, a static asking-price discovery site generated from the scraped data.
 
 ## Setup
 
@@ -23,6 +24,9 @@ npm run train        # train the model and write locations.json
 npm run agents       # generate the base/agent forms and artwork
 npm run deploy       # verify and deploy the trained model
 npm run submissions  # download base-form submissions using ACCESS_KEY in .env
+npm run website:dev   # generate insights and start Home Atlas locally
+npm run website:build # generate the static site in packages/website/out
+npm run website:test  # test website data and comparison logic
 npm test
 npm run build        # TypeScript check
 ```
@@ -38,6 +42,8 @@ audit, and checksums. Training verifies the saved model before publishing it and
 `packages/model/locations.json`. It does not edit forms: run `npm run agents`
 after training. Optional `--data-dir` and `--output-dir` arguments can be passed
 to `npm run train -- ...`; locations still belong to this checkout.
+
+See [Home Atlas setup and validation](packages/website/README.md) for the static website.
 
 ## Forms
 

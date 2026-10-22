@@ -4,9 +4,13 @@
   "type": "module",
   "workspaces": [
     "packages/data",
-    "packages/model"
+    "packages/model",
+    "packages/website"
   ],
   "scripts": {
+    "website:dev": "npm run dev -w @property-prices/website",
+    "website:build": "npm run build -w @property-prices/website",
+    "website:test": "npm test -w @property-prices/website",
     "submissions": "sh scripts/submissions.sh",
     "scrape": "npm run scrape -w @property-prices/data --",
     "train": "sh scripts/train.sh",
