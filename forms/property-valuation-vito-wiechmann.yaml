@@ -514,6 +514,7 @@ sections:
             - Erasmia
             - Glen Lauriston
             - Golden Fields Estate
+            - Hennops River
             - Hennopspark
             - Heritage Hill
             - Heuweloord
@@ -967,6 +968,7 @@ sections:
             - Munsieville South
             - Noordheuwel
             - Noordkruin
+            - Oatlands
             - Paardekraal
             - Pinehaven
             - Protea Ridge
@@ -1306,10 +1308,12 @@ sections:
             - Riverbend AH
             - Robin Hills
             - Robindale
+            - Ruiterhof
             - Sharonlea
             - Sonneglans
             - Strijdompark
             - Sundowner
+            - Sunrella
             - Victory Park
             - Waterford Estates
             - Windsor
@@ -1390,6 +1394,7 @@ sections:
             - Roodepoort West
             - Ruimsig
             - Ruimsig AH
+            - Sonnedal AH
             - Strubensvallei
             - Tres Jolie
             - Weltevreden Park
@@ -1487,6 +1492,7 @@ sections:
             - Soshanguve KK
             - Soshanguve L
             - Soshanguve M
+            - Soshanguve MM
             - Soshanguve P
             - Soshanguve PP1
             - Soshanguve PP2
@@ -1511,6 +1517,7 @@ sections:
             - Dobsonville
             - Dobsonville Gardens
             - Doornkop
+            - Dube
             - Eldorado Estate
             - Eldorado Park
             - Emdeni
@@ -1917,6 +1924,7 @@ sections:
             - Clifton Hill Estate
             - Cotswold Downs Golf & Country Estate
             - Cotswold Fenns
+            - Crestholme
             - Crestview
             - Hillcrest Central
             - Hillcrest Park
@@ -1926,6 +1934,7 @@ sections:
             - Le Domaine
             - Phezulu
             - Plantations Estate
+            - Summerveld
             - Waterfall
             - West Riding
           Hilton:
@@ -2112,6 +2121,7 @@ sections:
             - Woodview
           Pietermaritzburg:
             - Allandale
+            - Ambleton
             - Ashburton
             - Athlone
             - Belfort Estate
@@ -2850,6 +2860,7 @@ sections:
             - Kronenzicht
             - Northshore
             - Overkloof
+            - Ruyteplaats
             - Scott Estate
             - Stoneybrooke Estate
             - Tarragona
@@ -3019,6 +3030,7 @@ sections:
             - Die Wingerd
             - Glen Lilly
             - Kalbaskraal
+            - Klipfontein AH
             - Malmesbury Rural
             - Mount Royal Golf Estate
             - Panorama
@@ -3201,6 +3213,7 @@ sections:
             - Natures Valley
             - Plettenberg Bay Central
             - Poortjies
+            - River Club
             - Schoongezicht Estate
             - Seaside Longships
             - Signal Hill
