@@ -3,19 +3,29 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "generate": "node scripts/generate-cities.mjs",
+    "predev": "npm run generate",
     "dev": "next dev",
+    "prebuild": "npm run generate",
     "build": "next build",
-    "typecheck": "next typegen && tsc --noEmit"
+    "pretypecheck": "npm run generate",
+    "typecheck": "next typegen && tsc --noEmit",
+    "test": "node --test scripts/*.test.mjs"
   },
   "dependencies": {
+    "@radix-ui/react-separator": "^1.2.0",
+    "cn": "^0.5.0",
+    "lucide-react": "^1.61.0",
     "next": "^16.4.3",
     "react": "^19.3.1",
     "react-dom": "^19.3.1"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2"
   }
 }

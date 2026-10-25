@@ -3,11 +3,14 @@ on:
   push:
     branches: [main]
     paths:
+      - 'data/raw/**'
       - 'packages/website/**'
       - 'package.json'
       - 'package-lock.json'
       - '.github/workflows/website.yml'
   workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * *'
 permissions:
   contents: read
 concurrency:
@@ -32,6 +35,8 @@ jobs:
         run: npm ci
       - name: Check types
         run: npm run typecheck -w @prop-radar/website
+      - name: Test city data generation
+        run: npm test -w @prop-radar/website
       - name: Export website
         run: npm run build:website
       - uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4

@@ -7,10 +7,14 @@ export const metadata: Metadata = {
   description: "A clearer view of South African property prices.",
 };
 
-export default function RootLayout({ children }: Readonly<{ children: ReactNode }>): ReactElement {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: ReactNode }>): ReactElement {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body className="min-h-svh bg-background font-sans text-foreground antialiased">
+        {children}
+      </body>
     </html>
   );
 }

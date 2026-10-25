@@ -112,11 +112,27 @@ GitHub authentication uses the `prop-radar` workload identity pool and its
 
 ## Website
 
-The website uses Next.js App Router, TypeScript, and plain CSS. Only Node.js 22
+The website uses Next.js App Router, TypeScript, shadcn UI, and Tailwind. Only Node.js 22
 and `npm ci` are needed to work on it; Python and model artifacts are not required.
 Run `npm run dev:website` and open http://localhost:3000/property-prices/.
 Run `npm run typecheck -w @prop-radar/website` to check types, and
 `npm run build:website` to generate the static site in `packages/website/out`.
+
+Development, type checking, and builds first generate the ignored
+`packages/website/data/cities.json` from `data/raw/*.jsonl`. Run
+`npm run generate -w @prop-radar/website` to regenerate it independently and
+`npm test -w @prop-radar/website` to test the aggregation.
+
+Counts represent distinct advertisement IDs published in the 90 calendar days
+ending today in `Africa/Johannesburg`, including today. They do not measure active
+inventory or unique properties. Cities are grouped by name and province; only
+cities with recent listings appear. The banner's update date is the generation
+date, and its total remains unchanged when searching city names. Malformed records
+fail generation rather than silently reducing counts.
+
+Page styling uses Tailwind classes. The sole global stylesheet contains framework
+imports and theme tokens, without custom selectors. The radar mark is copied into
+the website; no report files or Python dependencies are needed to build it.
 
 The production URL is https://justforgiggles.github.io/property-prices/.
 The `/property-prices` base path applies locally and in production. Static export
@@ -127,9 +143,11 @@ links for internal navigation and include the base path in public asset URLs.
 In repository **Settings → Pages → Build and deployment**, select **GitHub Actions**
 as the source before the first deployment. The `github-pages` environment should
 allow deployments only from `main`. The website workflow, `.github/workflows/website.yml`,
-checks types, builds, and publishes the export when website files, the root package
-manifest, the lockfile, or the workflow change on `main`. It also supports manual
-deployment from `main`:
+tests, checks types, builds, and publishes the export when raw data, website files,
+the root package manifest, the lockfile, or the workflow change on `main`. It also
+rebuilds daily at **09:00 UTC / 11:00 SAST** so listings age out without new data
+(GitHub may delay scheduled runs). Counts remain a snapshot between builds.
+It also supports manual deployment from `main`:
 
 ```sh
 gh workflow run website.yml --repo justforgiggles/property-prices --ref main
