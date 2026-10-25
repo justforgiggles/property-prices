@@ -4,7 +4,8 @@
   "type": "module",
   "workspaces": [
     "packages/data",
-    "packages/model"
+    "packages/model",
+    "packages/website"
   ],
   "scripts": {
     "submissions": "sh scripts/submissions.sh",
@@ -13,7 +14,9 @@
     "agents": "node scripts/agents.mjs",
     "deploy": "sh scripts/deploy.sh",
     "test": "node --test tests/*.test.mjs && packages/model/.venv/bin/python -m unittest discover -s packages/model/tests",
-    "build": "npm run build -w @prop-radar/data"
+    "build": "npm run build -w @prop-radar/data",
+    "dev:website": "npm run dev -w @prop-radar/website",
+    "build:website": "npm run build -w @prop-radar/website"
   },
   "overrides": {
     "uuid": "^11.1.1"

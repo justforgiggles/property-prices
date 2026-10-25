@@ -9,6 +9,7 @@ Property24 listings → trained asking-price model → valuations on frms.dev.
 `packages/data` scrapes listings. `packages/model` trains the model and serves
 inference through the API/webhook. `forms` contains the shared template, agent
 profiles, source artwork, and generated live forms.
+`packages/website` is the static Next.js website hosted on GitHub Pages.
 
 ## Setup
 
@@ -30,6 +31,8 @@ npm run deploy       # verify and deploy the trained model
 npm run submissions  # download base-form submissions using ACCESS_KEY in .env
 npm test
 npm run build        # TypeScript check
+npm run dev:website  # website development server
+npm run build:website # export website to packages/website/out
 ```
 
 Training reads `data/raw/*.jsonl`, cleans residential listings, links related
@@ -87,7 +90,7 @@ journalctl -u prop-radar.service -n 100 --no-pager
 sudo systemctl start --no-block prop-radar.service  # manual run
 ```
 
-The single workflow, `.github/workflows/release.yml`, runs train → agents → deploy
+The model workflow, `.github/workflows/release.yml`, runs train → agents → deploy
 → commit generated outputs. Changes to raw data or `data/result.json` trigger it
 automatically. Keep its filename: Google OIDC trust is restricted to that workflow
 on `main`. The `production` environment supplies `GCP_WORKLOAD_IDENTITY_PROVIDER`,
@@ -106,6 +109,35 @@ There is no PR workflow. `npm test` runs the remaining model and form tests loca
 Builds and deployments share `prop-radar@hirebarend.iam.gserviceaccount.com`.
 GitHub authentication uses the `prop-radar` workload identity pool and its
 `github` provider. The Google project and runtime account remain unchanged.
+
+## Website
+
+The website uses Next.js App Router, TypeScript, and plain CSS. Only Node.js 22
+and `npm ci` are needed to work on it; Python and model artifacts are not required.
+Run `npm run dev:website` and open http://localhost:3000/property-prices/.
+Run `npm run typecheck -w @prop-radar/website` to check types, and
+`npm run build:website` to generate the static site in `packages/website/out`.
+
+The production URL is https://justforgiggles.github.io/property-prices/.
+The `/property-prices` base path applies locally and in production. Static export
+uses directory-style routes and unoptimized images; server-only features such as
+API routes, Server Actions, and runtime rendering are not available. Use Next.js
+links for internal navigation and include the base path in public asset URLs.
+
+In repository **Settings → Pages → Build and deployment**, select **GitHub Actions**
+as the source before the first deployment. The `github-pages` environment should
+allow deployments only from `main`. The website workflow, `.github/workflows/website.yml`,
+checks types, builds, and publishes the export when website files, the root package
+manifest, the lockfile, or the workflow change on `main`. It also supports manual
+deployment from `main`:
+
+```sh
+gh workflow run website.yml --repo justforgiggles/property-prices --ref main
+```
+
+There is no website PR workflow. Build artifacts are uploaded directly to Pages
+and are not committed to a deployment branch. Check the workflow run and its
+deployment URL after publishing; the existing model release runs independently.
 
 ## Inference and webhook
 

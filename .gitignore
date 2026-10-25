@@ -6,6 +6,9 @@ node_modules/
 /data/rates-and-taxes-backfill-parse-errors.jsonl
 /data/rates-and-taxes-backfill-failures.jsonl
 packages/*/dist/
+packages/website/.next/
+packages/website/out/
+packages/website/*.tsbuildinfo
 packages/model/.venv/
 packages/model/build/
 packages/model/models/
