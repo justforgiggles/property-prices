@@ -70,5 +70,5 @@ This does not stop an already running scrape. Inspect and resolve a failed run
 before starting the service manually again.
 
 The former DigitalOcean worker workflow, provisioning code, proxy integration,
-and scraper-only credentials are retired after Pi acceptance. The unrelated
+and scraper-only credentials were retired after Pi acceptance. The unrelated
 `frms-prod-fra1-01` server and provider accounts are not part of this migration.
