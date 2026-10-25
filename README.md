@@ -126,7 +126,8 @@ Development, type checking, and builds first generate the ignored
 Counts represent distinct advertisement IDs published in the 90 calendar days
 ending today in `Africa/Johannesburg`, including today. They do not measure active
 inventory or unique properties. Cities are grouped by name and province; only
-cities with recent listings appear. The banner's update date is the generation
+cities with more than 20 recent listings appear, ordered by listing count descending
+with alphabetical ties. The banner still counts all listings. Its update date is the generation
 date, and its total remains unchanged when searching city names. Malformed records
 fail generation rather than silently reducing counts.
 

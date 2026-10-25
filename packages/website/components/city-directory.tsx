@@ -21,9 +21,12 @@ type City = {
 export function CityDirectory({ cities }: { cities: City[] }): ReactElement {
   const [query, setQuery] = useState("");
   const search = query.trim().toLocaleLowerCase("en-ZA");
-  const matches = cities.filter((city) =>
-    city.name.toLocaleLowerCase("en-ZA").includes(search),
-  );
+  const matches = cities
+    .filter((city) =>
+      city.listingCount > 20 &&
+      city.name.toLocaleLowerCase("en-ZA").includes(search),
+    )
+    .sort((left, right) => right.listingCount - left.listingCount);
 
   return (
     <section aria-label="Cities">
