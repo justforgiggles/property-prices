@@ -1,8 +1,11 @@
-# Property listings
+# Prop Radar
 
 Property advertisements collected from the supported South African locations.
 
 ## Language
+
+**Prop Radar**: The project that collects South African property listings and
+provides property valuations. The canonical display name is Prop Radar.
 
 **Listing**: A property advertisement on Property24. Different advertisements for
 the same property can be separate listings.

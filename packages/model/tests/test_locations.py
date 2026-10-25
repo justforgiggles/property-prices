@@ -1,7 +1,7 @@
 """The training population produces a sorted, supported location catalog."""
 import unittest
 import pandas as pd
-from property_model.train.locations import build_locations
+from prop_radar.train.locations import build_locations
 
 
 class LocationTests(unittest.TestCase):

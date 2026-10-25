@@ -9,8 +9,8 @@ from pathlib import Path
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-from property_model.inference.main import get_model, predict
-from property_model.config import EXAMPLE
+from prop_radar.inference.main import get_model, predict
+from prop_radar.config import EXAMPLE
 
 PACKAGE = Path(__file__).resolve().parents[3]
 LOCATIONS = json.loads((PACKAGE / "locations.json").read_text())
@@ -99,7 +99,7 @@ def save_prediction(form_id: str, identifier: str, estimate: dict) -> None:
         f"https://frms.dev/api/v1/forms/{form_id}/submissions"
         f"?{urlencode({'id': identifier, 'partial': 'true', 'section_id': 'prediction'})}",
         data=json.dumps({"prediction": prediction}, allow_nan=False).encode(),
-        headers={"Content-Type": "application/json", "User-Agent": "property-prices/1.0"},
+        headers={"Content-Type": "application/json", "User-Agent": "prop-radar/1.0"},
         method="POST",
     )
     with urlopen(request, timeout=10) as response:

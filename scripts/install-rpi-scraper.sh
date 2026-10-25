@@ -19,9 +19,9 @@ fi
 
 scraper_user=office
 scraper_home=$(getent passwd "$scraper_user" | cut -d: -f6)
-checkout="$scraper_home/property-prices"
-key="$scraper_home/.ssh/property-scraper"
-known_hosts="$scraper_home/.ssh/property-scraper-known-hosts"
+checkout="$scraper_home/prop-radar"
+key="$scraper_home/.ssh/prop-radar"
+known_hosts="$scraper_home/.ssh/prop-radar-known-hosts"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y git curl xz-utils ca-certificates python3
@@ -39,7 +39,7 @@ fi
 
 install -d -m 0700 -o "$scraper_user" -g "$scraper_user" "$scraper_home/.ssh"
 if [ ! -f "$key" ]; then
-  runuser -u "$scraper_user" -- ssh-keygen -q -t ed25519 -N '' -C 'Raspberry Pi property scraper' -f "$key"
+  runuser -u "$scraper_user" -- ssh-keygen -q -t ed25519 -N '' -C 'Prop Radar' -f "$key"
 fi
 curl --fail --retry 3 -sS https://api.github.com/meta | python3 -c 'import json,sys; print("".join("github.com " + key + "\n" for key in json.load(sys.stdin)["ssh_keys"]), end="")' > "$known_hosts"
 chown "$scraper_user:$scraper_user" "$known_hosts"
@@ -56,14 +56,14 @@ if [ ! -d "$checkout" ]; then
   runuser -u "$scraper_user" -- env GIT_SSH_COMMAND="$ssh_command" git clone --branch main "$repository" "$checkout"
 fi
 runuser -u "$scraper_user" -- git -C "$checkout" config core.sshCommand "$ssh_command"
-runuser -u "$scraper_user" -- git -C "$checkout" config user.name 'Property scraper'
+runuser -u "$scraper_user" -- git -C "$checkout" config user.name 'Prop Radar'
 runuser -u "$scraper_user" -- git -C "$checkout" config user.email 'scraper@users.noreply.github.com'
 runuser -u "$scraper_user" -- git -C "$checkout" pull --rebase origin main
-runuser -u "$scraper_user" -- env PATH=/usr/local/bin:/usr/bin:/bin bash -c 'cd "$1"; npm ci --workspace @property-prices/data --include-workspace-root=false --include=dev' -- "$checkout"
+runuser -u "$scraper_user" -- env PATH=/usr/local/bin:/usr/bin:/bin bash -c 'cd "$1"; npm ci --workspace @prop-radar/data --include-workspace-root=false --include=dev' -- "$checkout"
 
-cat > /etc/systemd/system/property-scraper.service <<EOF
+cat > /etc/systemd/system/prop-radar.service <<EOF
 [Unit]
-Description=Scrape property listings and publish results
+Description=Prop Radar scraping
 Wants=network-online.target
 After=network-online.target
 
@@ -77,24 +77,24 @@ ExecStart=/bin/bash $checkout/scripts/scrape.sh
 TimeoutStartSec=infinity
 Restart=no
 EOF
-cat > /etc/systemd/system/property-scraper.timer <<'EOF'
+cat > /etc/systemd/system/prop-radar.timer <<'EOF'
 [Unit]
-Description=Daily property scrape at 10:00 SAST
+Description=Daily Prop Radar scrape at 10:00 SAST
 
 [Timer]
 OnCalendar=*-*-* 10:00:00 Africa/Johannesburg
 AccuracySec=1s
 Persistent=false
-Unit=property-scraper.service
+Unit=prop-radar.service
 
 [Install]
 WantedBy=timers.target
 EOF
-systemd-analyze verify /etc/systemd/system/property-scraper.service /etc/systemd/system/property-scraper.timer
+systemd-analyze verify /etc/systemd/system/prop-radar.service /etc/systemd/system/prop-radar.timer
 systemctl daemon-reload
 if [ "$enable_timer" = true ]; then
-  systemctl enable --now property-scraper.timer
-  systemctl list-timers property-scraper.timer --no-pager
+  systemctl enable --now prop-radar.timer
+  systemctl list-timers prop-radar.timer --no-pager
 else
-  echo 'Installed with timer activation deferred. Enable after acceptance: sudo systemctl enable --now property-scraper.timer'
+  echo 'Installed with timer activation deferred. Enable after acceptance: sudo systemctl enable --now prop-radar.timer'
 fi

@@ -1,5 +1,5 @@
 {
-  "name": "property-prices",
+  "name": "prop-radar",
   "private": true,
   "type": "module",
   "workspaces": [
@@ -8,12 +8,12 @@
   ],
   "scripts": {
     "submissions": "sh scripts/submissions.sh",
-    "scrape": "npm run scrape -w @property-prices/data --",
+    "scrape": "npm run scrape -w @prop-radar/data --",
     "train": "sh scripts/train.sh",
     "agents": "node scripts/agents.mjs",
     "deploy": "sh scripts/deploy.sh",
     "test": "node --test tests/*.test.mjs && packages/model/.venv/bin/python -m unittest discover -s packages/model/tests",
-    "build": "npm run build -w @property-prices/data"
+    "build": "npm run build -w @prop-radar/data"
   },
   "overrides": {
     "uuid": "^11.1.1"

@@ -1,4 +1,9 @@
-# Property prices
+# Prop Radar
+
+Display names use **Prop Radar**; project identifiers use `prop-radar`, and the
+Python import package is `prop_radar`. The GitHub repository remains
+`justforgiggles/property-prices`, including its raw asset URLs. Existing account
+identities, live form filenames, and the local checkout folder are unchanged.
 
 Property24 listings → trained asking-price model → valuations on frms.dev.
 `packages/data` scrapes listings. `packages/model` trains the model and serves
@@ -73,13 +78,13 @@ sudo bash scripts/install-rpi-scraper.sh
 
 On a fresh Pi, copy the installer there first. It creates a dedicated SSH key;
 register its printed public key as a write-enabled deploy key for this repository
-and rerun. It clones into `/home/office/property-prices`. Use `--no-enable-timer`
+and rerun. It clones into `/home/office/prop-radar`. Use `--no-enable-timer`
 to defer initial activation. The private key remains on the Pi.
 
 ```sh
-systemctl list-timers property-scraper.timer
-journalctl -u property-scraper.service -n 100 --no-pager
-sudo systemctl start --no-block property-scraper.service  # manual run
+systemctl list-timers prop-radar.timer
+journalctl -u prop-radar.service -n 100 --no-pager
+sudo systemctl start --no-block prop-radar.service  # manual run
 ```
 
 The single workflow, `.github/workflows/release.yml`, runs train → agents → deploy
@@ -98,13 +103,17 @@ gh workflow run release.yml --repo justforgiggles/property-prices --ref main
 There is no PR workflow. `npm test` runs the remaining model and form tests locally;
 `npm run build` type-checks the data package.
 
+Builds and deployments share `prop-radar@hirebarend.iam.gserviceaccount.com`.
+GitHub authentication uses the `prop-radar` workload identity pool and its
+`github` provider. The Google project and runtime account remain unchanged.
+
 ## Inference and webhook
 
 ```sh
-npm run verify -w @property-prices/model
-packages/model/.venv/bin/python -m property_model.inference.main --input '{"province":"Gauteng","city":"Johannesburg","suburb":"Berea","bedrooms":2,"bathrooms":1,"floor_size":85,"rates":700}'
+npm run verify -w @prop-radar/model
+packages/model/.venv/bin/python -m prop_radar.inference.main --input '{"province":"Gauteng","city":"Johannesburg","suburb":"Berea","bedrooms":2,"bathrooms":1,"floor_size":85,"rates":700}'
 packages/model/.venv/bin/python -m functions_framework \
-  --source packages/model/src/property_model/http/main.py --target valuation --port 8080
+  --source packages/model/src/prop_radar/http/main.py --target valuation --port 8080
 ```
 
 Inference accepts an object, a nonempty list, or a JSON filename; `--model-dir`
@@ -118,7 +127,7 @@ frms.dev. Other section events return 204. It does not send prediction JSON in
 the HTTP response. The completion screen reads `formatted_asking_price` and can
 show its existing fallback if the update arrives late.
 
-Deployment updates the existing `property-prices-valuation` Cloud Run function in
+Deployment updates the existing `prop-radar-valuation` Cloud Run function in
 project `hirebarend`, region `europe-west3`. It uses Python 3.14, 2 CPUs, 2 GiB,
 concurrency one, and one worker. `GET /health` checks inference without writing
 a submission. Restart or redeploy to load new model artifacts.

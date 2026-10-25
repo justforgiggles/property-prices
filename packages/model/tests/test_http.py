@@ -3,7 +3,7 @@ import json
 import unittest
 from unittest.mock import MagicMock, Mock, patch
 
-from property_model.http.main import valuation
+from prop_radar.http.main import valuation
 
 
 class ValuationWebhookTests(unittest.TestCase):
@@ -25,10 +25,10 @@ class ValuationWebhookTests(unittest.TestCase):
         }
 
     def test_health_checks_model_without_updating_submissions(self):
-        with (patch("property_model.http.main.get_model", return_value=object()),
-              patch("property_model.http.main.predict", return_value=[{"recommended_asking_price_zar": 1000000}]),
+        with (patch("prop_radar.http.main.get_model", return_value=object()),
+              patch("prop_radar.http.main.predict", return_value=[{"recommended_asking_price_zar": 1000000}]),
               patch("pathlib.Path.read_bytes", return_value=b"manifest"),
-              patch("property_model.http.main.urlopen") as urlopen):
+              patch("prop_radar.http.main.urlopen") as urlopen):
             body, status, headers = valuation(Mock(method="GET", path="/health"))
             self.assertEqual(status, 200)
             self.assertEqual(json.loads(body)["status"], "ok")
@@ -36,8 +36,8 @@ class ValuationWebhookTests(unittest.TestCase):
             urlopen.assert_not_called()
 
     def test_broken_model_is_unhealthy(self):
-        with (patch("property_model.http.main.get_model", side_effect=ValueError("bad artifact")),
-              patch("property_model.http.main.urlopen") as urlopen):
+        with (patch("prop_radar.http.main.get_model", side_effect=ValueError("bad artifact")),
+              patch("prop_radar.http.main.urlopen") as urlopen):
             self.assertEqual(valuation(Mock(method="GET", path="/health"))[1], 503)
             urlopen.assert_not_called()
 
@@ -47,12 +47,12 @@ class ValuationWebhookTests(unittest.TestCase):
                 body = {**self.body, "form_id": form_id}
                 response = MagicMock(status=200)
                 response.__enter__.return_value = response
-                with (patch("property_model.http.main.get_model", return_value=object()),
-                      patch("property_model.http.main.predict", return_value=[{
+                with (patch("prop_radar.http.main.get_model", return_value=object()),
+                      patch("prop_radar.http.main.predict", return_value=[{
                           "recommended_asking_price_zar": 1844000.0,
                           "comparable_count": 5,
                       }]) as predict,
-                      patch("property_model.http.main.urlopen", return_value=response) as urlopen):
+                      patch("prop_radar.http.main.urlopen", return_value=response) as urlopen):
                     self.assertEqual(valuation(Mock(method="POST", get_json=lambda silent: body))[1], 204)
 
                 self.assertEqual(predict.call_args.args[0], {
@@ -71,9 +71,9 @@ class ValuationWebhookTests(unittest.TestCase):
                 self.assertEqual(urlopen.call_args.kwargs, {"timeout": 10})
 
     def test_invalid_identifiers_do_not_load_predict_or_write(self):
-        with (patch("property_model.http.main.get_model") as get_model,
-              patch("property_model.http.main.predict") as predict,
-              patch("property_model.http.main.urlopen") as urlopen):
+        with (patch("prop_radar.http.main.get_model") as get_model,
+              patch("prop_radar.http.main.predict") as predict,
+              patch("prop_radar.http.main.urlopen") as urlopen):
             for field, invalid in (
                 ("form_id", [None, "", 123, True, [], {}, "a1234567", "a123456789",
                              "b12345678", "a1234567g", "a12345678/../other", "a12345678?x=1",
@@ -91,7 +91,7 @@ class ValuationWebhookTests(unittest.TestCase):
             urlopen.assert_not_called()
 
     def test_other_events_do_not_predict(self):
-        with patch("property_model.http.main.predict") as predict:
+        with patch("prop_radar.http.main.predict") as predict:
             for update in ({"section_id": "location"}, {"section_id": "prediction"},
                            {"section_id": None}, {"status": "completed"}):
                 body = {**self.body, **update}
@@ -101,12 +101,12 @@ class ValuationWebhookTests(unittest.TestCase):
     def test_invalid_property_and_api_failure(self):
         invalid = {**self.body, "data": {**self.body["data"], "bedrooms": "0"}}
         self.assertEqual(valuation(Mock(method="POST", get_json=lambda silent: invalid))[1], 400)
-        with (patch("property_model.http.main.get_model", return_value=object()),
-              patch("property_model.http.main.predict", return_value=[{
+        with (patch("prop_radar.http.main.get_model", return_value=object()),
+              patch("prop_radar.http.main.predict", return_value=[{
                   "recommended_asking_price_zar": 1844000.0,
               }]),
-              patch("property_model.http.main.urlopen", side_effect=OSError("offline")),
-              patch("property_model.http.main.logging.exception")):
+              patch("prop_radar.http.main.urlopen", side_effect=OSError("offline")),
+              patch("prop_radar.http.main.logging.exception")):
             self.assertEqual(valuation(Mock(method="POST", get_json=lambda silent: self.body))[1], 502)
 
 

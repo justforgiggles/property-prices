@@ -23,7 +23,7 @@ All numerical examples below were computed with this repository's functions and 
 
 ## 1. The two data paths
 
-The code now follows the same stages as this walkthrough. Start with [`train()`](src/property_model/train/main.py) and [`predict()`](src/property_model/inference/main.py). A **record** is a Python dictionary, and each stage takes or returns a list of records. `records_to_feature_matrix()` is the explicit boundary where feature dictionaries become the 70-column DataFrame accepted by the learners.
+The code now follows the same stages as this walkthrough. Start with [`train()`](src/prop_radar/train/main.py) and [`predict()`](src/prop_radar/inference/main.py). A **record** is a Python dictionary, and each stage takes or returns a list of records. `records_to_feature_matrix()` is the explicit boundary where feature dictionaries become the 70-column DataFrame accepted by the learners.
 
 The training flow reads like this:
 
@@ -35,7 +35,7 @@ feature_records = build_training_features(records)
 model = train_models(records, feature_records)
 ```
 
-[`market.py`](src/property_model/market.py) owns group statistics and the shrinkage hierarchy. [`features.py`](src/property_model/features.py) combines structural, aggregate, and comparable feature dictionaries. [`comparables.py`](src/property_model/comparables.py) handles neighbor selection and price arithmetic. Numerical kernels and persisted reference tables still use NumPy/pandas to preserve the trained recipe's statistical behavior.
+[`market.py`](src/prop_radar/market.py) owns group statistics and the shrinkage hierarchy. [`features.py`](src/prop_radar/features.py) combines structural, aggregate, and comparable feature dictionaries. [`comparables.py`](src/prop_radar/comparables.py) handles neighbor selection and price arithmetic. Numerical kernels and persisted reference tables still use NumPy/pandas to preserve the trained recipe's statistical behavior.
 
 ```mermaid
 flowchart TD
@@ -90,7 +90,7 @@ This is the implementation's SHA-256 over sorted filenames and line contents, no
 
 ## 2. Raw records and extraction
 
-Source: [`read_records`, `raw_to_record`](src/property_model/train/data.py).
+Source: [`read_records`, `raw_to_record`](src/prop_radar/train/data.py).
 
 ### The example set
 
@@ -207,7 +207,7 @@ Latitude, longitude, pets, agent details, top-level address and listing-date str
 
 ## 3. Cleaning and property grouping
 
-Source: [`clean_records`, `assign_property_groups`](src/property_model/train/data.py), [`LIMITS`](src/property_model/config.py).
+Source: [`clean_records`, `assign_property_groups`](src/prop_radar/train/data.py), [`LIMITS`](src/prop_radar/config.py).
 
 ### Row rejection versus missing measurements
 
@@ -273,7 +273,7 @@ IDs, prices, descriptions, image URLs, streets, dates, kinds, and group labels d
 
 ## 4. Structural features
 
-Source: [`calculate_structural_features`](src/property_model/features.py), [`area_to_size_band`](src/property_model/records.py).
+Source: [`calculate_structural_features`](src/prop_radar/features.py), [`area_to_size_band`](src/prop_radar/records.py).
 
 This stage needs only the property's inputs, not other listings. It produces **24 columns**: five geography strings, four measurements, eight missing/log features, five ratios, one room product, and one size band.
 
@@ -320,7 +320,7 @@ Area bands are `(0,50]`, `(50,100]`, `(100,150]`, `(150,250]`, `(250,400]`, `(40
 
 ## 5. Training folds and historical reference
 
-Source: [`build_training_features`](src/property_model/train/main.py), [`build_market_reference`](src/property_model/market.py).
+Source: [`build_training_features`](src/prop_radar/train/main.py), [`build_market_reference`](src/prop_radar/market.py).
 
 Price-derived features cannot be constructed from a row's own price during training. `GroupKFold` divides the population into four folds, shuffled with seed 119. For each fold, a reference is built from the other three folds, then used to calculate the held fold's market summaries and comparables. All members of a property group stay together.
 
@@ -367,7 +367,7 @@ The saved inference reference is rebuilt from **all 29,207 rows**, not a fold. I
 
 ## 6. Market-summary transformations
 
-Source: [`add_market_group_keys`, `build_market_reference`, `calculate_aggregate_features`](src/property_model/market.py).
+Source: [`add_market_group_keys`, `build_market_reference`, `calculate_aggregate_features`](src/prop_radar/market.py).
 
 ### Step 1: decide which rows belong together
 
@@ -433,7 +433,7 @@ For an even number of observations, `exp(median(log(price)))` is the geometric m
 
 ## 7. Comparable-listing transformations
 
-Source: [`calculate_comparable_features` and helpers](src/property_model/comparables.py).
+Source: [`calculate_comparable_features` and helpers](src/prop_radar/comparables.py).
 
 This branch constructs ten more **features**. The comparable estimate is deterministic arithmetic over listings, not another fitted learner.
 
@@ -536,7 +536,7 @@ exp(comp_log) = R6,177,816.244021152
 
 ## 8. The 70 inputs and model targets
 
-Source: [`FEATURE_COLUMNS`, model parameters](src/property_model/config.py), [`train_models`](src/property_model/train/main.py).
+Source: [`FEATURE_COLUMNS`, model parameters](src/prop_radar/config.py), [`train_models`](src/prop_radar/train/main.py).
 
 ### Complete feature dictionary and matrix layout
 
@@ -596,7 +596,7 @@ The fitted tree structures and internal categorical transformations are learned 
 
 ## 9. Prediction through both branches
 
-Source: [`validate_prediction_records`, `predict`, `format_prediction_results`](src/property_model/inference/main.py).
+Source: [`validate_prediction_records`, `predict`, `format_prediction_results`](src/prop_radar/inference/main.py).
 
 ### Input: the same property, without its price
 
@@ -760,7 +760,7 @@ This all-numeric-missing override is **inference-only**. A training row with all
 
 ## 11. Saved artifacts, forms, and completion
 
-Source: [`artifacts.py`](src/property_model/artifacts.py), [`train/locations.py`](src/property_model/train/locations.py), [`http/main.py`](src/property_model/http/main.py).
+Source: [`artifacts.py`](src/prop_radar/artifacts.py), [`train/locations.py`](src/prop_radar/train/locations.py), [`http/main.py`](src/prop_radar/http/main.py).
 
 ### What passes from training to prediction
 
@@ -805,9 +805,9 @@ Run these commands from the repository root with the existing Python environment
 ```sh
 packages/model/.venv/bin/python - <<'PYCODE'
 import json
-from property_model.artifacts import load_model
-from property_model.config import PACKAGE
-from property_model.inference.main import predict
+from prop_radar.artifacts import load_model
+from prop_radar.config import PACKAGE
+from prop_radar.inference.main import predict
 
 subject = dict(province="Western Cape", city="Durbanville",
                suburb="Durbanville Hills", bedrooms=3, bathrooms=3,
@@ -836,18 +836,18 @@ packages/model/.venv/bin/python - <<'PYCODE'
 import json
 import numpy as np
 import pandas as pd
-from property_model.artifacts import load_model
-from property_model.comparables import (
+from prop_radar.artifacts import load_model
+from prop_radar.comparables import (
     record_to_comparable_coordinates, select_comparable_pool,
     calculate_comparable_distances, adjust_comparable_log_prices_for_area)
-from property_model.config import ROOT, PACKAGE, NUMERIC, FEATURE_COLUMNS, SEEDS
-from property_model.features import (
+from prop_radar.config import ROOT, PACKAGE, NUMERIC, FEATURE_COLUMNS, SEEDS
+from prop_radar.features import (
     add_features, records_to_feature_matrix, encode_lightgbm_categories)
-from property_model.market import build_market_reference
-from property_model.train.data import read_records, clean_records, assign_property_groups
-from property_model.train.main import (
+from prop_radar.market import build_market_reference
+from prop_radar.train.data import read_records, clean_records, assign_property_groups
+from prop_radar.train.main import (
     build_training_features, create_property_group_folds, calculate_residual_targets)
-from property_model.inference.main import (
+from prop_radar.inference.main import (
     validate_prediction_records, predict, predict_residual_prices, blend_branch_prices)
 
 records, source, _ = read_records(ROOT / "data/raw")

@@ -3608,7 +3608,7 @@ completion:
     message: We couldn’t display your estimate. Please try again later.
 connections:
   - type: webhook
-    url: https://property-prices-valuation-1008115912104.europe-west3.run.app
+    url: https://prop-radar-valuation-1008115912104.europe-west3.run.app
     trigger_on: partial
   - type: email
     to: wihan@simplyre.co.za

@@ -8,18 +8,18 @@ if [ -n "$account" ]; then set -- "$@" --account "$account"; fi
 if [ -n "${GCLOUD_BUILD_SERVICE_ACCOUNT:-}" ]; then
   set -- "$@" --build-service-account "$GCLOUD_BUILD_SERVICE_ACCOUNT"
 fi
-packages/model/.venv/bin/python -m property_model.inference.main --model-dir packages/model/models
+packages/model/.venv/bin/python -m prop_radar.inference.main --model-dir packages/model/models
 
-gcloud run services describe property-prices-valuation \
+gcloud run services describe prop-radar-valuation \
   --region europe-west3 \
   ${account:+--account "$account"} \
   --project hirebarend \
   --format='value(metadata.name)' >/dev/null
 
-gcloud run deploy property-prices-valuation \
+gcloud run deploy prop-radar-valuation \
   --source packages/model \
   --function valuation \
-  --set-build-env-vars GOOGLE_FUNCTION_SOURCE=src/property_model/http/main.py \
+  --set-build-env-vars GOOGLE_FUNCTION_SOURCE=src/prop_radar/http/main.py \
   --base-image europe-west3-docker.pkg.dev/serverless-runtimes/google-24-full/runtimes/python314 \
   --concurrency 1 \
   --cpu 2 \
@@ -31,7 +31,7 @@ gcloud run deploy property-prices-valuation \
   --remove-secrets RESEND_API_KEY \
   --quiet
 
-gcloud run services update-traffic property-prices-valuation \
+gcloud run services update-traffic prop-radar-valuation \
   --to-latest \
   --region europe-west3 \
   ${account:+--account "$account"} \

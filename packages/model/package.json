@@ -1,7 +1,7 @@
 {
-  "name": "@property-prices/model",
+  "name": "@prop-radar/model",
   "private": true,
   "scripts": {
-    "verify": ".venv/bin/python -m property_model.inference.main --model-dir models"
+    "verify": ".venv/bin/python -m prop_radar.inference.main --model-dir models"
   }
 }
