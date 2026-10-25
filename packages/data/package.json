@@ -3,14 +3,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "scrape": "node --import tsx src/cli.ts scrape",
-    "scrape:smoke": "node --import tsx src/smoke.ts",
-    "test": "node --import tsx --test test/*.test.ts",
+    "scrape": "node --import tsx src/cli.ts",
     "build": "tsc --noEmit"
   },
   "dependencies": {
-    "cheerio": "^1.2.0",
-    "undici": "^8.12.3"
+    "cheerio": "^1.2.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.5",

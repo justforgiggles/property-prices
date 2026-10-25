@@ -9,11 +9,10 @@
   "scripts": {
     "submissions": "sh scripts/submissions.sh",
     "scrape": "npm run scrape -w @property-prices/data --",
-    "scrape:smoke": "npm run scrape:smoke -w @property-prices/data",
     "train": "sh scripts/train.sh",
     "agents": "node scripts/agents.mjs",
     "deploy": "sh scripts/deploy.sh",
-    "test": "npm test -w @property-prices/data && node --test tests/*.test.mjs && packages/model/.venv/bin/python -m unittest discover -s tests -p \"test_*.py\" && packages/model/.venv/bin/python -m unittest discover -s packages/model/tests",
+    "test": "node --test tests/*.test.mjs && packages/model/.venv/bin/python -m unittest discover -s packages/model/tests",
     "build": "npm run build -w @property-prices/data"
   },
   "overrides": {

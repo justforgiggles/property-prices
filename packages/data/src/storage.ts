@@ -7,8 +7,13 @@ import type { RawListing } from "./property24.js";
 
 export class Storage {
   private listingIds: Promise<Set<number>> | null = null;
+  private added = 0;
 
   public constructor(private readonly directory: string) {}
+
+  public get listingsAdded(): number {
+    return this.added;
+  }
 
   public async hasListing(listingId: number): Promise<boolean> {
     const ids = await (this.listingIds ??= this.readListingIds());
@@ -39,6 +44,7 @@ export class Storage {
     }
 
     ids.add(listing.id);
+    this.added += 1;
     return true;
   }
 

@@ -73,7 +73,7 @@ User=$scraper_user
 WorkingDirectory=$checkout
 Environment=HOME=$scraper_home
 Environment=PATH=/usr/local/bin:/usr/bin:/bin
-ExecStart=/bin/bash $checkout/scripts/start-scrape.sh
+ExecStart=/bin/bash $checkout/scripts/scrape.sh
 TimeoutStartSec=infinity
 Restart=no
 EOF

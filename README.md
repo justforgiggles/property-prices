@@ -52,15 +52,51 @@ The hosted forms read the generated YAML and artwork from `main`.
 
 ## Automation
 
-[Scraping](scripts/SCRAPING.md) runs directly on the Raspberry Pi daily at
-10:00 SAST. Each run pulls the latest code and publishes its results once,
-including partial results, triggering [release](scripts/RELEASE.md).
+The Raspberry Pi scrapes directly every day at **10:00 SAST**. Its systemd timer
+skips missed starts and never overlaps runs. `scripts/scrape.sh` pulls `main`,
+installs scraper dependencies, scrapes, commits raw data and `data/result.json`,
+rebases, and pushes. Shell commands stop on failure; Git conflicts and interrupted
+runs need manual attention.
 
-Release runs train → agents → deploy → commit generated outputs. Only data and
-scrape-completion changes trigger it automatically. After changing model code,
+Node keeps the existing city-level error handling and continues to the next
+city after an error. Finishing the city loop is a successful run, even if some
+cities failed. `data/result.json` records `completed_at`, `listings_added`, and
+`failed_cities`. The added count includes listings saved before a city failed.
+Uncaught errors stop publication. Listings retain their four-second delay and
+are stored in `data/raw/YYYY-MM-DD.jsonl`; location ordering is unchanged.
+
+Install on the Debian ARM64 Pi as follows (the installer uses the `office` user):
+
+```sh
+sudo bash scripts/install-rpi-scraper.sh
+```
+
+On a fresh Pi, copy the installer there first. It creates a dedicated SSH key;
+register its printed public key as a write-enabled deploy key for this repository
+and rerun. It clones into `/home/office/property-prices`. Use `--no-enable-timer`
+to defer initial activation. The private key remains on the Pi.
+
+```sh
+systemctl list-timers property-scraper.timer
+journalctl -u property-scraper.service -n 100 --no-pager
+sudo systemctl start --no-block property-scraper.service  # manual run
+```
+
+The single workflow, `.github/workflows/release.yml`, runs train → agents → deploy
+→ commit generated outputs. Changes to raw data or `data/result.json` trigger it
+automatically. Keep its filename: Google OIDC trust is restricted to that workflow
+on `main`. The `production` environment supplies `GCP_WORKLOAD_IDENTITY_PROVIDER`,
+`GCP_DEPLOY_SERVICE_ACCOUNT`, and `GCP_BUILD_SERVICE_ACCOUNT`. After changing model code,
 agent profiles, templates, or deployment scripts, run the release workflow
 manually to publish those changes. Commands stop on failure; rerun after fixing
 the problem. There is no automatic rollback.
+
+```sh
+gh workflow run release.yml --repo justforgiggles/property-prices --ref main
+```
+
+There is no PR workflow. `npm test` runs the remaining model and form tests locally;
+`npm run build` type-checks the data package.
 
 ## Inference and webhook
 
