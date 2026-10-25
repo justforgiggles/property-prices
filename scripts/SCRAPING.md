@@ -1,34 +1,74 @@
 # Scheduled scraping
 
-The scrape workflow runs daily at **15:00 UTC**, or manually:
+The Raspberry Pi scrapes directly every day at **10:00 Africa/Johannesburg
+(SAST, UTC+2)**. There is no proxy. The systemd timer skips missed starts and
+will not start another instance while the previous run is active. There is no
+run time limit or automatic retry of a failed daily run.
+
+## Install
+
+The installer targets Debian ARM64 and the `office` user. Run on the Pi:
 
 ```sh
-gh workflow run scrape.yml --repo justforgiggles/property-prices --ref main
+sudo bash scripts/install-rpi-scraper.sh
 ```
 
-It deletes previous droplets tagged `property-prices-scraper-1370448547`, confirms
-deletion, and creates one `s-1vcpu-2gb` Ubuntu droplet in London. It starts
-`scripts/scrape.sh` as a detached systemd service and exits.
+For a fresh Pi without a checkout, copy this installer there first and run it
+with `sudo bash /path/to/install-rpi-scraper.sh`. It installs Node 22.22.0 and
+required utilities, creates a dedicated SSH key, and clones this repository to
+`/home/office/property-prices`. If the key is not registered, it prints the public
+key and stops: add it as a **write-enabled deploy key** on
+`justforgiggles/property-prices`, then rerun. The private key remains in
+`/home/office/.ssh/property-scraper`. GitHub host keys are obtained over HTTPS.
 
-The worker runs the existing scraper unchanged. A Node preload routes all requests
-through Oxylabs residential proxies, using a fresh session each time: South Africa
-for the first two attempts, UK for the third. There is no direct-network fallback.
-The worker stops after 24 hours or an estimated 10GB of downloaded response bodies;
-this estimate excludes protocol overhead and is not a provider billing limit.
+The script can be rerun. Use `--no-enable-timer` during initial acceptance to
+install without activating the daily timer; this flag does not disable an
+already active timer. No scrape is launched by installation.
 
-Only a successful scrape commits raw data and `data/scrape-completed.json` to
-`main`. That push triggers model release and cleanup independently. Cleanup checks
-the completion record's droplet ID and ownership tags before deletion. There are
-no periodic checkpoints: an unfinished run's new data may be lost. Failed runs
-remain until the next scheduled/manual launch removes them, and remain billable
-until deletion. No automatic restarts or replacement workers are used.
+## Daily behavior
 
-The main-only `scraping` GitHub environment contains `DIGITALOCEAN_TOKEN`,
-`SCRAPE_DEPLOY_KEY`, `OXYLABS_USERNAME`, and `OXYLABS_PASSWORD`. The deploy key grants
-write access only to this repository. The DigitalOcean token stays in Actions;
-worker credentials are delivered over pinned SSH and stored in root-only files.
+The service runs as `office`, pulls `main` with rebase, installs only the scraper
+workspace's dependencies, and invokes the existing scraper with its existing
+request delays and retries. Failed updates or dependency installs stop the run.
+Model training and deployment remain in GitHub Actions and Cloud Run.
 
-The workflow log identifies the droplet. For inspection through DigitalOcean's
-recovery console, use `journalctl -u property-scraper` and
-`systemctl status property-scraper`. The unrelated `frms-prod-fra1-01` droplet is
-never targeted. Local scraping remains `npm run scrape`.
+When scraping finishes, it publishes once. A complete run always writes
+`data/scrape-completed.json`; a failed run does so only if it collected data.
+The marker contains `run_id`, `completed_at`, and `status` (`complete` or
+`partial`). Raw data and this marker are committed and pushed to `main`,
+triggering the existing model/forms release even for partial results. A partial
+run still exits unsuccessfully so the failure remains visible in systemd.
+
+Git conflicts, interrupted writes, and push failures need manual attention.
+Unpublished commits and partially written files remain on the Pi; do not delete
+or reset them without inspecting the data. No checkpoint publication, automatic
+repair, alerting integration, or full-run watchdog is installed.
+
+## Verify and operate
+
+```sh
+cd /home/office/property-prices
+npm run scrape:smoke
+npm test -w @property-prices/data
+npm run build -w @property-prices/data
+git push --dry-run origin HEAD:main
+sudo systemctl enable --now property-scraper.timer
+systemctl list-timers property-scraper.timer
+systemctl status property-scraper.service
+journalctl -u property-scraper.service -n 100 --no-pager
+sudo systemctl start --no-block property-scraper.service
+```
+
+The smoke command discovers cities and tests the first city's search page and
+at most ten listing pages with four-second delays. It requires at least one
+valid recent listing, validates the saved JSONL, and prints its temporary output
+path. It does not change or publish repository data. This is a basic acceptance
+check, not proof that an hours-long full scrape will complete.
+
+For maintenance, stop the timer with `sudo systemctl stop property-scraper.timer`.
+This does not stop an already running scrape. Inspect and resolve a failed run
+before starting the service manually again.
+
+The former DigitalOcean worker workflow, provisioning code, proxy integration,
+and scraper-only credentials are retired after Pi acceptance. The unrelated
+`frms-prod-fra1-01` server and provider accounts are not part of this migration.

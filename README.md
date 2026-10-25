@@ -52,9 +52,9 @@ The hosted forms read the generated YAML and artwork from `main`.
 
 ## Automation
 
-[Scraping](scripts/SCRAPING.md) starts a detached DigitalOcean worker daily at
-15:00 UTC. A successful scrape commits its data once and triggers independent
-cleanup and [release](scripts/RELEASE.md).
+[Scraping](scripts/SCRAPING.md) runs directly on the Raspberry Pi daily at
+10:00 SAST. Each run pulls the latest code and publishes its results once,
+including partial results, triggering [release](scripts/RELEASE.md).
 
 Release runs train → agents → deploy → commit generated outputs. Only data and
 scrape-completion changes trigger it automatically. After changing model code,

@@ -9,6 +9,7 @@
   "scripts": {
     "submissions": "sh scripts/submissions.sh",
     "scrape": "npm run scrape -w @property-prices/data --",
+    "scrape:smoke": "npm run scrape:smoke -w @property-prices/data",
     "train": "sh scripts/train.sh",
     "agents": "node scripts/agents.mjs",
     "deploy": "sh scripts/deploy.sh",
