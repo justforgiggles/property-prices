@@ -11,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Separator } from "@/components/ui/separator";
 
 type City = {
   name: string;
@@ -30,16 +31,16 @@ export function CityDirectory({ cities }: { cities: City[] }): ReactElement {
 
   return (
     <section aria-label="Cities">
-      <div className="relative mx-auto mt-8 mb-14 max-w-lg sm:mb-20">
+      <div className="relative mx-auto mt-8 mb-8 max-w-lg sm:mb-10">
         <Search
           className="pointer-events-none absolute top-1/2 left-4 size-5 -translate-y-1/2 text-muted-foreground"
           aria-hidden="true"
         />
         <Input
           type="search"
-          aria-label="Search cities"
+          aria-label="Find your city"
           aria-controls="city-grid"
-          placeholder="Search for a city…"
+          placeholder="Find your city…"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           className="h-14 rounded-lg border-input bg-card pr-4 pl-12 text-base shadow-none md:text-base"
@@ -55,11 +56,11 @@ export function CityDirectory({ cities }: { cities: City[] }): ReactElement {
         {matches.map((city) => (
           <Card
             key={JSON.stringify([city.province, city.name])}
-            className="gap-7 rounded-lg border-border bg-card py-6 shadow-none"
+            className="gap-5 rounded-lg border-border bg-card py-6 shadow-none"
           >
             <CardHeader className="gap-1.5 px-6">
               <CardTitle>
-                <h2 className="text-xl font-medium tracking-tight">
+                <h2 className="text-[22px] leading-snug font-semibold tracking-tight">
                   {city.name}
                 </h2>
               </CardTitle>
@@ -67,16 +68,16 @@ export function CityDirectory({ cities }: { cities: City[] }): ReactElement {
                 {city.province}
               </CardDescription>
             </CardHeader>
-            <CardContent className="px-6">
-              <p className="text-sm text-muted-foreground">
-                <span className="mr-1.5 text-2xl font-medium tracking-tight text-foreground tabular-nums">
-                  {city.listingCount.toLocaleString("en-GB")}
-                </span>
-                {city.listingCount === 1 ? "listing" : "listings"}
-                <span className="mx-1.5" aria-hidden="true">
-                  ·
-                </span>
-                last 90 days
+            <CardContent className="mt-auto px-6">
+              <Separator className="mb-5" />
+              <p className="text-4xl font-medium tracking-tight tabular-nums">
+                {city.listingCount.toLocaleString("en-GB")}
+              </p>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Recorded listings
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Published in the past 90 days
               </p>
             </CardContent>
           </Card>
@@ -85,8 +86,8 @@ export function CityDirectory({ cities }: { cities: City[] }): ReactElement {
       {matches.length === 0 && (
         <p className="py-12 text-center text-sm text-muted-foreground">
           {cities.length === 0
-            ? "No listings in the last 90 days."
-            : "No cities found. Try another city name."}
+            ? "No listings in the past 90 days."
+            : "No matching cities. Try another city name."}
         </p>
       )}
     </section>
