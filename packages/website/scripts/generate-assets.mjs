@@ -13,13 +13,7 @@ process.env.FONTCONFIG_FILE ??= join(website, "assets/fonts/fonts.conf");
 const radar = await readFile(join(website, "assets/radar.svg"));
 await mkdir(icons, { recursive: true });
 await mkdir(social, { recursive: true });
-const faviconSvg = Buffer.from(
-  radar.toString().replace(
-    /(<svg[^>]*>)/,
-    `$1<rect width="32" height="32" rx="4" fill="${site.background}"/>`,
-  ),
-);
-await writeFile(join(icons, "icon.svg"), faviconSvg);
+await writeFile(join(icons, "icon.svg"), radar);
 
 for (const [name, size] of [
   ["favicon-96.png", 96],
@@ -28,7 +22,7 @@ for (const [name, size] of [
   ["icon-512.png", 512],
 ]) {
   const padding = name === "apple-touch-icon.png" ? 18 : 0;
-  await sharp(radar, { density: 1200 })
+  const icon = sharp(radar, { density: 1200 })
     .resize(size - padding * 2, size - padding * 2)
     .extend({
       top: padding,
@@ -36,16 +30,15 @@ for (const [name, size] of [
       left: padding,
       right: padding,
       background: site.background,
-    })
-    .flatten({ background: site.background })
-    .png()
-    .toFile(join(icons, name));
+    });
+  if (name !== "favicon-96.png") icon.flatten({ background: site.background });
+  await icon.png().toFile(join(icons, name));
 }
 
 const faviconSizes = [16, 32, 48];
 const faviconImages = await Promise.all(
   faviconSizes.map((size) =>
-    sharp(faviconSvg, { density: 1200 }).resize(size, size).png().toBuffer(),
+    sharp(radar, { density: 1200 }).resize(size, size).png().toBuffer(),
   ),
 );
 const header = Buffer.alloc(6 + faviconSizes.length * 16);

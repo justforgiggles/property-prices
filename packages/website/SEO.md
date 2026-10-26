@@ -58,8 +58,10 @@ builds use committed assets and require no network or font download.
 
 The bundled Geist font comes from the
 [Google Fonts repository](https://github.com/google/fonts/tree/main/ofl/geist);
-its SIL Open Font License is included alongside the font. SVG and ICO favicons
-use a cream backing so the green radar remains visible on dark browser chrome.
+its SIL Open Font License is included alongside the font. SVG, ICO, and PNG
+favicons use transparent backgrounds so the radar sits directly on browser tabs.
+This replaces the cream backing, which appeared as a white tile in Chrome.
+Apple and application icons retain their cream backgrounds.
 
 The evergreen 1200×630 sharing PNG uses the brand and approved headline, without
 dates, counts, or a future domain. Social services cache previews; a daily number
