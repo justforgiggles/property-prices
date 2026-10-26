@@ -1,8 +1,9 @@
 import type { NextConfig } from "next";
+import { basePath } from "./site.config.mjs";
 
 const nextConfig: NextConfig = {
   output: "export",
-  basePath: "/property-prices",
+  basePath,
   trailingSlash: true,
   images: {
     unoptimized: true,

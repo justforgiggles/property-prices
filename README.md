@@ -112,6 +112,10 @@ GitHub authentication uses the `prop-radar` workload identity pool and its
 
 ## Website
 
+Use the [design reference](packages/website/DESIGN.md) for UI and copy decisions,
+and the [SEO guide](packages/website/SEO.md) for metadata, sharing assets,
+search-console setup, and the future custom-domain migration.
+
 The website uses Next.js App Router, TypeScript, shadcn UI, and Tailwind. Only Node.js 22
 and `npm ci` are needed to work on it; Python and model artifacts are not required.
 Run `npm run dev:website` and open http://localhost:3000/property-prices/.

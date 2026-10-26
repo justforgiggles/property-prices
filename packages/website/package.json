@@ -8,6 +8,9 @@
     "dev": "next dev",
     "prebuild": "npm run generate",
     "build": "next build",
+    "postbuild": "npm run check:seo",
+    "check:seo": "node scripts/check-seo.mjs",
+    "assets": "node scripts/generate-assets.mjs",
     "pretypecheck": "npm run generate",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "node --test scripts/*.test.mjs"
@@ -25,6 +28,8 @@
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "cheerio": "^1.2.0",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2"
   }
