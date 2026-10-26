@@ -26,9 +26,9 @@ source. Identical city names in different provinces refer to different cities.
 including that date, in South African time. A listing belongs to the window by
 its publication date; inclusion does not establish that it is still active.
 
-**Data refresh**: The generation of the website's city listing counts from the
-collected advertisements. Its date describes when those counts were calculated,
-not when the advertisements were collected or last verified.
+**Data refresh**: The generation of the website's city listing counts and analytics
+from collected advertisements. Its date describes when the summaries were
+calculated, not when advertisements were collected or last verified.
 
 **Completed calendar months**: Whole months, from their first through last day,
 before the current month in South African time. A three-month period excludes
@@ -50,3 +50,18 @@ Its billing period is not verified, so it does not establish a monthly cost.
 **Price band**: A group of asking prices bounded by a stated lower and upper
 amount, including the lower boundary and excluding the upper. The first and last
 bands may be open-ended.
+
+**Residential sale listing**: A recorded advertisement identified as a residential
+home for sale, excluding identifiable rentals and non-residential advertisements.
+A missing asking price does not remove it from the residential listing count.
+
+**Bedroom band**: A group of advertisements with reported bedrooms within a stated
+range. The 2-bedroom band includes 2 to under 3 bedrooms; the 5+ band includes all
+valid counts at least 5. All bedrooms also includes studios and unclassified counts.
+
+**Valid observation**: A usable reported value for one metric after its validity
+rules are applied. Each metric has its own observation count; an advertisement
+can contribute to one metric while lacking a usable value for another.
+
+**Suppressed statistic**: A median or percentile withheld because fewer than five
+valid observations are available. Its observation count remains visible.

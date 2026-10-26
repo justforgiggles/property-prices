@@ -8,8 +8,9 @@ changes; record intentional departures and their reasons here.
 The primary readers are South African property buyers and sellers. The landing
 page helps them understand the recorded listing coverage for their city. It does
 not provide active inventory, transactions, unique-property counts, valuations,
-or live city analytics. City overview pages currently demonstrate the layout with
-clearly labelled illustrative figures. Match claims and controls to capabilities that exist.
+or live inventory. City overview pages summarise recorded residential sale
+advertisements over three completed calendar months. Match claims and controls
+to capabilities that exist.
 
 Use the definitions of listing, city, reporting window, and data refresh in the
 [project glossary](../../GLOSSARY.md). Operational data rules and deployment
@@ -43,7 +44,7 @@ the count is 36px medium-weight with tabular figures. This replaced an inline
 statistic whose hierarchy was too weak. Quiet cream surfaces, subtle borders,
 modest corners, and no shadows keep a long grid readable.
 
-Cards link to city overview previews. The whole card is a single accessible link,
+Cards link to city overviews. The whole card is a single accessible link,
 with subtle border/background hover treatment and a visible keyboard focus ring;
 avoid hover lift or shadows. The city remains prominent so readers can locate their place;
 the metric is not a claim about demand, popularity, or market strength.
@@ -64,19 +65,22 @@ The user explicitly chose a minimal page without additional coverage explanation
 disclaimers, navigation, or sections. Adding those is a product/design change,
 not a routine copy improvement. Retain the small copyright footer.
 
-## City overview preview
+## City overview
 
 The city page shares the banner, linked radar masthead, container, and footer with
-the landing page. The banner retains its real site-wide 90-day count; city analytics
-are separate illustrative fixtures. A centred city heading and province label lead
-into a short subtext and “Illustrative data · July–September 2026” label.
+the landing page. The banner retains its site-wide 90-day count; city analytics
+use a separate residential-sale sample from the three completed calendar months.
+A centred city heading and province label lead into a short subtext and a
+“Residential sales” label with the exact reporting dates.
 
 The introduction is two columns on desktop: buyer/seller-oriented summary copy,
 then a quiet card with typical asking price, the middle-half range, typical price
 per m², and listing count. It remains city-wide when bedroom selection changes.
 
 Below, shadcn tabs select All bedrooms, 1, 2, 3, 4, or 5+ bedrooms. All is the default
-and may include listings without a bedroom classification. Every section below the
+and includes studios and listings without a usable bedroom count. Numbered tabs
+use bands: 2 means 2 to under 3 bedrooms, similarly for 1–4, with 5+ including all
+valid values at least 5. Explain fractional counts beside the controls. Every section below the
 tabs follows the selection. In order: two matching price/range cards; listing-count
 bars beside a median asking-price line and shaded 25th–75th percentile band; then
 reported rates and taxes beside horizontal price-distribution bars. Percentiles
@@ -85,15 +89,25 @@ components and forest/sage theme tokens, with explicit labels and hover details.
 
 Price bands are Under R1m, R1m–R2m, R2m–R3m, R3m–R5m, and R5m+, labelled with both
 percentage and count. Rates and taxes show the median and middle half without
-asserting a monthly billing period. All city metrics use the three completed
-calendar months July–September 2026; the same deterministic sample appears across
-cities. These are design fixtures, not calculations from the directory or report.
+asserting a monthly billing period. Each metric shows its own valid-observation
+count. Price-band percentages use valid asking prices, not all recorded listings.
+The city summary and charts use generated analytics, not mock values or model predictions.
+
+Statistics with fewer than five valid observations show “Not enough data” (or
+“No reported values” for zero); retain the counts and never substitute zero prices.
+Empty months remain in the listing chart. Price charts leave gaps where monthly
+statistics are suppressed; if every month is suppressed, show an empty state.
+A collapsed percentile range places the median marker at its centre. Monthly
+change compares the first and third month only when both have a usable median;
+label the actual months and handle positive, zero, and negative changes. These
+are different publication-month samples, not tracking individual home price changes.
 
 On mobile the sections stack in reading order and the tabs scroll within their
 own strip. Keep figures readable, charts keyboard-accessible, and range values
 available as text. The PDF is a reference for interpreting metrics, while the
 landing page remains the visual anchor. These reversible choices belong here,
-rather than in a separate ADR. Data integration is deferred.
+rather than in a separate ADR. Aggregation rules and JSON contracts live in the
+README and the typed city analytics interface.
 
 ## Review changes
 

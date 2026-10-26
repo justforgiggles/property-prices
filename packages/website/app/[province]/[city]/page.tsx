@@ -1,43 +1,23 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { SiteShell } from "@/components/site-shell";
 import { CityReportDetails } from "@/components/city-report";
 import { PriceRangeVisual } from "@/components/price-range";
 import { Card, CardContent } from "@/components/ui/card";
-import data from "@/data/cities.json";
-import { cityPath, slugify } from "@/lib/city-routes.mjs";
-import {
-  cityReports,
-  compactRand,
-  rand,
-  reportPeriod,
-} from "@/lib/city-report";
+import manifest from "@/data/city-manifest.json";
+import { loadCityAnalytics } from "@/lib/load-city-analytics";
+import { compactRand, rand, formatPeriod } from "@/lib/city-report";
 import { site, siteUrl, socialImage } from "@/site.config.mjs";
 
 type Params = { province: string; city: string };
-const cities = data.cities.filter((city) => city.listingCount > 20);
 export const dynamicParams = false;
 
 export function generateStaticParams(): Params[] {
-  const paths = cities.map(cityPath);
-  if (new Set(paths).size !== paths.length)
-    throw new Error("City route slugs must be unique within each province");
-  return cities.map((city) => ({
-    province: slugify(city.province),
-    city: slugify(city.name),
+  return manifest.cities.map((city) => ({
+    province: city.provinceSlug,
+    city: city.citySlug,
   }));
-}
-
-function findCity(params: Params) {
-  const city = cities.find(
-    (city) =>
-      slugify(city.province) === params.province &&
-      slugify(city.name) === params.city,
-  );
-  if (!city) notFound();
-  return city;
 }
 
 export async function generateMetadata({
@@ -45,15 +25,20 @@ export async function generateMetadata({
 }: {
   params: Promise<Params>;
 }): Promise<Metadata> {
-  const city = findCity(await params);
-  const title = `${city.name} Property Overview — Illustrative Preview | Prop Radar`;
-  const description = `Explore an illustrative property overview for ${city.name}, ${city.province}. Preview the city page with sample asking prices, bedroom comparisons and listing charts.`;
-  const url = siteUrl(cityPath(city).slice(1));
+  const route = await params;
+  const analytics = await loadCityAnalytics(route.province, route.city);
+  const city = { name: analytics.city.name, province: analytics.province.name };
+  const title = `${city.name} Asking Prices & Property Listings | Prop Radar`;
+  const description = `Explore recorded residential asking prices in ${city.name}, ${city.province}, for ${formatPeriod(analytics.period)}. Compare bedrooms, price ranges and published listing counts.`;
+  const url = siteUrl(`${analytics.province.slug}/${analytics.city.slug}/`);
   return {
     title: { absolute: title },
     description,
     alternates: { canonical: url },
-    robots: { index: false, follow: true },
+    robots: {
+      index: analytics.bedroomGroups.all.askingPrice.count >= 5,
+      follow: true,
+    },
     openGraph: {
       type: "website",
       title,
@@ -77,8 +62,11 @@ export default async function CityPage({
 }: {
   params: Promise<Params>;
 }) {
-  const city = findCity(await params);
-  const report = cityReports[0];
+  const route = await params;
+  const analytics = await loadCityAnalytics(route.province, route.city);
+  const city = { name: analytics.city.name, province: analytics.province.name };
+  const report = analytics.bedroomGroups.all;
+  const reportPeriod = formatPeriod(analytics.period);
   return (
     <SiteShell>
       <nav className="pt-6 sm:pt-7" aria-label="Back to city directory">
@@ -108,7 +96,7 @@ export default async function CityPage({
           compare.
         </p>
         <p className="mt-5 inline-flex flex-wrap justify-center gap-x-2 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground">
-          <span>Illustrative data</span>
+          <span>Residential sales</span>
           <span aria-hidden="true">·</span>
           <span>{reportPeriod}</span>
         </p>
@@ -128,13 +116,27 @@ export default async function CityPage({
             A starting point for your next move.
           </h2>
           <p className="mt-5 text-sm leading-7 text-muted-foreground sm:text-base">
-            In this illustrative overview, the typical asking price is{" "}
-            <strong className="font-medium text-foreground">
-              {compactRand(report.askingPrice.median)}
-            </strong>
-            , with the middle half between{" "}
-            {compactRand(report.askingPrice.lower)} and{" "}
-            {compactRand(report.askingPrice.upper)}.
+            {report.askingPrice.median !== null ? (
+              <>
+                Across {report.listingCount.toLocaleString("en-ZA")} recorded
+                residential sale listings, the typical asking price is{" "}
+                <strong className="font-medium text-foreground">
+                  {compactRand(report.askingPrice.median)}
+                </strong>
+                , with the middle half between{" "}
+                {compactRand(report.askingPrice.p25)} and{" "}
+                {compactRand(report.askingPrice.p75)}.
+              </>
+            ) : (
+              <>
+                There {report.listingCount === 1 ? "is" : "are"}{" "}
+                {report.listingCount.toLocaleString("en-ZA")} recorded
+                residential sale{" "}
+                {report.listingCount === 1 ? "listing" : "listings"} in this
+                period. At least five valid asking prices are needed to show a
+                typical price and range.
+              </>
+            )}
           </p>
           <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
             Buying or selling? Start with the city-wide picture, then explore
@@ -149,7 +151,8 @@ export default async function CityPage({
               {compactRand(report.askingPrice.median)}
             </p>
             <p className="mt-3 text-sm text-muted-foreground">
-              Median advertised price · all bedrooms
+              Median advertised price · all bedrooms ·{" "}
+              {report.askingPrice.count.toLocaleString("en-ZA")} valid prices
             </p>
             <div className="mt-6">
               <PriceRangeVisual value={report.askingPrice} compact />
@@ -162,20 +165,24 @@ export default async function CityPage({
                 <dd className="mt-2 text-xl font-medium tabular-nums sm:text-2xl">
                   {rand(report.pricePerSquareMetre.median)}
                 </dd>
+                <dd className="mt-1 text-xs text-muted-foreground">
+                  {report.pricePerSquareMetre.count.toLocaleString("en-ZA")}{" "}
+                  valid observations
+                </dd>
               </div>
               <div className="border-l border-border pl-5">
                 <dt className="text-xs text-muted-foreground">
                   Recorded listings
                 </dt>
                 <dd className="mt-2 text-xl font-medium tabular-nums sm:text-2xl">
-                  {report.listings.toLocaleString("en-ZA")}
+                  {report.listingCount.toLocaleString("en-ZA")}
                 </dd>
               </div>
             </dl>
           </CardContent>
         </Card>
       </section>
-      <CityReportDetails />
+      <CityReportDetails analytics={analytics} />
     </SiteShell>
   );
 }

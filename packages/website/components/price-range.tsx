@@ -1,15 +1,25 @@
-import { compactRand, rand, type PriceRange } from "@/lib/city-report";
+import { compactRand, rand, type Statistics } from "@/lib/city-report";
 
 export function PriceRangeVisual({
   value,
   compact = false,
 }: {
-  value: PriceRange;
+  value: Statistics;
   compact?: boolean;
 }) {
   const format = compact ? compactRand : rand;
+  if (value.median === null || value.p25 === null || value.p75 === null) {
+    return (
+      <p className="my-5 text-sm text-muted-foreground">
+        {value.count === 0 ? "No reported values" : "Not enough data"} · at
+        least 5 values needed
+      </p>
+    );
+  }
   const position =
-    ((value.median - value.lower) / (value.upper - value.lower)) * 100;
+    value.p75 === value.p25
+      ? 50
+      : ((value.median - value.p25) / (value.p75 - value.p25)) * 100;
   return (
     <div>
       <div
@@ -24,11 +34,11 @@ export function PriceRangeVisual({
       <dl className="flex justify-between gap-4 text-sm tabular-nums">
         <div>
           <dt className="text-xs text-muted-foreground">25th percentile</dt>
-          <dd className="mt-1 font-medium">{format(value.lower)}</dd>
+          <dd className="mt-1 font-medium">{format(value.p25)}</dd>
         </div>
         <div className="text-right">
           <dt className="text-xs text-muted-foreground">75th percentile</dt>
-          <dd className="mt-1 font-medium">{format(value.upper)}</dd>
+          <dd className="mt-1 font-medium">{format(value.p75)}</dd>
         </div>
       </dl>
     </div>

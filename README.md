@@ -133,8 +133,10 @@ Run `npm run typecheck -w @prop-radar/website` to check types, and
 `npm run build:website` to generate the static site in `packages/website/out`.
 
 Development, type checking, and builds first generate the ignored
-`packages/website/data/cities.json` from `data/raw/*.jsonl`. Run
-`npm run generate -w @prop-radar/website` to regenerate it independently and
+`packages/website/data/cities.json` directory snapshot, `data/city-manifest.json`,
+and `data/cities/<province-slug>/<city-slug>.json` analytics from `data/raw/*.jsonl`.
+All paths are relative to `packages/website` unless fully specified. Run
+`npm run generate -w @prop-radar/website` to regenerate them independently and
 `npm test -w @prop-radar/website` to test the aggregation.
 
 Counts represent distinct advertisement IDs published in the 90 calendar days
@@ -144,6 +146,53 @@ cities with more than 20 recent listings appear, ordered by listing count descen
 with alphabetical ties. The banner still counts all listings. Its update date is the generation
 date, and its total remains unchanged when searching city names. Malformed records
 fail generation rather than silently reducing counts.
+
+City analytics use the three completed calendar months before the refresh month
+in South African time, selected by publication date. Every city in either this
+period or the 90-day directory receives a JSON file and static page. The directory
+retains its original first-in-window ID counting; analytics use the last occurrence
+of each ID in sorted snapshot files, with the last line winning within a file.
+Separate advertisements remain separate listings. No heuristic property linking,
+report-specific exclusions, model predictions or Python dependencies are used.
+
+Residential eligibility follows the model's House/Apartment types or residential
+property-type labels (house/apartment/townhouse/flat), excluding rental phrases
+“to let”, “to rent”, “for rent”, and “available for rental” in the advert description.
+Residential label matching uses whole words so “warehouse” is not treated as “house”.
+Each metric independently ignores invalid values: finite ZAR asking prices at least
+R10,000; floor areas 5–100,000 m² with MTK units; rates and taxes R0–R1,000,000;
+bedrooms 0–100. Historical top-level bedroom and square-metre size fields are
+supported. Missing, empty, boolean and nonnumeric values are not zero. POA and
+other invalid prices remain in eligible listing counts but not price statistics.
+No upper asking-price cap or percentile trimming is applied.
+
+Each file follows `CityAnalytics` in `packages/website/lib/city-report.ts`:
+`schemaVersion`, `generatedAt`, province/city names and slugs, inclusive period
+start/end dates, and `bedroomGroups` keyed by `all`, `1`, `2`, `3`, `4`, `5plus`.
+Every group contains `listingCount`, nested `askingPrice`, `pricePerSquareMetre`
+and `ratesAndTaxes` statistics, three chronological `months`,
+`askingPriceChangePercent`, and `priceDistribution`. Statistics use
+`{ count, median, p25, p75 }`; all three statistics are null below five observations.
+Quantiles linearly interpolate sorted values at `(n - 1) × q`. Price per m² uses
+individual price/area ratios. Amounts remain numeric; display rounding belongs
+to the page, not the generated contract.
+
+Bedroom bands are [1,2), [2,3), [3,4), [4,5), and 5+. All includes valid values
+below one and unavailable/invalid bedroom values. Monthly rows use `YYYY-MM`,
+`listingCount` and nested `askingPrice` statistics; empty months have zero counts
+and null prices. Median change compares the first and third month, or is null
+if either median is unavailable. Price buckets are [0,R1m), [R1m,R2m), [R2m,R3m),
+[R3m,R5m), and R5m+, with numeric `min`, nullable `max`, `count`, and `percentage`.
+Their denominator is `priceDistribution.count` (valid prices); percentages are
+null when that denominator is zero.
+
+Generation stages complete output before replacing its managed city directory;
+stale city files are removed, unrelated data is untouched, and malformed required
+identity/date fields fail the build. Generated files are ignored by Git and are
+not public JSON downloads. Static pages load each file at build time and embed
+only that city's analytics for the interactive tabs. The manifest drives routes
+and includes indexing eligibility: at least five valid city-wide asking prices.
+Sparse pages remain accessible with noindex and are absent from the sitemap.
 
 Page styling uses Tailwind classes. The sole global stylesheet contains framework
 imports and theme tokens, without custom selectors. The radar mark is copied into

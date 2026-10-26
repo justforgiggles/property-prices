@@ -50,23 +50,27 @@ Next.js documents [metadata](https://nextjs.org/docs/app/api-reference/functions
 and [static export](https://nextjs.org/docs/app/guides/static-exports). Use absolute
 URLs to avoid its metadata URL composition accidentally duplicating the base path.
 
-## City preview routes
+## City analytics routes
 
-Directory cards now link to `/<province>/<city>/`, using lowercase, hyphenated
-slugs and the configured hosting prefix. Routes are statically exported for each
-displayed city (more than 20 recorded listings), with province included to
-distinguish repeated names. Unknown combinations retain the normal 404 response.
+Directory cards link to `/<province>/<city>/`, with lowercase hyphenated slugs and
+the configured hosting prefix. The build generates pages for the union of cities
+in the 90-day directory and three completed calendar months, including cities
+with empty residential samples. The landing page still displays only cities with
+more than 20 directory listings. Unknown combinations return 404.
 
-The pages show shared illustrative analytics, not actual local statistics. Each
-has city-specific preview wording in its title, description, Open Graph and
-Twitter metadata, its own canonical URL, and `noindex, follow`. Keep these preview
-pages out of the sitemap until real data is integrated. Reuse the existing brand
-sharing image; do not add statistical structured data from the fixtures. The
-homepage remains indexable and retains its existing metadata and count semantics.
+Each page has its own asking-price title, description naming the reporting period,
+canonical URL, Open Graph and Twitter metadata. City pages with at least five valid
+city-wide asking prices are `index, follow` and appear in the sitemap. Other pages
+remain accessible with `noindex, follow` and are excluded from the sitemap.
+This eligibility is recorded in the generated manifest and checked against each
+city's price sample. Reuse the existing brand sharing image. The homepage retains
+its metadata and 90-day count semantics. No preview labels or mock figures remain.
 
-The export check verifies every directory destination, city heading, canonical,
-preview metadata and noindex directive. Live verification includes the Cape Town
-preview and its noindex policy in addition to the homepage and shared assets.
+Export checks inspect every city route and its indexing policy, source counts,
+canonical, metadata and tab structure. Live verification checks a populated city,
+a sparse city, the homepage and shared assets. City JSON files are private build
+inputs in the sense that they are not separately published downloads; statistics
+needed by the client-side tabs are still embedded in the public page payload.
 
 ## Assets
 

@@ -10,6 +10,9 @@ packages/website/.next/
 packages/website/out/
 packages/website/*.tsbuildinfo
 packages/website/data/cities.json
+packages/website/data/cities/
+packages/website/data/city-manifest.json
+packages/website/data/.city-generation-*/
 packages/model/.venv/
 packages/model/build/
 packages/model/models/

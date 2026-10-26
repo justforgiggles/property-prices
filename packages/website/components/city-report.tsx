@@ -28,11 +28,15 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PriceRangeVisual } from "@/components/price-range";
 import {
-  cityReports,
+  bedroomTabs,
+  bucketLabel,
+  formatPeriod,
+  formatMonth,
+  type CityAnalytics,
+  type BedroomGroupId,
   compactRand,
   rand,
-  reportPeriod,
-  type PriceRange,
+  type Statistics,
 } from "@/lib/city-report";
 
 const chartConfig = {
@@ -48,7 +52,7 @@ function MetricCard({
   perMetre = false,
 }: {
   title: string;
-  value: PriceRange;
+  value: Statistics;
   perMetre?: boolean;
 }) {
   return (
@@ -69,18 +73,39 @@ function MetricCard({
           )}
         </p>
         <PriceRangeVisual value={value} compact={!perMetre} />
+        <p className="mt-4 text-xs text-muted-foreground">
+          {value.count.toLocaleString("en-ZA")} valid observations
+        </p>
       </CardContent>
     </Card>
   );
 }
 
-export function CityReportDetails() {
-  const [selected, setSelected] = useState("all");
-  const report =
-    cityReports.find((item) => item.id === selected) ?? cityReports[0];
-  const first = report.months[0];
-  const last = report.months[2];
-  const change = (last.median / first.median - 1) * 100;
+export function CityReportDetails({ analytics }: { analytics: CityAnalytics }) {
+  const [selected, setSelected] = useState<BedroomGroupId>("all");
+  const group = analytics.bedroomGroups[selected];
+  const reportPeriod = formatPeriod(analytics.period);
+  const report = {
+    ...group,
+    label: bedroomTabs.find((tab) => tab.id === selected)!.label,
+    listings: group.listingCount,
+    months: group.months.map((month) => ({
+      ...month,
+      listings: month.listingCount,
+      ...month.askingPrice,
+      range:
+        month.askingPrice.p25 === null
+          ? null
+          : [month.askingPrice.p25, month.askingPrice.p75],
+    })),
+    buckets: group.priceDistribution.buckets.map((bucket) => ({
+      ...bucket,
+      label: bucketLabel(bucket.min, bucket.max),
+      share: bucket.percentage,
+    })),
+  };
+  const change = report.askingPriceChangePercent;
+  const hasMonthlyPrices = report.months.some((month) => month.median !== null);
 
   return (
     <section
@@ -103,7 +128,10 @@ export function CityReportDetails() {
       </div>
       <Tabs
         value={selected}
-        onValueChange={setSelected}
+        onValueChange={(value) => {
+          const tab = bedroomTabs.find((tab) => tab.id === value);
+          if (tab) setSelected(tab.id);
+        }}
         className="min-w-0 gap-0"
       >
         <div className="-mx-1 overflow-x-auto px-1 pb-2">
@@ -111,7 +139,7 @@ export function CityReportDetails() {
             aria-label="Filter by number of bedrooms"
             className="w-max justify-start gap-1 rounded-lg bg-muted p-1 group-data-[orientation=horizontal]/tabs:h-auto"
           >
-            {cityReports.map((item) => (
+            {bedroomTabs.map((item) => (
               <TabsTrigger
                 key={item.id}
                 value={item.id}
@@ -122,6 +150,11 @@ export function CityReportDetails() {
             ))}
           </TabsList>
         </div>
+        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+          Bedroom tabs use bands: 2 bedrooms includes 2 to under 3, and
+          similarly for 1–4. All includes studios and listings without a usable
+          bedroom count.
+        </p>
         <TabsContent
           value={selected}
           className="mt-5 min-w-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
@@ -172,6 +205,7 @@ export function CityReportDetails() {
                     <CartesianGrid vertical={false} />
                     <XAxis
                       dataKey="month"
+                      tickFormatter={(month) => formatMonth(String(month))}
                       tickLine={false}
                       axisLine={false}
                       tickMargin={12}
@@ -184,7 +218,13 @@ export function CityReportDetails() {
                     />
                     <ChartTooltip
                       cursor={{ fill: "var(--color-muted)" }}
-                      content={<ChartTooltipContent />}
+                      content={
+                        <ChartTooltipContent
+                          labelFormatter={(label) =>
+                            formatMonth(String(label), true)
+                          }
+                        />
+                      }
                     />
                     <Bar
                       dataKey="listings"
@@ -210,80 +250,110 @@ export function CityReportDetails() {
                   Asking prices over time
                 </CardTitle>
                 <CardDescription>
-                  <span className="font-medium text-foreground">
-                    +{change.toFixed(1)}%
-                  </span>{" "}
-                  in the median from July to September
+                  {change === null ? (
+                    "Not enough data to compare the first and last month"
+                  ) : (
+                    <>
+                      <span className="font-medium text-foreground">
+                        {change > 0 ? "+" : ""}
+                        {change.toFixed(1)}%
+                      </span>{" "}
+                      in the median from {formatMonth(report.months[0].month)}{" "}
+                      to {formatMonth(report.months[2].month)}
+                    </>
+                  )}
                 </CardDescription>
               </CardHeader>
               <CardContent className="min-w-0 px-4 sm:px-5">
-                <ChartContainer
-                  role="figure"
-                  config={chartConfig}
-                  className="h-52 w-full"
-                  aria-label={`Monthly asking price, median and middle half: ${report.months.map((month) => `${month.month}: ${rand(month.median)}, ${rand(month.lower)} to ${rand(month.upper)}`).join("; ")}`}
-                >
-                  <ComposedChart
-                    accessibilityLayer
-                    data={report.months}
-                    margin={{ left: 0, right: 16, top: 12, bottom: 0 }}
+                {hasMonthlyPrices ? (
+                  <ChartContainer
+                    role="figure"
+                    config={chartConfig}
+                    className="h-52 w-full"
+                    aria-label={`Monthly asking price, median and middle half: ${report.months.map((month) => `${month.month}: ${rand(month.median)}, ${rand(month.p25)} to ${rand(month.p75)}`).join("; ")}`}
                   >
-                    <CartesianGrid vertical={false} />
-                    <XAxis
-                      dataKey="month"
-                      tickLine={false}
-                      axisLine={false}
-                      tickMargin={12}
-                      padding={{ left: 16, right: 16 }}
-                    />
-                    <YAxis
-                      tickLine={false}
-                      axisLine={false}
-                      tickFormatter={(value) =>
-                        `R${(Number(value) / 1_000_000).toFixed(1)}m`
-                      }
-                      width={58}
-                      tickMargin={8}
-                    />
-                    <ChartTooltip
-                      content={({ active, label }) => {
-                        const month = report.months.find(
-                          (item) => item.month === label,
-                        );
-                        return active && month ? (
-                          <div className="grid gap-2 rounded-lg border border-border bg-card p-3 text-xs shadow-sm">
-                            <p className="font-medium">{month.month} 2026</p>
-                            <p>Typical asking price: {rand(month.median)}</p>
-                            <p>25th percentile: {rand(month.lower)}</p>
-                            <p>75th percentile: {rand(month.upper)}</p>
-                          </div>
-                        ) : null;
-                      }}
-                    />
-                    <Area
-                      type="linear"
-                      dataKey="range"
-                      stroke="none"
-                      fill="var(--color-range)"
-                      fillOpacity={0.45}
-                      isAnimationActive={false}
-                    />
-                    <Line
-                      type="linear"
-                      dataKey="median"
-                      stroke="var(--color-median)"
-                      strokeWidth={2.5}
-                      dot={{
-                        r: 4,
-                        fill: "var(--color-median)",
-                        stroke: "var(--color-card)",
-                        strokeWidth: 2,
-                      }}
-                      activeDot={{ r: 5 }}
-                      isAnimationActive={false}
-                    />
-                  </ComposedChart>
-                </ChartContainer>
+                    <ComposedChart
+                      accessibilityLayer
+                      data={report.months}
+                      margin={{ left: 0, right: 16, top: 12, bottom: 0 }}
+                    >
+                      <CartesianGrid vertical={false} />
+                      <XAxis
+                        dataKey="month"
+                        tickFormatter={(month) => formatMonth(String(month))}
+                        tickLine={false}
+                        axisLine={false}
+                        tickMargin={12}
+                        padding={{ left: 16, right: 16 }}
+                      />
+                      <YAxis
+                        tickLine={false}
+                        axisLine={false}
+                        tickFormatter={(value) =>
+                          `R${(Number(value) / 1_000_000).toFixed(1)}m`
+                        }
+                        width={58}
+                        tickMargin={8}
+                      />
+                      <ChartTooltip
+                        content={({ active, label }) => {
+                          const month = report.months.find(
+                            (item) => item.month === label,
+                          );
+                          return active && month ? (
+                            <div className="grid gap-2 rounded-lg border border-border bg-card p-3 text-xs shadow-sm">
+                              <p className="font-medium">
+                                {formatMonth(month.month, true)}
+                              </p>
+                              <p>Typical asking price: {rand(month.median)}</p>
+                              <p>25th percentile: {rand(month.p25)}</p>
+                              <p>75th percentile: {rand(month.p75)}</p>
+                              <p>{month.count} valid asking prices</p>
+                            </div>
+                          ) : null;
+                        }}
+                      />
+                      <Area
+                        type="linear"
+                        dataKey="range"
+                        connectNulls={false}
+                        stroke="none"
+                        fill="var(--color-range)"
+                        fillOpacity={0.45}
+                        isAnimationActive={false}
+                      />
+                      <Line
+                        type="linear"
+                        dataKey="median"
+                        connectNulls={false}
+                        stroke="var(--color-median)"
+                        strokeWidth={2.5}
+                        dot={{
+                          r: 4,
+                          fill: "var(--color-median)",
+                          stroke: "var(--color-card)",
+                          strokeWidth: 2,
+                        }}
+                        activeDot={{ r: 5 }}
+                        isAnimationActive={false}
+                      />
+                    </ComposedChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="flex h-52 items-center justify-center px-3 text-center text-sm text-muted-foreground">
+                    Not enough data · each month needs at least 5 valid asking
+                    prices
+                  </div>
+                )}
+
+                <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
+                  {report.months
+                    .map(
+                      (month) =>
+                        `${formatMonth(month.month)}: ${month.count} valid prices${month.median === null ? " (not enough data)" : ""}`,
+                    )
+                    .join(" · ")}
+                </p>
                 <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-2">
                     <span aria-hidden="true" className="h-0.5 w-4 bg-chart-1" />
@@ -316,7 +386,9 @@ export function CityReportDetails() {
                   {rand(report.ratesAndTaxes.median)}
                 </p>
                 <p className="mt-2 text-xs text-muted-foreground">
-                  Typical reported amount
+                  Typical reported amount ·{" "}
+                  {report.ratesAndTaxes.count.toLocaleString("en-ZA")} valid
+                  observations
                 </p>
                 <PriceRangeVisual value={report.ratesAndTaxes} />
                 <p className="mt-7 max-w-sm text-xs leading-relaxed text-muted-foreground">
@@ -330,68 +402,78 @@ export function CityReportDetails() {
                   Where asking prices fall
                 </CardTitle>
                 <CardDescription>
-                  Share of listings by price band · percentage / count
+                  {report.priceDistribution.count.toLocaleString("en-ZA")} valid
+                  priced listings · percentage / count
                 </CardDescription>
               </CardHeader>
               <CardContent className="min-w-0 px-4 sm:px-5">
-                <ChartContainer
-                  role="figure"
-                  config={chartConfig}
-                  className="h-56 w-full"
-                  aria-label={`Asking price distribution: ${report.buckets.map((bucket) => `${bucket.label}: ${bucket.share.toFixed(1)}%, ${bucket.count} listings`).join("; ")}`}
-                >
-                  <BarChart
-                    accessibilityLayer
-                    layout="vertical"
-                    data={report.buckets.map((bucket) => ({
-                      ...bucket,
-                      display: `${bucket.share.toFixed(1)}% · ${bucket.count}`,
-                    }))}
-                    margin={{ left: 0, right: 86, top: 0, bottom: 0 }}
+                {report.priceDistribution.count > 0 ? (
+                  <ChartContainer
+                    role="figure"
+                    config={chartConfig}
+                    className="h-56 w-full"
+                    aria-label={`Asking price distribution: ${report.buckets.map((bucket) => `${bucket.label}: ${bucket.share?.toFixed(1)}%, ${bucket.count} listings`).join("; ")}`}
                   >
-                    <XAxis type="number" hide domain={[0, 100]} />
-                    <YAxis
-                      dataKey="label"
-                      type="category"
-                      width={88}
-                      axisLine={false}
-                      tickLine={false}
-                      tickMargin={8}
-                    />
-                    <ChartTooltip
-                      cursor={false}
-                      content={
-                        <ChartTooltipContent
-                          formatter={(value) =>
-                            `${Number(value).toFixed(1)}% of listings`
-                          }
-                        />
-                      }
-                    />
-                    <Bar
-                      dataKey="share"
-                      fill="var(--color-share)"
-                      radius={[0, 3, 3, 0]}
-                      barSize={16}
-                      background={{ fill: "var(--color-muted)", radius: 3 }}
-                      isAnimationActive={false}
+                    <BarChart
+                      accessibilityLayer
+                      layout="vertical"
+                      data={report.buckets.map((bucket) => ({
+                        ...bucket,
+                        display: `${bucket.share?.toFixed(1)}% · ${bucket.count}`,
+                      }))}
+                      margin={{ left: 0, right: 86, top: 0, bottom: 0 }}
                     >
-                      <LabelList
-                        dataKey="display"
-                        position="right"
-                        offset={8}
-                        className="fill-foreground text-[11px] tabular-nums"
+                      <XAxis type="number" hide domain={[0, 100]} />
+                      <YAxis
+                        dataKey="label"
+                        type="category"
+                        width={88}
+                        axisLine={false}
+                        tickLine={false}
+                        tickMargin={8}
                       />
-                    </Bar>
-                  </BarChart>
-                </ChartContainer>
+                      <ChartTooltip
+                        cursor={false}
+                        content={
+                          <ChartTooltipContent
+                            formatter={(value) =>
+                              `${Number(value).toFixed(1)}% of listings`
+                            }
+                          />
+                        }
+                      />
+                      <Bar
+                        dataKey="share"
+                        fill="var(--color-share)"
+                        radius={[0, 3, 3, 0]}
+                        barSize={16}
+                        background={{ fill: "var(--color-muted)", radius: 3 }}
+                        isAnimationActive={false}
+                      >
+                        <LabelList
+                          dataKey="display"
+                          position="right"
+                          offset={8}
+                          className="fill-foreground text-[11px] tabular-nums"
+                        />
+                      </Bar>
+                    </BarChart>
+                  </ChartContainer>
+                ) : (
+                  <div className="flex h-56 items-center justify-center text-sm text-muted-foreground">
+                    No valid asking prices for this group
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
           <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-            Illustrative figures for layout preview. “Typical” is the median;
-            “middle half” is the 25th–75th percentile. These are asking prices,
-            not completed sale prices.
+            Residential sale advertisements published in {reportPeriod}.
+            “Typical” is the median; “middle half” is the 25th–75th percentile.
+            Statistics need at least 5 valid observations. Changes compare
+            different publication-month samples, not price changes on the same
+            homes. Counts describe captured advertisements, not active inventory
+            or completed sales.
           </p>
         </TabsContent>
       </Tabs>

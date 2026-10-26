@@ -115,17 +115,27 @@ assert.equal(
   visibleCities.length,
   "Every city route must be unique",
 );
-for (const city of visibleCities) {
+const cityManifest = JSON.parse(
+  await readFile(join(website, "data/city-manifest.json"), "utf8"),
+);
+assert.equal(
+  new Set(cityManifest.cities.map(cityPath)).size,
+  cityManifest.cities.length,
+);
+for (const city of cityManifest.cities) {
   const route = cityPath(city).slice(1);
   const cityHtml = load(
     await readFile(join(output, route, "index.html"), "utf8"),
   );
   assert.equal(cityHtml("h1").text(), city.name);
   assert.equal(cityHtml("link[rel='canonical']").attr("href"), siteUrl(route));
-  assert.match(cityHtml("meta[name='robots']").attr("content"), /\bnoindex\b/);
+  assert.match(
+    cityHtml("meta[name='robots']").attr("content"),
+    city.indexable ? /\bindex\b/ : /\bnoindex\b/,
+  );
   assert.equal(cityHtml("meta[name='robots']").length, 1);
   assert(cityHtml("title").text().includes(city.name));
-  assert.match(cityHtml("title").text(), /Illustrative Preview/);
+  assert.match(cityHtml("title").text(), /Asking Prices & Property Listings/);
   assert(
     cityHtml("meta[name='description']")
       .attr("content")
@@ -147,7 +157,26 @@ for (const city of visibleCities) {
     cityHtml("meta[property='og:image']").attr("content"),
     socialImage.url,
   );
-  assert.match(cityHtml("main").text(), /Illustrative data/);
+  assert(
+    !/Illustrative|layout preview|NaN|Infinity/.test(cityHtml("main").text()),
+  );
+  const analytics = JSON.parse(
+    await readFile(
+      join(website, "data/cities", city.provinceSlug, `${city.citySlug}.json`),
+      "utf8",
+    ),
+  );
+  assert.equal(
+    city.indexable,
+    analytics.bedroomGroups.all.askingPrice.count >= 5,
+  );
+  assert(
+    cityHtml("main")
+      .text()
+      .includes(
+        analytics.bedroomGroups.all.listingCount.toLocaleString("en-ZA"),
+      ),
+  );
   assert.equal(cityHtml("[role='tab']").length, 6);
   assert.equal(cityHtml("[role='tabpanel']").length, 1);
 }
@@ -175,7 +204,12 @@ assert.deepEqual(
   sitemap("url > loc")
     .map((_, element) => sitemap(element).text())
     .get(),
-  [site.url],
+  [
+    site.url,
+    ...cityManifest.cities
+      .filter((city) => city.indexable)
+      .map((city) => siteUrl(cityPath(city).slice(1))),
+  ],
 );
 assert.equal(sitemap("lastmod, priority, changefreq").length, 0);
 const robots = await readFile(join(output, "robots.txt"), "utf8");
@@ -263,9 +297,18 @@ if (process.argv.includes("--live")) {
   assert.equal(cityDocument("link[rel='canonical']").attr("href"), cityUrl);
   assert.match(
     cityDocument("meta[name='robots']").attr("content"),
-    /\bnoindex\b/,
+    /\bindex\b/,
   );
-  assert.match(cityDocument("main").text(), /Illustrative data/);
+  assert(!/Illustrative|layout preview/.test(cityDocument("main").text()));
+  const sparseCity = cityManifest.cities.find((city) => !city.indexable);
+  if (sparseCity) {
+    const response = await fetch(siteUrl(cityPath(sparseCity).slice(1)));
+    assert.equal(response.status, 200);
+    assert.match(
+      load(await response.text())("meta[name='robots']").attr("content"),
+      /\bnoindex\b/,
+    );
+  }
   for (const agent of ["Googlebot", "OAI-SearchBot"]) {
     const response = await fetch(site.url, {
       headers: { "User-Agent": agent },
