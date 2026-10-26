@@ -66,6 +66,16 @@ installs scraper dependencies, scrapes, commits raw data and `data/result.json`,
 rebases, and pushes. Shell commands stop on failure; Git conflicts and interrupted
 runs need manual attention.
 
+Each scrape replaces `data/result.log` with the scraper command's stdout and
+stderr, also streamed to the systemd journal. Successful runs commit the log with
+the data and summary; earlier logs remain in Git history. On a fatal scraper
+failure, only the log is published from a temporary clean checkout, and the
+service still exits with failure. Partial data and the existing summary remain
+in the Pi checkout for manual recovery and may block later runs. Log-only commits
+do not trigger model releases. If logging or publication fails, the job remains
+failed and any captured log stays local. Failures before scraping starts do not
+produce a new log; dependency installation and Git output remain in the journal.
+
 Node keeps the existing city-level error handling and continues to the next
 city after an error. Finishing the city loop is a successful run, even if some
 cities failed. `data/result.json` records `completed_at`, `listings_added`, and
