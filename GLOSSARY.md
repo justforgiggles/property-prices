@@ -29,3 +29,24 @@ its publication date; inclusion does not establish that it is still active.
 **Data refresh**: The generation of the website's city listing counts from the
 collected advertisements. Its date describes when those counts were calculated,
 not when the advertisements were collected or last verified.
+
+**Completed calendar months**: Whole months, from their first through last day,
+before the current month in South African time. A three-month period excludes
+the current partial month and is distinct from the rolling 90-day reporting window.
+
+**Typical asking price**: The median advertised asking price of the listings in
+a stated group and period. It is not a completed sale price or an individual
+property valuation.
+
+**Middle half**: The range from the 25th to the 75th percentile of reported
+values in a stated group. It describes the central half of those values.
+
+**Asking price per m²**: A listing's asking price divided by its reported floor
+area. Group summaries describe these individual ratios, not a ratio of group medians.
+
+**Reported rates and taxes**: The rates-and-taxes amount supplied in a listing.
+Its billing period is not verified, so it does not establish a monthly cost.
+
+**Price band**: A group of asking prices bounded by a stated lower and upper
+amount, including the lower boundary and excluding the upper. The first and last
+bands may be open-ended.

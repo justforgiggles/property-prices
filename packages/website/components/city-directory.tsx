@@ -1,6 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
+import Link from "next/link";
 import { useState, type ReactElement } from "react";
 
 import {
@@ -12,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
+import { cityPath } from "@/lib/city-routes.mjs";
 
 type City = {
   name: string;
@@ -23,9 +25,10 @@ export function CityDirectory({ cities }: { cities: City[] }): ReactElement {
   const [query, setQuery] = useState("");
   const search = query.trim().toLocaleLowerCase("en-ZA");
   const matches = cities
-    .filter((city) =>
-      city.listingCount > 20 &&
-      city.name.toLocaleLowerCase("en-ZA").includes(search),
+    .filter(
+      (city) =>
+        city.listingCount > 20 &&
+        city.name.toLocaleLowerCase("en-ZA").includes(search),
     )
     .sort((left, right) => right.listingCount - left.listingCount);
 
@@ -54,33 +57,37 @@ export function CityDirectory({ cities }: { cities: City[] }): ReactElement {
         className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-5"
       >
         {matches.map((city) => (
-          <Card
+          <Link
             key={JSON.stringify([city.province, city.name])}
-            className="gap-5 rounded-lg border-border bg-card py-6 shadow-none"
+            href={cityPath(city)}
+            className="group block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
+            aria-label={`Explore ${city.name}, ${city.province}`}
           >
-            <CardHeader className="gap-1.5 px-6">
-              <CardTitle>
-                <h2 className="text-[22px] leading-snug font-semibold tracking-tight">
-                  {city.name}
-                </h2>
-              </CardTitle>
-              <CardDescription className="text-sm">
-                {city.province}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="mt-auto px-6">
-              <Separator className="mb-5" />
-              <p className="text-4xl font-medium tracking-tight tabular-nums">
-                {city.listingCount.toLocaleString("en-GB")}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Recorded listings
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Published in the past 90 days
-              </p>
-            </CardContent>
-          </Card>
+            <Card className="h-full gap-5 rounded-lg border-border bg-card py-6 shadow-none transition-colors group-hover:border-primary/40 group-hover:bg-muted/30">
+              <CardHeader className="gap-1.5 px-6">
+                <CardTitle>
+                  <h2 className="text-[22px] leading-snug font-semibold tracking-tight">
+                    {city.name}
+                  </h2>
+                </CardTitle>
+                <CardDescription className="text-sm">
+                  {city.province}
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="mt-auto px-6">
+                <Separator className="mb-5" />
+                <p className="text-4xl font-medium tracking-tight tabular-nums">
+                  {city.listingCount.toLocaleString("en-GB")}
+                </p>
+                <p className="mt-2 text-sm text-muted-foreground">
+                  Recorded listings
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Published in the past 90 days
+                </p>
+              </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
       {matches.length === 0 && (

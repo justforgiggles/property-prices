@@ -50,6 +50,24 @@ Next.js documents [metadata](https://nextjs.org/docs/app/api-reference/functions
 and [static export](https://nextjs.org/docs/app/guides/static-exports). Use absolute
 URLs to avoid its metadata URL composition accidentally duplicating the base path.
 
+## City preview routes
+
+Directory cards now link to `/<province>/<city>/`, using lowercase, hyphenated
+slugs and the configured hosting prefix. Routes are statically exported for each
+displayed city (more than 20 recorded listings), with province included to
+distinguish repeated names. Unknown combinations retain the normal 404 response.
+
+The pages show shared illustrative analytics, not actual local statistics. Each
+has city-specific preview wording in its title, description, Open Graph and
+Twitter metadata, its own canonical URL, and `noindex, follow`. Keep these preview
+pages out of the sitemap until real data is integrated. Reuse the existing brand
+sharing image; do not add statistical structured data from the fixtures. The
+homepage remains indexable and retains its existing metadata and count semantics.
+
+The export check verifies every directory destination, city heading, canonical,
+preview metadata and noindex directive. Live verification includes the Cape Town
+preview and its noindex policy in addition to the homepage and shared assets.
+
 ## Assets
 
 `npm run assets -w @prop-radar/website` regenerates the committed icon family and

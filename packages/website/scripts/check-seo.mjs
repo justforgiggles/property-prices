@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { load } from "cheerio";
 import sharp from "sharp";
 import { basePath, site, siteUrl, socialImage } from "../site.config.mjs";
+import { cityPath } from "../lib/city-routes.mjs";
 
 const website = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = join(website, "out");
@@ -87,16 +88,69 @@ for (const entity of jsonld["@graph"]) {
 assert.equal(jsonld["@graph"][1].isPartOf["@id"], jsonld["@graph"][0]["@id"]);
 assert.equal(jsonld["@graph"][1].primaryImageOfPage.url, socialImage.url);
 assert.equal($("h1").text(), "A local view of property listings.");
-const data = JSON.parse(await readFile(join(website, "data/cities.json"), "utf8"));
+const data = JSON.parse(
+  await readFile(join(website, "data/cities.json"), "utf8"),
+);
 const visibleCities = data.cities
   .filter((city) => city.listingCount > 20)
   .sort((left, right) => right.listingCount - left.listingCount);
 assert.deepEqual(
-  $("#city-grid h2").map((_, element) => $(element).text()).get(),
+  $("#city-grid h2")
+    .map((_, element) => $(element).text())
+    .get(),
   visibleCities.map((city) => city.name),
   "City content must be present without JavaScript",
 );
 assert(!$("head").html().includes("localhost"));
+
+const cityLinks = $("#city-grid a")
+  .map((_, element) => $(element).attr("href"))
+  .get();
+assert.deepEqual(
+  cityLinks,
+  visibleCities.map((city) => `${basePath}${cityPath(city)}`),
+);
+assert.equal(
+  new Set(cityLinks).size,
+  visibleCities.length,
+  "Every city route must be unique",
+);
+for (const city of visibleCities) {
+  const route = cityPath(city).slice(1);
+  const cityHtml = load(
+    await readFile(join(output, route, "index.html"), "utf8"),
+  );
+  assert.equal(cityHtml("h1").text(), city.name);
+  assert.equal(cityHtml("link[rel='canonical']").attr("href"), siteUrl(route));
+  assert.match(cityHtml("meta[name='robots']").attr("content"), /\bnoindex\b/);
+  assert.equal(cityHtml("meta[name='robots']").length, 1);
+  assert(cityHtml("title").text().includes(city.name));
+  assert.match(cityHtml("title").text(), /Illustrative Preview/);
+  assert(
+    cityHtml("meta[name='description']")
+      .attr("content")
+      .includes(city.province),
+  );
+  assert.equal(
+    cityHtml("meta[property='og:url']").attr("content"),
+    siteUrl(route),
+  );
+  assert.equal(
+    cityHtml("meta[property='og:title']").attr("content"),
+    cityHtml("title").text(),
+  );
+  assert.equal(
+    cityHtml("meta[name='twitter:title']").attr("content"),
+    cityHtml("title").text(),
+  );
+  assert.equal(
+    cityHtml("meta[property='og:image']").attr("content"),
+    socialImage.url,
+  );
+  assert.match(cityHtml("main").text(), /Illustrative data/);
+  assert.equal(cityHtml("[role='tab']").length, 6);
+  assert.equal(cityHtml("[role='tabpanel']").length, 1);
+}
 
 const missing = load(await readFile(join(output, "404.html"), "utf8"));
 assert(
@@ -201,6 +255,17 @@ for (const [index, size] of [16, 32, 48].entries()) {
 }
 
 if (process.argv.includes("--live")) {
+  const cityUrl = siteUrl("western-cape/cape-town/");
+  const cityResponse = await fetch(cityUrl);
+  assert.equal(cityResponse.status, 200);
+  const cityDocument = load(await cityResponse.text());
+  assert.equal(cityDocument("h1").text(), "Cape Town");
+  assert.equal(cityDocument("link[rel='canonical']").attr("href"), cityUrl);
+  assert.match(
+    cityDocument("meta[name='robots']").attr("content"),
+    /\bnoindex\b/,
+  );
+  assert.match(cityDocument("main").text(), /Illustrative data/);
   for (const agent of ["Googlebot", "OAI-SearchBot"]) {
     const response = await fetch(site.url, {
       headers: { "User-Agent": agent },
