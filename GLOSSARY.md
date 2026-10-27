@@ -22,11 +22,15 @@ collected from that city remain part of the dataset.
 **City**: A locality identified by its city name and province in the listing
 source. Identical city names in different provinces refer to different cities.
 
+**Suburb**: A locality within a city, identified by its suburb name, city and
+province in the listing source. Identical suburb names in different cities or
+provinces refer to different suburbs. A suburb may share its city's name.
+
 **Reporting window**: The 90 calendar days ending on the data refresh date,
 including that date, in South African time. A listing belongs to the window by
 its publication date; inclusion does not establish that it is still active.
 
-**Data refresh**: The generation of the website's city listing counts and analytics
+**Data refresh**: The generation of the website's city and suburb listing counts and analytics
 from collected advertisements. Its date describes when the summaries were
 calculated, not when advertisements were collected or last verified.
 

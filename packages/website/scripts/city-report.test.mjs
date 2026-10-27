@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { cityPath, slugify } from "../lib/city-routes.mjs";
+import { cityPath, suburbPath, slugify } from "../lib/city-routes.mjs";
 import {
   formatPeriod,
   formatMonth,
@@ -17,6 +17,18 @@ test("city URLs include province and normalize punctuation and accents", () => {
   assert.notEqual(
     cityPath({ name: "Heidelberg", province: "Gauteng" }),
     cityPath({ name: "Heidelberg", province: "Western Cape" }),
+  );
+  assert.equal(
+    suburbPath({
+      province: "Western Cape",
+      city: "Cape Town",
+      name: "Sea Point",
+    }),
+    "/western-cape/cape-town/sea-point/",
+  );
+  assert.notEqual(
+    suburbPath({ province: "Gauteng", city: "Pretoria", name: "Central" }),
+    suburbPath({ province: "Gauteng", city: "Johannesburg", name: "Central" }),
   );
   assert.equal(slugify("  Gordon's Bay / Côte  "), "gordon-s-bay-cote");
 });

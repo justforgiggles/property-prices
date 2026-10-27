@@ -20,3 +20,6 @@ __pycache__/
 *.egg-info/
 :memory:.ses
 gha-creds-*.json
+
+packages/website/data/suburbs/
+packages/website/data/suburb-manifest.json

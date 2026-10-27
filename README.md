@@ -134,7 +134,8 @@ Run `npm run typecheck -w @prop-radar/website` to check types, and
 
 Development, type checking, and builds first generate the ignored
 `packages/website/data/cities.json` directory snapshot, `data/city-manifest.json`,
-and `data/cities/<province-slug>/<city-slug>.json` analytics from `data/raw/*.jsonl`.
+`data/cities/<province-slug>/<city-slug>.json`, `data/suburb-manifest.json`, and
+`data/suburbs/<province-slug>/<city-slug>/<suburb-slug>.json` analytics from `data/raw/*.jsonl`.
 All paths are relative to `packages/website` unless fully specified. Run
 `npm run generate -w @prop-radar/website` to regenerate them independently and
 `npm test -w @prop-radar/website` to test the aggregation.
@@ -147,13 +148,23 @@ with alphabetical ties. The banner still counts all listings. Its update date is
 date, and its total remains unchanged when searching city names. Malformed records
 fail generation rather than silently reducing counts.
 
-City analytics use the three completed calendar months before the refresh month
+City and suburb analytics use the three completed calendar months before the refresh month
 in South African time, selected by publication date. Every city in either this
 period or the 90-day directory receives a JSON file and static page. The directory
 retains its original first-in-window ID counting; analytics use the last occurrence
 of each ID in sorted snapshot files, with the last line winning within a file.
 Separate advertisements remain separate listings. No heuristic property linking,
 report-specific exclusions, model predictions or Python dependencies are used.
+
+Suburbs use the canonical name in breadcrumb position 4, grouped by province,
+city and suburb. There is no address-locality fallback. Missing suburb names stay
+in city totals but do not create a suburb group; a suburb sharing its city's name
+remains a separate group. Every suburb in either reporting window receives a JSON
+file and a static `/<province>/<city>/<suburb>/` page, including sparse or empty
+residential samples. City pages end with searchable suburb rows, ordered by 90-day
+count descending with alphabetical ties. Only suburbs with **more than 20** distinct
+advertisement IDs in that broad directory population appear. Counts are independent
+of bedroom tabs; a city without qualifying suburbs has no suburb section.
 
 Residential eligibility follows the model's House/Apartment types or residential
 property-type labels (house/apartment/townhouse/flat), excluding rental phrases
@@ -166,7 +177,7 @@ supported. Missing, empty, boolean and nonnumeric values are not zero. POA and
 other invalid prices remain in eligible listing counts but not price statistics.
 No upper asking-price cap or percentile trimming is applied.
 
-Each file follows `CityAnalytics` in `packages/website/lib/city-report.ts`:
+Each file follows `CityAnalytics` or `SuburbAnalytics` in `packages/website/lib/city-report.ts`:
 `schemaVersion`, `generatedAt`, province/city names and slugs, inclusive period
 start/end dates, and `bedroomGroups` keyed by `all`, `1`, `2`, `3`, `4`, `5plus`.
 Every group contains `listingCount`, nested `askingPrice`, `pricePerSquareMetre`
@@ -176,6 +187,8 @@ and `ratesAndTaxes` statistics, three chronological `months`,
 Quantiles linearly interpolate sorted values at `(n - 1) × q`. Price per m² uses
 individual price/area ratios. Amounts remain numeric; display rounding belongs
 to the page, not the generated contract.
+City files also include a `suburbs` navigation array of `{ name, slug, listingCount }`;
+suburb files add a `suburb: { name, slug }` identity and retain province/city identities.
 
 Bedroom bands are [1,2), [2,3), [3,4), [4,5), and 5+. All includes valid values
 below one and unavailable/invalid bedroom values. Monthly rows use `YYYY-MM`,
@@ -186,12 +199,13 @@ if either median is unavailable. Price buckets are [0,R1m), [R1m,R2m), [R2m,R3m)
 Their denominator is `priceDistribution.count` (valid prices); percentages are
 null when that denominator is zero.
 
-Generation stages complete output before replacing its managed city directory;
-stale city files are removed, unrelated data is untouched, and malformed required
+Generation stages complete output before replacing its managed city and suburb directories;
+stale files are removed, unrelated data is untouched, and malformed required
 identity/date fields fail the build. Generated files are ignored by Git and are
 not public JSON downloads. Static pages load each file at build time and embed
-only that city's analytics for the interactive tabs. The manifest drives routes
-and includes indexing eligibility: at least five valid city-wide asking prices.
+only that location's analytics for the interactive tabs. Separate city and suburb
+manifests drive routes and include indexing eligibility: at least five valid
+asking prices in the location's All bedrooms sample.
 Sparse pages remain accessible with noindex and are absent from the sitemap.
 
 Page styling uses Tailwind classes. The sole global stylesheet contains framework

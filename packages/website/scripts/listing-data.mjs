@@ -45,6 +45,8 @@ function parseListing(record) {
   const province = breadcrumbs.find((item) => item?.position === 2)?.name;
   const name = breadcrumbs.find((item) => item?.position === 3)?.name;
 
+  const suburbName = breadcrumbs.find((item) => item?.position === 4)?.name;
+
   if (
     typeof province !== "string" ||
     !province.trim() ||
@@ -71,6 +73,10 @@ function parseListing(record) {
     date,
     province,
     name,
+    suburb:
+      typeof suburbName === "string" && suburbName.trim()
+        ? suburbName.trim()
+        : null,
     eligible: residential && !rental,
     price:
       specification.priceCurrency === "ZAR"

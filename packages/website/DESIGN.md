@@ -80,7 +80,7 @@ per m², and listing count. It remains city-wide when bedroom selection changes.
 Below, shadcn tabs select All bedrooms, 1, 2, 3, 4, or 5+ bedrooms. All is the default
 and includes studios and listings without a usable bedroom count. Numbered tabs
 use bands: 2 means 2 to under 3 bedrooms, similarly for 1–4, with 5+ including all
-valid values at least 5. Explain fractional counts beside the controls. Every section below the
+valid values at least 5. Explain fractional counts beside the controls. Every analytics section below the
 tabs follows the selection. In order: two matching price/range cards; listing-count
 bars beside a median asking-price line and shaded 25th–75th percentile band; then
 reported rates and taxes beside horizontal price-distribution bars. Percentiles
@@ -108,6 +108,21 @@ available as text. The PDF is a reference for interpreting metrics, while the
 landing page remains the visual anchor. These reversible choices belong here,
 rather than in a separate ADR. Aggregation rules and JSON contracts live in the
 README and the typed city analytics interface.
+
+## Suburb overview and city navigation
+
+Suburb pages reuse the city overview and analytics components so spacing, charts,
+statistics and empty states remain identical. The suburb is the main heading;
+the eyebrow identifies its city and province. The back link returns to the parent
+city, while the radar masthead still returns to the landing page.
+
+At the bottom of a city page, show compact linked suburb rows with the suburb name,
+90-day listing count and a quiet arrow. Search matches suburb names only. Include
+only suburbs with more than 20 directory listings, sorted by count descending and
+alphabetically for ties. Hide the entire section when none qualify; show a clear
+no-match message when a search hides all qualifying rows. This directory stays
+independent of bedroom tabs and the three-month residential statistics. Compact
+rows keep cities with many suburbs easy to scan without repeating the home cards.
 
 ## Review changes
 

@@ -17,6 +17,6 @@ if (
     resolve(website, "data"),
   );
   console.log(
-    `Generated ${result.manifest.cities.length} city reports (${result.manifest.period.start}–${result.manifest.period.end}) and ${result.directory.totalListings} directory listings`,
+    `Generated ${result.manifest.cities.length} city reports and ${result.suburbReports.length} suburb reports (${result.manifest.period.start}–${result.manifest.period.end}) and ${result.directory.totalListings} directory listings`,
   );
 }

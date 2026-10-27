@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
 import { load } from "cheerio";
 import sharp from "sharp";
 import { basePath, site, siteUrl, socialImage } from "../site.config.mjs";
-import { cityPath } from "../lib/city-routes.mjs";
+import { cityPath, suburbPath } from "../lib/city-routes.mjs";
 
 const website = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const output = join(website, "out");
@@ -179,6 +179,100 @@ for (const city of cityManifest.cities) {
   );
   assert.equal(cityHtml("[role='tab']").length, 6);
   assert.equal(cityHtml("[role='tabpanel']").length, 1);
+  const visibleSuburbs = analytics.suburbs
+    .filter((s) => s.listingCount > 20)
+    .sort(
+      (a, b) =>
+        b.listingCount - a.listingCount ||
+        a.name.localeCompare(b.name, "en-ZA"),
+    );
+  assert.equal(
+    cityHtml("#suburbs-heading").length,
+    visibleSuburbs.length ? 1 : 0,
+  );
+  assert.deepEqual(
+    cityHtml("#suburb-list a")
+      .map((_, element) => cityHtml(element).attr("href"))
+      .get(),
+    visibleSuburbs.map((s) => `${basePath}/${route}${s.slug}/`),
+  );
+}
+
+const suburbManifest = JSON.parse(
+  await readFile(join(website, "data/suburb-manifest.json"), "utf8"),
+);
+assert.equal(
+  new Set(suburbManifest.suburbs.map(suburbPath)).size,
+  suburbManifest.suburbs.length,
+);
+for (const suburb of suburbManifest.suburbs) {
+  const route = suburbPath(suburb).slice(1);
+  const document = load(
+    await readFile(join(output, route, "index.html"), "utf8"),
+  );
+  const analytics = JSON.parse(
+    await readFile(
+      join(
+        website,
+        "data/suburbs",
+        suburb.provinceSlug,
+        suburb.citySlug,
+        `${suburb.suburbSlug}.json`,
+      ),
+      "utf8",
+    ),
+  );
+  assert.equal(document("h1").text(), suburb.name);
+  assert.equal(document("link[rel='canonical']").length, 1);
+  assert.equal(document("link[rel='canonical']").attr("href"), siteUrl(route));
+  assert.equal(
+    suburb.indexable,
+    analytics.bedroomGroups.all.askingPrice.count >= 5,
+  );
+  assert.equal(document("meta[name='robots']").length, 1);
+  assert.match(
+    document("meta[name='robots']").attr("content"),
+    suburb.indexable ? /\bindex\b/ : /\bnoindex\b/,
+  );
+  assert(document("title").text().includes(`${suburb.name}, ${suburb.city}`));
+  assert(
+    document("meta[name='description']")
+      .attr("content")
+      .includes(suburb.province),
+  );
+  assert.equal(
+    document("meta[property='og:url']").attr("content"),
+    siteUrl(route),
+  );
+  assert.equal(
+    document("meta[property='og:title']").attr("content"),
+    document("title").text(),
+  );
+  assert.equal(
+    document("meta[name='twitter:title']").attr("content"),
+    document("title").text(),
+  );
+  assert.equal(
+    document("meta[property='og:image']").attr("content"),
+    socialImage.url,
+  );
+  assert.equal(document("[role='tab']").length, 6);
+  assert.equal(document("[role='tabpanel']").length, 1);
+  assert.equal(document("#suburbs-heading").length, 0);
+  assert.equal(
+    document("main nav a").attr("href"),
+    `${basePath}/${suburb.provinceSlug}/${suburb.citySlug}/`,
+  );
+  assert(
+    document("main")
+      .text()
+      .includes(
+        analytics.bedroomGroups.all.listingCount.toLocaleString("en-ZA"),
+      ),
+  );
+  assert(
+    !/Illustrative|layout preview|NaN|Infinity/.test(document("main").text()),
+  );
 }
 
 const missing = load(await readFile(join(output, "404.html"), "utf8"));
@@ -209,6 +303,9 @@ assert.deepEqual(
     ...cityManifest.cities
       .filter((city) => city.indexable)
       .map((city) => siteUrl(cityPath(city).slice(1))),
+    ...suburbManifest.suburbs
+      .filter((s) => s.indexable)
+      .map((s) => siteUrl(suburbPath(s).slice(1))),
   ],
 );
 assert.equal(sitemap("lastmod, priority, changefreq").length, 0);
@@ -289,6 +386,22 @@ for (const [index, size] of [16, 32, 48].entries()) {
 }
 
 if (process.argv.includes("--live")) {
+  for (const suburb of [
+    suburbManifest.suburbs.find((s) => s.indexable),
+    suburbManifest.suburbs.find((s) => !s.indexable),
+  ]) {
+    assert(suburb);
+    const url = siteUrl(suburbPath(suburb).slice(1));
+    const response = await fetch(url);
+    assert.equal(response.status, 200, url);
+    const document = load(await response.text());
+    assert.equal(document("h1").text(), suburb.name);
+    assert.equal(document("link[rel='canonical']").attr("href"), url);
+    assert.match(
+      document("meta[name='robots']").attr("content"),
+      suburb.indexable ? /\bindex\b/ : /\bnoindex\b/,
+    );
+  }
   const cityUrl = siteUrl("western-cape/cape-town/");
   const cityResponse = await fetch(cityUrl);
   assert.equal(cityResponse.status, 200);
@@ -371,5 +484,5 @@ if (process.argv.includes("--live")) {
 }
 
 console.log(
-  "SEO export verified: metadata, structured data, static city content, 404 noindex, discovery files, and all image formats/dimensions.",
+  `SEO export verified: ${cityManifest.cities.length} cities, ${suburbManifest.suburbs.length} suburbs, navigation, metadata, structured data, 404 noindex, discovery files, and all image formats/dimensions.`,
 );

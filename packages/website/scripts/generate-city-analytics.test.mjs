@@ -23,6 +23,7 @@ function listing(
   {
     date = "2026-08-15",
     name = "Cape Town",
+    suburb,
     province = "Western Cape",
     price = 1500000,
     currency = "ZAR",
@@ -48,6 +49,9 @@ function listing(
               itemListElement: [
                 { position: 2, name: province },
                 { position: 3, name },
+                ...(suburb === undefined
+                  ? []
+                  : [{ position: 4, name: suburb }]),
               ],
             },
             offers: { priceSpecification: { price, priceCurrency: currency } },
@@ -374,4 +378,159 @@ test("malformed source and colliding city slugs fail before replacing generated 
     listing(2, { name: "A-B" }),
   ]);
   await assert.rejects(writeWebsiteData(source, output, now), /Ambiguous/);
+});
+
+test("suburbs use breadcrumb identity scoped to province and city without locality fallback", async (t) => {
+  const missing = listing(1);
+  missing.jsonld[0]["@graph"][0].about.address = {
+    addressLocality: "Fallback",
+  };
+  const canonical = listing(2, { suburb: "  Central  " });
+  canonical.jsonld[0]["@graph"][0].about.address = { addressLocality: "Wrong" };
+  const { source } = await fixture(t, [
+    missing,
+    canonical,
+    listing(3, { suburb: "Central", name: "Other City" }),
+    listing(4, { suburb: "Central", province: "Gauteng" }),
+    listing(5, { suburb: "Cape Town" }),
+    listing(6, { suburb: " " }),
+  ]);
+  const result = await generateWebsiteData(source, now);
+  assert.equal(result.suburbReports.length, 4);
+  assert.equal(
+    new Set(
+      result.suburbManifest.suburbs.map(
+        (s) => `${s.provinceSlug}/${s.citySlug}/${s.suburbSlug}`,
+      ),
+    ).size,
+    4,
+  );
+  const city = result.reports.find(
+    (r) => r.city.name === "Cape Town" && r.province.name === "Western Cape",
+  );
+  assert.equal(city.bedroomGroups.all.listingCount, 4);
+  assert.deepEqual(
+    city.suburbs.map((s) => s.name),
+    ["Cape Town", "Central"],
+  );
+});
+
+test("suburb navigation retains broad 90-day counts, alphabetical ties and the 20/21 boundary", async (t) => {
+  let id = 0;
+  const rows = [
+    ["Beta", 21],
+    ["Alpha", 21],
+    ["Small", 20],
+  ].flatMap(([suburb, count]) =>
+    Array.from({ length: count }, () =>
+      listing(++id, {
+        suburb,
+        date: "2026-10-20",
+        type: "Place",
+        propertyType: "Warehouse",
+      }),
+    ),
+  );
+  rows.push(
+    listing(++id, { suburb: "Historical", date: "2026-07-01" }),
+    rows[0],
+  );
+  const { source } = await fixture(t, rows);
+  const result = await generateWebsiteData(source, now);
+  assert.deepEqual(result.reports[0].suburbs, [
+    { name: "Alpha", slug: "alpha", listingCount: 21 },
+    { name: "Beta", slug: "beta", listingCount: 21 },
+    { name: "Small", slug: "small", listingCount: 20 },
+    { name: "Historical", slug: "historical", listingCount: 0 },
+  ]);
+  assert.equal(result.directory.totalListings, 62);
+  assert.equal(result.suburbReports.length, 4);
+  assert.equal(
+    result.suburbReports.find((s) => s.suburb.name === "Historical")
+      .bedroomGroups.all.listingCount,
+    1,
+  );
+  assert.equal(
+    result.suburbReports.find((s) => s.suburb.name === "Alpha").bedroomGroups
+      .all.listingCount,
+    0,
+  );
+  assert(result.suburbManifest.suburbs.every((s) => !s.indexable));
+});
+
+test("suburb analytics share city metrics, bedroom bands and latest-snapshot deduplication", async (t) => {
+  const rows = Array.from({ length: 15 }, (_, i) =>
+    listing(i + 1, {
+      suburb: "Central",
+      date: `2026-0${7 + Math.floor(i / 5)}-15`,
+      price: (i + 1) * 100000,
+      area: 25 + i,
+      rates: i * 100,
+      bedrooms: [0, 1.5, 2, 4, 5, null][i % 6],
+    }),
+  );
+  rows.push(
+    listing(16, { suburb: "Central", price: "POA" }),
+    listing(17, { suburb: "Central", description: "For rent" }),
+  );
+  const { source } = await fixture(t, rows);
+  await snapshot(source, "2026-10-24", [
+    listing(1, { suburb: "Former", price: 9999999 }),
+  ]);
+  const result = await generateWebsiteData(source, now);
+  const central = result.suburbReports.find((s) => s.suburb.name === "Central");
+  assert.deepEqual(central.bedroomGroups, result.reports[0].bedroomGroups);
+  assert.equal(central.bedroomGroups.all.listingCount, 16);
+  assert.deepEqual(central.bedroomGroups.all.askingPrice, {
+    count: 15,
+    median: 800000,
+    p25: 450000,
+    p75: 1150000,
+  });
+  assert.equal(
+    result.suburbReports.find((s) => s.suburb.name === "Former").bedroomGroups
+      .all.listingCount,
+    0,
+  );
+  assert.deepEqual(
+    result.reports[0].suburbs.map((s) => [s.name, s.listingCount]),
+    [
+      ["Central", 12],
+      ["Former", 1],
+    ],
+  );
+  assert.equal(
+    result.suburbManifest.suburbs.find((s) => s.name === "Central").indexable,
+    true,
+  );
+});
+
+test("suburb generation removes stale files and rejects collisions before replacing output", async (t) => {
+  const { source, output } = await fixture(t, [listing(1, { suburb: "Old" })]);
+  await writeWebsiteData(source, output, now);
+  await writeFile(join(output, "keep.txt"), "keep");
+  await snapshot(source, "2026-10-25", [listing(2, { suburb: "New" })]);
+  await writeWebsiteData(source, output, now);
+  await assert.rejects(
+    readFile(join(output, "suburbs/western-cape/cape-town/old.json")),
+    { code: "ENOENT" },
+  );
+  const path = join(output, "suburbs/western-cape/cape-town/new.json");
+  const previous = await readFile(path, "utf8");
+  const manifest = await readFile(join(output, "suburb-manifest.json"), "utf8");
+  assert.equal(JSON.parse(previous).suburb.name, "New");
+  assert.equal(await readFile(join(output, "keep.txt"), "utf8"), "keep");
+  await snapshot(source, "2026-10-25", [
+    listing(1, { suburb: "A & B" }),
+    listing(2, { suburb: "A-B" }),
+  ]);
+  await assert.rejects(
+    writeWebsiteData(source, output, now),
+    /Ambiguous or empty suburb route/,
+  );
+  assert.equal(await readFile(path, "utf8"), previous);
+  assert.equal(
+    await readFile(join(output, "suburb-manifest.json"), "utf8"),
+    manifest,
+  );
 });

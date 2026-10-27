@@ -32,7 +32,7 @@ import {
   bucketLabel,
   formatPeriod,
   formatMonth,
-  type CityAnalytics,
+  type LocationAnalytics,
   type BedroomGroupId,
   compactRand,
   rand,
@@ -81,7 +81,11 @@ function MetricCard({
   );
 }
 
-export function CityReportDetails({ analytics }: { analytics: CityAnalytics }) {
+export function CityReportDetails({
+  analytics,
+}: {
+  analytics: Pick<LocationAnalytics, "period" | "bedroomGroups">;
+}) {
   const [selected, setSelected] = useState<BedroomGroupId>("all");
   const group = analytics.bedroomGroups[selected];
   const reportPeriod = formatPeriod(analytics.period);

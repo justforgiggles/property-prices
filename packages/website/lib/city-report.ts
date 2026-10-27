@@ -23,13 +23,19 @@ export type BedroomGroup = {
     }[];
   };
 };
-export type CityAnalytics = {
+export type LocationAnalytics = {
   schemaVersion: 1;
   generatedAt: string;
   province: { name: string; slug: string };
   city: { name: string; slug: string };
   period: { start: string; end: string };
   bedroomGroups: Record<BedroomGroupId, BedroomGroup>;
+};
+
+export type SuburbLink = { name: string; slug: string; listingCount: number };
+export type CityAnalytics = LocationAnalytics & { suburbs: SuburbLink[] };
+export type SuburbAnalytics = LocationAnalytics & {
+  suburb: { name: string; slug: string };
 };
 
 export const bedroomTabs: { id: BedroomGroupId; label: string }[] = [
@@ -61,7 +67,7 @@ export function formatMonth(month: string, full = false) {
   }).format(new Date(`${month}-01T00:00:00Z`));
 }
 
-export function formatPeriod(period: CityAnalytics["period"]) {
+export function formatPeriod(period: LocationAnalytics["period"]) {
   const start = new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
     month: "long",

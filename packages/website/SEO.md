@@ -72,6 +72,25 @@ a sparse city, the homepage and shared assets. City JSON files are private build
 inputs in the sense that they are not separately published downloads; statistics
 needed by the client-side tabs are still embedded in the public page payload.
 
+## Suburb analytics routes
+
+Suburbs use `/<province>/<city>/<suburb>/` under the same hosting prefix. Their
+identity is scoped to all three names; unknown parent/suburb combinations return
+404. Generate all suburbs present in either reporting window, independently of
+the strict greater-than-20 count used for the city-page navigation list.
+
+Suburb pages share the city metadata policy: titles name both suburb and city,
+descriptions include province and reporting period, and each page owns its nested
+canonical, OG and Twitter metadata. At least five valid All bedrooms asking prices
+are required for indexing and sitemap inclusion; other pages are `noindex, follow`.
+Reuse the brand sharing image. These policies support discoverable, scoped pages
+while withholding sparse samples from the sitemap.
+
+Export checks cover every suburb's metadata, sample threshold, tabs, parent link
+and the city directory links. Live checks include populated and sparse suburbs.
+Generated suburb JSON is an ignored build input; interactive statistics remain
+embedded in each public page payload, just as on city pages.
+
 ## Assets
 
 `npm run assets -w @prop-radar/website` regenerates the committed icon family and
