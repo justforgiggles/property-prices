@@ -379,6 +379,7 @@
       "Overkruin",
       "Ratanda",
       "Rensburg",
+      "Shalimar Ridge",
       "Spaarwater AH"
     ],
     "Johannesburg": [
@@ -594,9 +595,11 @@
       "Katlehong South",
       "Kwenele",
       "Likole",
+      "Mavimbela",
       "Moleleki",
       "Monise",
       "Moseleke East",
+      "Ngema",
       "Siluma View",
       "Spruit View",
       "Tsolo",
@@ -768,7 +771,8 @@
       "Vorna Valley",
       "Waterfall",
       "Waterfall Country Estate",
-      "Waterfall Country Village"
+      "Waterfall Country Village",
+      "Zevenfontein"
     ],
     "Nigel": [
       "Alra Park",
@@ -801,6 +805,7 @@
       "Bergtuin",
       "Blyde Riverwalk Estate",
       "Boardwalk",
+      "Boardwalk Manor",
       "Boardwalk Meander",
       "Boardwalk Villas",
       "Bon Accord",
@@ -1233,6 +1238,7 @@
     "Soweto": [
       "Bram Fischerville",
       "Chiawelo",
+      "Chris Hani",
       "Dhlamini",
       "Diepkloof",
       "Dobsonville",
@@ -1261,6 +1267,7 @@
       "Orlando",
       "Phiri",
       "Pimville",
+      "Power Park",
       "Protea City",
       "Protea Garden",
       "Protea Glen",
@@ -1318,6 +1325,7 @@
       "Emangweni",
       "Emfihlweni",
       "Entshonalanga",
+      "Esiziba",
       "Hospital View",
       "Ililiba",
       "Isekelo",
@@ -1338,6 +1346,7 @@
       "Temong",
       "Tlamatlama",
       "Tsenolong",
+      "Welomlambo",
       "Xubene"
     ],
     "Vaal Marina": [
@@ -1394,6 +1403,7 @@
       "Vaalkop AH",
       "Van Der Westhuizen",
       "Vereeniging Central",
+      "Vereeniging Industrial",
       "Waldrift"
     ],
     "Walkerville": [
@@ -1813,6 +1823,9 @@
     "Marina Beach": [
       "Marina Beach"
     ],
+    "Melmoth": [
+      "Melmoth"
+    ],
     "Monteseel": [
       "Monteseel"
     ],
@@ -1944,6 +1957,7 @@
       "Kingston Park",
       "Lester Park",
       "Lincoln Meade",
+      "Lotusville",
       "Manor",
       "Montrose",
       "Mountain Rise",
@@ -1984,6 +1998,7 @@
       "Highlands Hills",
       "Klaarwater",
       "Kwandengezi",
+      "Luganda",
       "Manors",
       "Mariannheights",
       "Mariannhill",
@@ -2322,6 +2337,7 @@
       "Arauna",
       "Brackenfell Central",
       "Brackenfell South",
+      "Burgundy",
       "Eden Park",
       "Everite Industria",
       "Ferndale",
@@ -2556,6 +2572,7 @@
       "Capri",
       "Clovelly",
       "Fish Hoek",
+      "Stonehaven Estate",
       "Sun Valley"
     ],
     "Franschhoek": [
@@ -2874,7 +2891,8 @@
       "Zevenzicht"
     ],
     "Ladismith": [
-      "Ladismith"
+      "Ladismith",
+      "Van Wyksdorp"
     ],
     "Lamberts Bay": [
       "Lamberts Bay"
@@ -3188,6 +3206,7 @@
       "Glencairn",
       "Glencairn Heights",
       "Murdock Valley",
+      "Simons Kloof",
       "Simons Town Central",
       "The Boulders"
     ],
@@ -3224,6 +3243,7 @@
       "Montclair",
       "Monte Sereno",
       "Morningside",
+      "Natures Valley",
       "Olive Grove",
       "Paardevlei",
       "Parel Vallei",

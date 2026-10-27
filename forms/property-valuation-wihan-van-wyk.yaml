@@ -131,6 +131,7 @@ sections:
             - Mandeni
             - Margate
             - Marina Beach
+            - Melmoth
             - Monteseel
             - Mooi River
             - Mount Edgecombe
@@ -672,6 +673,8 @@ sections:
               value: Ratanda
             - label: Rensburg (Gauteng)
               value: Rensburg
+            - label: Shalimar Ridge (Gauteng)
+              value: Shalimar Ridge
             - label: Spaarwater AH (Gauteng)
               value: Spaarwater AH
             - label: Heidelberg (Western Cape)
@@ -888,9 +891,11 @@ sections:
             - Katlehong South
             - Kwenele
             - Likole
+            - Mavimbela
             - Moleleki
             - Monise
             - Moseleke East
+            - Ngema
             - Siluma View
             - Spruit View
             - Tsolo
@@ -1058,6 +1063,7 @@ sections:
             - Waterfall
             - Waterfall Country Estate
             - Waterfall Country Village
+            - Zevenfontein
           Nigel:
             - Alra Park
             - Bluegum View
@@ -1088,6 +1094,7 @@ sections:
             - Bergtuin
             - Blyde Riverwalk Estate
             - Boardwalk
+            - Boardwalk Manor
             - Boardwalk Meander
             - Boardwalk Villas
             - Bon Accord
@@ -1512,6 +1519,7 @@ sections:
           Soweto:
             - Bram Fischerville
             - Chiawelo
+            - Chris Hani
             - Dhlamini
             - Diepkloof
             - Dobsonville
@@ -1540,6 +1548,7 @@ sections:
             - Orlando
             - Phiri
             - Pimville
+            - Power Park
             - Protea City
             - Protea Garden
             - Protea Glen
@@ -1594,6 +1603,7 @@ sections:
             - Emangweni
             - Emfihlweni
             - Entshonalanga
+            - Esiziba
             - Hospital View
             - Ililiba
             - Isekelo
@@ -1614,6 +1624,7 @@ sections:
             - Temong
             - Tlamatlama
             - Tsenolong
+            - Welomlambo
             - Xubene
           Vaal Marina:
             - Vaal Marina
@@ -1667,6 +1678,7 @@ sections:
             - Vaalkop AH
             - Van Der Westhuizen
             - Vereeniging Central
+            - Vereeniging Industrial
             - Waldrift
           Walkerville:
             - Blignautsrus AH
@@ -2034,6 +2046,8 @@ sections:
             - Uvongo Beach
           Marina Beach:
             - Marina Beach
+          Melmoth:
+            - Melmoth
           Monteseel:
             - Monteseel
           Mooi River:
@@ -2153,6 +2167,7 @@ sections:
             - Kingston Park
             - Lester Park
             - Lincoln Meade
+            - Lotusville
             - Manor
             - Montrose
             - Mountain Rise
@@ -2192,6 +2207,7 @@ sections:
             - Highlands Hills
             - Klaarwater
             - Kwandengezi
+            - Luganda
             - Manors
             - Mariannheights
             - Mariannhill
@@ -2483,6 +2499,7 @@ sections:
             - Arauna
             - Brackenfell Central
             - Brackenfell South
+            - Burgundy
             - Eden Park
             - Everite Industria
             - Ferndale
@@ -2703,6 +2720,7 @@ sections:
             - Capri
             - Clovelly
             - Fish Hoek
+            - Stonehaven Estate
             - Sun Valley
           Franschhoek:
             - Deltacrest
@@ -2995,6 +3013,7 @@ sections:
             - Zevenzicht
           Ladismith:
             - Ladismith
+            - Van Wyksdorp
           Lamberts Bay:
             - Lamberts Bay
           Langebaan:
@@ -3276,6 +3295,7 @@ sections:
             - Glencairn
             - Glencairn Heights
             - Murdock Valley
+            - Simons Kloof
             - Simons Town Central
             - The Boulders
           Somerset West:
@@ -3311,6 +3331,7 @@ sections:
             - Montclair
             - Monte Sereno
             - Morningside
+            - Natures Valley
             - Olive Grove
             - Paardevlei
             - Parel Vallei
@@ -3490,7 +3511,7 @@ sections:
           - type: required
             message: Select a suburb.
           - type: expression
-            expression: data.city !== "Heidelberg" || (data.province === "Gauteng" && ["Berg En Dal","Bergsig","Heidelberg AH","Heidelberg Central","Heidelberg Ext 5","Heidelberg Industrial","Heidelberg Kloof Estate","Heidelberg Proper","Jordaan Park","Obed Mthombeni Nkosi","Overkruin","Ratanda","Rensburg","Spaarwater AH"].includes(data.suburb)) || (data.province === "Western Cape" && ["Heidelberg"].includes(data.suburb))
+            expression: data.city !== "Heidelberg" || (data.province === "Gauteng" && ["Berg En Dal","Bergsig","Heidelberg AH","Heidelberg Central","Heidelberg Ext 5","Heidelberg Industrial","Heidelberg Kloof Estate","Heidelberg Proper","Jordaan Park","Obed Mthombeni Nkosi","Overkruin","Ratanda","Rensburg","Shalimar Ridge","Spaarwater AH"].includes(data.suburb)) || (data.province === "Western Cape" && ["Heidelberg"].includes(data.suburb))
             message: Choose a suburb in your selected province.
     next: property
   - id: property
