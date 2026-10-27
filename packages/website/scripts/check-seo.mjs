@@ -118,6 +118,38 @@ assert.equal(
 const cityManifest = JSON.parse(
   await readFile(join(website, "data/city-manifest.json"), "utf8"),
 );
+
+function checkLocationCopy(document) {
+  const main = document("main").clone();
+  main.find("script, style").remove();
+  const copy = [
+    main.text(),
+    ...main
+      .find("[aria-label]")
+      .map((_, element) => document(element).attr("aria-label"))
+      .get(),
+  ]
+    .join(" ")
+    .replace(/\s+/g, " ");
+  assert.match(copy, /Explore recent asking prices in/);
+  assert.match(copy, /Compare by number of bedrooms/);
+  assert(
+    !/recorded listings|valid (?:observations|prices|asking prices|priced listings)|advertisements published|publication.month|percentile|at least 5|more than 20|bedroom tabs use bands|billing periods are not verified|Residential sales|currently available/i.test(
+      copy,
+    ),
+    "Location copy must use the agreed recent-market language",
+  );
+  const description = document("meta[name='description']").attr("content");
+  assert.match(description, /^Explore recent asking prices in/);
+  assert.equal(
+    document("meta[property='og:description']").attr("content"),
+    description,
+  );
+  assert.equal(
+    document("meta[name='twitter:description']").attr("content"),
+    description,
+  );
+}
 assert.equal(
   new Set(cityManifest.cities.map(cityPath)).size,
   cityManifest.cities.length,
@@ -127,6 +159,7 @@ for (const city of cityManifest.cities) {
   const cityHtml = load(
     await readFile(join(output, route, "index.html"), "utf8"),
   );
+  checkLocationCopy(cityHtml);
   assert.equal(cityHtml("h1").text(), city.name);
   assert.equal(cityHtml("link[rel='canonical']").attr("href"), siteUrl(route));
   assert.match(
@@ -210,6 +243,7 @@ for (const suburb of suburbManifest.suburbs) {
   const document = load(
     await readFile(join(output, route, "index.html"), "utf8"),
   );
+  checkLocationCopy(document);
   const analytics = JSON.parse(
     await readFile(
       join(
@@ -395,6 +429,7 @@ if (process.argv.includes("--live")) {
     const response = await fetch(url);
     assert.equal(response.status, 200, url);
     const document = load(await response.text());
+    checkLocationCopy(document);
     assert.equal(document("h1").text(), suburb.name);
     assert.equal(document("link[rel='canonical']").attr("href"), url);
     assert.match(
@@ -406,6 +441,7 @@ if (process.argv.includes("--live")) {
   const cityResponse = await fetch(cityUrl);
   assert.equal(cityResponse.status, 200);
   const cityDocument = load(await cityResponse.text());
+  checkLocationCopy(cityDocument);
   assert.equal(cityDocument("h1").text(), "Cape Town");
   assert.equal(cityDocument("link[rel='canonical']").attr("href"), cityUrl);
   assert.match(

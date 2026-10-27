@@ -57,11 +57,11 @@ choices, not changes to the underlying dataset.
 ## Copy and content
 
 Use direct, factual language for buyers and sellers. The approved headline is
-“A local view of property listings.” Counts are labelled “Recorded listings” and
+“A local view of property listings.” Homepage counts are labelled “Recorded listings” and
 “Published in the past 90 days.” Keep the distinction between publication and
 collection dates intact. SEO wording and sharing requirements live in [SEO.md](SEO.md).
 
-The user explicitly chose a minimal page without additional coverage explanations,
+The user explicitly chose a minimal homepage without additional coverage explanations,
 disclaimers, navigation, or sections. Adding those is a product/design change,
 not a routine copy improvement. Retain the small copyright footer.
 
@@ -71,7 +71,7 @@ The city page shares the banner, linked radar masthead, container, and footer wi
 the landing page. The banner retains its site-wide 90-day count; city analytics
 use a separate residential-sale sample from the three completed calendar months.
 A centred city heading and province label lead into a short subtext and a
-“Residential sales” label with the exact reporting dates.
+“Recent asking prices” label with the exact reporting dates.
 
 The introduction is two columns on desktop: buyer/seller-oriented summary copy,
 then a quiet card with typical asking price, the middle-half range, typical price
@@ -80,7 +80,7 @@ per m², and listing count. It remains city-wide when bedroom selection changes.
 Below, shadcn tabs select All bedrooms, 1, 2, 3, 4, or 5+ bedrooms. All is the default
 and includes studios and listings without a usable bedroom count. Numbered tabs
 use bands: 2 means 2 to under 3 bedrooms, similarly for 1–4, with 5+ including all
-valid values at least 5. Explain fractional counts beside the controls. Every analytics section below the
+valid values at least 5. Keep these band rules in documentation, not beside the controls. Every analytics section below the
 tabs follows the selection. In order: two matching price/range cards; listing-count
 bars beside a median asking-price line and shaded 25th–75th percentile band; then
 reported rates and taxes beside horizontal price-distribution bars. Percentiles
@@ -89,12 +89,12 @@ components and forest/sage theme tokens, with explicit labels and hover details.
 
 Price bands are Under R1m, R1m–R2m, R2m–R3m, R3m–R5m, and R5m+, labelled with both
 percentage and count. Rates and taxes show the median and middle half without
-asserting a monthly billing period. Each metric shows its own valid-observation
-count. Price-band percentages use valid asking prices, not all recorded listings.
+asserting a monthly billing period. Per-metric observation counts are not displayed.
+Price-band percentages use valid asking prices, not all recorded listings.
 The city summary and charts use generated analytics, not mock values or model predictions.
 
-Statistics with fewer than five valid observations show “Not enough data” (or
-“No reported values” for zero); retain the counts and never substitute zero prices.
+Statistics with fewer than five valid observations show a plain-language unavailable
+comparison message; retain listing totals and never substitute zero prices.
 Empty months remain in the listing chart. Price charts leave gaps where monthly
 statistics are suppressed; if every month is suppressed, show an empty state.
 A collapsed percentile range places the median marker at its centre. Monthly
@@ -108,6 +108,41 @@ available as text. The PDF is a reference for interpreting metrics, while the
 landing page remains the visual anchor. These reversible choices belong here,
 rather than in a separate ADR. Aggregation rules and JSON contracts live in the
 README and the typed city analytics interface.
+
+## City and suburb editorial voice
+
+These pages help buyers understand their budget and sellers compare asking prices.
+Use an explicit recent-market voice: “Explore recent asking prices in {location},”
+“Recent asking prices at a glance,” and “Compare by number of bedrooms.” Lead the
+summary with the typical asking price and its middle 50% range, not collection
+counts. Keep the reporting dates once in the hero; do not imply live availability,
+completed sale prices, or appreciation of the same homes.
+
+Use “Listings” for totals, “Listings by month” with “Recent listing activity” for
+monthly counts, and “Listings by asking price” for price brackets. Keep bucket
+percentages and counts. Replace visible percentile labels with “Middle 50% price
+range” (or “Middle 50% range” for rates and taxes), preserving both endpoint values
+and accessible lower/upper-end labels. Chart legends and tooltips use “Typical
+asking price” and “Middle 50% range.” Rates and taxes use “Typical amount” without
+asserting a billing period.
+
+Remove per-metric sample counts, technical terms such as “valid observations,”
+threshold explanations, the fractional-bedroom note, and the methodology footer
+from visitor-facing content. Methodology stays in the README and glossary; do not
+add a disclosure section. Suburb eligibility remains an internal rule: introduce
+the directory with “Compare recent asking prices across {city}’s suburbs.”
+
+Sparse asking-price comparisons say “There aren’t enough asking prices to show a
+useful comparison yet.” A location with no listings in the period says “No listings
+to show for this period.” Missing area or rates comparisons say the metric isn’t
+available for the selection; unavailable monthly comparisons say there aren’t
+enough asking prices to compare the months. Retain dashes and chart gaps. These
+states must not imply zero homes available or expose minimum sample requirements.
+
+This editorial revision applies to city/suburb content, metadata, tooltips and
+accessible labels. The homepage and shared update banner retain their existing
+copy. It replaces repeated methodology with information useful to buyers and
+sellers while keeping the underlying definitions and calculations unchanged.
 
 ## Suburb overview and city navigation
 

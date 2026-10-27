@@ -30,7 +30,6 @@ import { PriceRangeVisual } from "@/components/price-range";
 import {
   bedroomTabs,
   bucketLabel,
-  formatPeriod,
   formatMonth,
   type LocationAnalytics,
   type BedroomGroupId,
@@ -40,9 +39,9 @@ import {
 } from "@/lib/city-report";
 
 const chartConfig = {
-  listings: { label: "Recorded listings", color: "var(--color-chart-1)" },
+  listings: { label: "Listings", color: "var(--color-chart-1)" },
   median: { label: "Typical asking price", color: "var(--color-chart-1)" },
-  range: { label: "Middle half", color: "var(--color-chart-2)" },
+  range: { label: "Middle 50% range", color: "var(--color-chart-2)" },
   share: { label: "Share of listings", color: "var(--color-chart-1)" },
 } satisfies ChartConfig;
 
@@ -59,9 +58,6 @@ function MetricCard({
     <Card className="gap-5 rounded-lg py-6 border-border shadow-none sm:py-7">
       <CardHeader className="px-6 sm:px-7">
         <CardTitle className="text-base font-medium">{title}</CardTitle>
-        <CardDescription>
-          Median and middle half of recorded listings
-        </CardDescription>
       </CardHeader>
       <CardContent className="px-6 sm:px-7">
         <p className="text-4xl font-medium tracking-tight tabular-nums sm:text-[42px]">
@@ -72,10 +68,15 @@ function MetricCard({
             </span>
           )}
         </p>
-        <PriceRangeVisual value={value} compact={!perMetre} />
-        <p className="mt-4 text-xs text-muted-foreground">
-          {value.count.toLocaleString("en-ZA")} valid observations
-        </p>
+        <PriceRangeVisual
+          value={value}
+          compact={!perMetre}
+          emptyMessage={
+            perMetre
+              ? "Price per m² isn’t available for this selection."
+              : undefined
+          }
+        />
       </CardContent>
     </Card>
   );
@@ -88,7 +89,6 @@ export function CityReportDetails({
 }) {
   const [selected, setSelected] = useState<BedroomGroupId>("all");
   const group = analytics.bedroomGroups[selected];
-  const reportPeriod = formatPeriod(analytics.period);
   const report = {
     ...group,
     label: bedroomTabs.find((tab) => tab.id === selected)!.label,
@@ -122,13 +122,12 @@ export function CityReportDetails({
             id="bedroom-heading"
             className="text-2xl font-medium tracking-tight sm:text-3xl"
           >
-            A closer look, by bedroom
+            Compare by number of bedrooms
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Explore prices, listing patterns and reported costs.
+            Explore asking prices, listing activity and rates and taxes.
           </p>
         </div>
-        <p className="text-xs text-muted-foreground">{reportPeriod}</p>
       </div>
       <Tabs
         value={selected}
@@ -154,11 +153,6 @@ export function CityReportDetails({
             ))}
           </TabsList>
         </div>
-        <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-          Bedroom tabs use bands: 2 bedrooms includes 2 to under 3, and
-          similarly for 1–4. All includes studios and listings without a usable
-          bedroom count.
-        </p>
         <TabsContent
           value={selected}
           className="mt-5 min-w-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-ring"
@@ -169,7 +163,7 @@ export function CityReportDetails({
               <span className="font-medium tabular-nums text-foreground">
                 {report.listings.toLocaleString("en-ZA")}
               </span>{" "}
-              recorded listings
+              {report.listings === 1 ? "listing" : "listings"}
             </p>
           </div>
           <div className="grid min-w-0 gap-5 md:grid-cols-2">
@@ -178,7 +172,7 @@ export function CityReportDetails({
               value={report.askingPrice}
             />
             <MetricCard
-              title="Asking price per m²"
+              title="Typical asking price per m²"
               value={report.pricePerSquareMetre}
               perMetre
             />
@@ -188,18 +182,16 @@ export function CityReportDetails({
             <Card className="min-w-0 gap-5 py-6 border-border shadow-none sm:py-7">
               <CardHeader className="px-6 sm:px-7">
                 <CardTitle className="text-base font-medium">
-                  Listings over time
+                  Listings by month
                 </CardTitle>
-                <CardDescription>
-                  Recorded listings by publication month
-                </CardDescription>
+                <CardDescription>Recent listing activity</CardDescription>
               </CardHeader>
               <CardContent className="min-w-0 px-4 sm:px-5">
                 <ChartContainer
                   role="figure"
                   config={chartConfig}
                   className="h-60 w-full"
-                  aria-label={`Recorded listings: ${report.months.map((month) => `${month.month} ${month.listings}`).join(", ")}`}
+                  aria-label={`Listings by month: ${report.months.map((month) => `${formatMonth(month.month, true)}: ${month.listings} listings`).join(", ")}`}
                 >
                   <BarChart
                     accessibilityLayer
@@ -253,20 +245,23 @@ export function CityReportDetails({
                 <CardTitle className="text-base font-medium">
                   Asking prices over time
                 </CardTitle>
-                <CardDescription>
-                  {change === null ? (
-                    "Not enough data to compare the first and last month"
-                  ) : (
-                    <>
-                      <span className="font-medium text-foreground">
-                        {change > 0 ? "+" : ""}
-                        {change.toFixed(1)}%
-                      </span>{" "}
-                      in the median from {formatMonth(report.months[0].month)}{" "}
-                      to {formatMonth(report.months[2].month)}
-                    </>
-                  )}
-                </CardDescription>
+                {hasMonthlyPrices && (
+                  <CardDescription>
+                    {change === null ? (
+                      "There aren’t enough asking prices to compare these months yet."
+                    ) : (
+                      <>
+                        <span className="font-medium text-foreground">
+                          {change > 0 ? "+" : ""}
+                          {change.toFixed(1)}%
+                        </span>{" "}
+                        in typical asking price from{" "}
+                        {formatMonth(report.months[0].month)} to{" "}
+                        {formatMonth(report.months[2].month)}
+                      </>
+                    )}
+                  </CardDescription>
+                )}
               </CardHeader>
               <CardContent className="min-w-0 px-4 sm:px-5">
                 {hasMonthlyPrices ? (
@@ -274,7 +269,7 @@ export function CityReportDetails({
                     role="figure"
                     config={chartConfig}
                     className="h-52 w-full"
-                    aria-label={`Monthly asking price, median and middle half: ${report.months.map((month) => `${month.month}: ${rand(month.median)}, ${rand(month.p25)} to ${rand(month.p75)}`).join("; ")}`}
+                    aria-label={`Asking prices by month: ${report.months.map((month) => `${formatMonth(month.month, true)}: ${month.median === null ? "price comparison unavailable" : `typical asking price ${rand(month.median)}, middle 50% range from ${rand(month.p25)} to ${rand(month.p75)}`}`).join("; ")}`}
                   >
                     <ComposedChart
                       accessibilityLayer
@@ -310,9 +305,10 @@ export function CityReportDetails({
                                 {formatMonth(month.month, true)}
                               </p>
                               <p>Typical asking price: {rand(month.median)}</p>
-                              <p>25th percentile: {rand(month.p25)}</p>
-                              <p>75th percentile: {rand(month.p75)}</p>
-                              <p>{month.count} valid asking prices</p>
+                              <p>
+                                Middle 50% range: {rand(month.p25)} –{" "}
+                                {rand(month.p75)}
+                              </p>
                             </div>
                           ) : null;
                         }}
@@ -345,30 +341,22 @@ export function CityReportDetails({
                   </ChartContainer>
                 ) : (
                   <div className="flex h-52 items-center justify-center px-3 text-center text-sm text-muted-foreground">
-                    Not enough data · each month needs at least 5 valid asking
-                    prices
+                    There aren’t enough asking prices to compare these months
+                    yet.
                   </div>
                 )}
 
-                <p className="mt-3 text-center text-xs leading-relaxed text-muted-foreground">
-                  {report.months
-                    .map(
-                      (month) =>
-                        `${formatMonth(month.month)}: ${month.count} valid prices${month.median === null ? " (not enough data)" : ""}`,
-                    )
-                    .join(" · ")}
-                </p>
                 <div className="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
                   <span className="flex items-center gap-2">
                     <span aria-hidden="true" className="h-0.5 w-4 bg-chart-1" />
-                    Median
+                    Typical asking price
                   </span>
                   <span className="flex items-center gap-2">
                     <span
                       aria-hidden="true"
                       className="h-2.5 w-4 rounded-sm bg-chart-2/45"
                     />
-                    25th–75th percentile
+                    Middle 50% range
                   </span>
                 </div>
               </CardContent>
@@ -379,36 +367,27 @@ export function CityReportDetails({
             <Card className="gap-5 py-6 border-border shadow-none sm:py-7">
               <CardHeader className="px-6 sm:px-7">
                 <CardTitle className="text-base font-medium">
-                  Reported rates &amp; taxes
+                  Rates &amp; taxes
                 </CardTitle>
-                <CardDescription>
-                  The middle half of reported amounts
-                </CardDescription>
+                <CardDescription>Typical amount</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-1 flex-col px-6 sm:px-7">
                 <p className="text-4xl font-medium tracking-tight tabular-nums">
                   {rand(report.ratesAndTaxes.median)}
                 </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Typical reported amount ·{" "}
-                  {report.ratesAndTaxes.count.toLocaleString("en-ZA")} valid
-                  observations
-                </p>
-                <PriceRangeVisual value={report.ratesAndTaxes} />
-                <p className="mt-7 max-w-sm text-xs leading-relaxed text-muted-foreground">
-                  Reported amounts only. Billing periods are not verified.
-                </p>
+                <PriceRangeVisual
+                  value={report.ratesAndTaxes}
+                  label="Middle 50% range"
+                  emptyMessage="Rates and taxes aren’t available for this selection."
+                />
               </CardContent>
             </Card>
             <Card className="min-w-0 gap-4 py-6 border-border shadow-none sm:py-7">
               <CardHeader className="px-6 sm:px-7">
                 <CardTitle className="text-base font-medium">
-                  Where asking prices fall
+                  Listings by asking price
                 </CardTitle>
-                <CardDescription>
-                  {report.priceDistribution.count.toLocaleString("en-ZA")} valid
-                  priced listings · percentage / count
-                </CardDescription>
+                <CardDescription>Compare price brackets.</CardDescription>
               </CardHeader>
               <CardContent className="min-w-0 px-4 sm:px-5">
                 {report.priceDistribution.count > 0 ? (
@@ -465,20 +444,12 @@ export function CityReportDetails({
                   </ChartContainer>
                 ) : (
                   <div className="flex h-56 items-center justify-center text-sm text-muted-foreground">
-                    No valid asking prices for this group
+                    No asking prices to compare for this selection.
                   </div>
                 )}
               </CardContent>
             </Card>
           </div>
-          <p className="mt-5 text-xs leading-relaxed text-muted-foreground">
-            Residential sale advertisements published in {reportPeriod}.
-            “Typical” is the median; “middle half” is the 25th–75th percentile.
-            Statistics need at least 5 valid observations. Changes compare
-            different publication-month samples, not price changes on the same
-            homes. Counts describe captured advertisements, not active inventory
-            or completed sales.
-          </p>
         </TabsContent>
       </Tabs>
     </section>

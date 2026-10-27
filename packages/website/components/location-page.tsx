@@ -51,11 +51,11 @@ export function LocationPage({
           {name}
         </h1>
         <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-pretty text-muted-foreground sm:text-lg">
-          A local view of asking prices, the homes behind them, and how listings
-          compare.
+          Explore recent asking prices in {name}. Compare by bedroom count and
+          see how prices have changed.
         </p>
         <p className="mt-5 inline-flex flex-wrap justify-center gap-x-2 rounded-full border border-border px-3 py-1.5 text-xs text-muted-foreground">
-          <span>Residential sales</span>
+          <span>Recent asking prices</span>
           <span aria-hidden="true">·</span>
           <span>{reportPeriod}</span>
         </p>
@@ -72,35 +72,28 @@ export function LocationPage({
             id="overview-heading"
             className="max-w-sm text-2xl font-medium leading-snug tracking-tight sm:text-3xl"
           >
-            A starting point for your next move.
+            Recent asking prices at a glance
           </h2>
           <p className="mt-5 text-sm leading-7 text-muted-foreground sm:text-base">
             {report.askingPrice.median !== null ? (
               <>
-                Across {report.listingCount.toLocaleString("en-ZA")} recorded
-                residential sale listings, the typical asking price is{" "}
+                The typical asking price in {name} is{" "}
                 <strong className="font-medium text-foreground">
                   {compactRand(report.askingPrice.median)}
                 </strong>
-                , with the middle half between{" "}
+                . The middle 50% of asking prices fall between{" "}
                 {compactRand(report.askingPrice.p25)} and{" "}
                 {compactRand(report.askingPrice.p75)}.
               </>
+            ) : report.listingCount === 0 ? (
+              "No listings to show for this period."
             ) : (
-              <>
-                There {report.listingCount === 1 ? "is" : "are"}{" "}
-                {report.listingCount.toLocaleString("en-ZA")} recorded
-                residential sale{" "}
-                {report.listingCount === 1 ? "listing" : "listings"} in this
-                period. At least five valid asking prices are needed to show a
-                typical price and range.
-              </>
+              "There aren’t enough asking prices to show a useful comparison yet."
             )}
           </p>
           <p className="mt-4 text-sm leading-7 text-muted-foreground sm:text-base">
-            Buying or selling? Start with the {suburb ? "suburb" : "city"}{" "}
-            picture, then explore homes with a similar number of bedrooms. The
-            range helps put the midpoint in context.
+            Compare similar-sized homes to put your budget or asking price in
+            context.
           </p>
         </div>
         <Card className="gap-0 rounded-lg py-7 border-border shadow-none sm:py-8">
@@ -109,10 +102,7 @@ export function LocationPage({
             <p className="mt-3 text-5xl font-medium tracking-tight tabular-nums sm:text-6xl">
               {compactRand(report.askingPrice.median)}
             </p>
-            <p className="mt-3 text-sm text-muted-foreground">
-              Median advertised price · all bedrooms ·{" "}
-              {report.askingPrice.count.toLocaleString("en-ZA")} valid prices
-            </p>
+            <p className="mt-3 text-sm text-muted-foreground">All bedrooms</p>
             <div className="mt-6">
               <PriceRangeVisual value={report.askingPrice} compact />
             </div>
@@ -124,15 +114,9 @@ export function LocationPage({
                 <dd className="mt-2 text-xl font-medium tabular-nums sm:text-2xl">
                   {rand(report.pricePerSquareMetre.median)}
                 </dd>
-                <dd className="mt-1 text-xs text-muted-foreground">
-                  {report.pricePerSquareMetre.count.toLocaleString("en-ZA")}{" "}
-                  valid observations
-                </dd>
               </div>
               <div className="border-l border-border pl-5">
-                <dt className="text-xs text-muted-foreground">
-                  Recorded listings
-                </dt>
+                <dt className="text-xs text-muted-foreground">Listings</dt>
                 <dd className="mt-2 text-xl font-medium tabular-nums sm:text-2xl">
                   {report.listingCount.toLocaleString("en-ZA")}
                 </dd>

@@ -43,7 +43,8 @@ a stated group and period. It is not a completed sale price or an individual
 property valuation.
 
 **Middle half**: The range from the 25th to the 75th percentile of reported
-values in a stated group. It describes the central half of those values.
+values in a stated group. Also called the **middle 50% range**, it describes the
+central half of those values, not their minimum and maximum.
 
 **Asking price per m²**: A listing's asking price divided by its reported floor
 area. Group summaries describe these individual ratios, not a ratio of group medians.

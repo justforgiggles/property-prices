@@ -16,7 +16,7 @@ export function locationMetadata(
     province: analytics.province.name,
   };
   const title = `${city.name} Asking Prices & Property Listings | Prop Radar`;
-  const description = `Explore recorded residential asking prices in ${city.name}, ${city.province}, for ${formatPeriod(analytics.period)}. Compare bedrooms, price ranges and published listing counts.`;
+  const description = `Explore recent asking prices in ${city.name}, ${city.province}, for ${formatPeriod(analytics.period)}. Compare prices by bedroom count and see how asking prices have changed.`;
   const url = siteUrl(
     `${analytics.province.slug}/${analytics.city.slug}/${suburb ? `${suburb.slug}/` : ""}`,
   );

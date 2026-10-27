@@ -43,8 +43,7 @@ export function SuburbDirectory({
             Explore suburbs in {cityName}
           </h2>
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Suburbs with more than 20 recorded listings published in the past 90
-            days.
+            Compare recent asking prices across {cityName}’s suburbs.
           </p>
         </div>
         <div className="relative w-full shrink-0 sm:w-64">

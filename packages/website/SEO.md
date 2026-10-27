@@ -91,6 +91,15 @@ and the city directory links. Live checks include populated and sparse suburbs.
 Generated suburb JSON is an ignored build input; interactive statistics remain
 embedded in each public page payload, just as on city pages.
 
+## City and suburb description wording
+
+Describe “recent asking prices” for the named location, province and reporting
+period. Lead with bedroom comparisons and asking-price changes. Avoid “recorded,”
+“valid,” and “published listing counts” in search and sharing descriptions. Keep
+titles, canonicals, indexing rules and the shared image unchanged. This wording
+reflects recent listing activity; it does not promise current availability or
+completed sale prices. Homepage metadata and the shared banner are unchanged.
+
 ## Assets
 
 `npm run assets -w @prop-radar/website` regenerates the committed icon family and
