@@ -1296,6 +1296,7 @@
       "Krugersrus",
       "Kwa Thema",
       "Modder East",
+      "New State Areas",
       "Paul Krugersoord",
       "Payneville",
       "Persida",
@@ -1325,6 +1326,7 @@
       "Emangweni",
       "Emfihlweni",
       "Entshonalanga",
+      "Esangweni",
       "Esiziba",
       "Hospital View",
       "Ililiba",
@@ -1388,6 +1390,7 @@
       "De Deur",
       "Duncanville",
       "Falcon Ridge",
+      "Helenas Rust",
       "Homer",
       "Peacehaven",
       "Riverspray Lifestyle Estate",
@@ -1427,6 +1430,7 @@
     ],
     "Wonderboom": [
       "Bultfontein AH",
+      "Grootvlei AH",
       "Haakdoornboom AH",
       "Mont Lorraine AH",
       "Rooiwal AH",
@@ -1743,6 +1747,9 @@
       "River Goose Estate",
       "Sakabula Golf & Country Estate",
       "St Johns Village"
+    ],
+    "Impendhle": [
+      "Boston"
     ],
     "Isipingo": [
       "Isipingo Beach",
@@ -2233,6 +2240,7 @@
       "Barrydale"
     ],
     "Beaufort West": [
+      "Die Laning",
       "Hospital Hill",
       "Merweville",
       "Middedorp"
@@ -2559,6 +2567,7 @@
       "Hillview",
       "Kleinvlei",
       "Palm Park",
+      "Park Village",
       "Penhill",
       "Pine Place",
       "Rosedale",
@@ -2867,6 +2876,7 @@
       "Haasendal",
       "Hagley",
       "Highbury",
+      "Hunters Creek",
       "Jagtershof",
       "Jakarandas",
       "Kalkfontein",
@@ -3058,6 +3068,7 @@
       "Bridgeton",
       "Colridge",
       "De Rust",
+      "Dysselsdorp",
       "Oudtshoorn Central",
       "Oudtshoorn North",
       "Oudtshoorn Rural",
@@ -3132,6 +3143,7 @@
       "Goose Valley",
       "Harkerville AH",
       "Keurbooms",
+      "Kranshoek Township",
       "Natures Valley",
       "Plettenberg Bay Central",
       "Poortjies",
@@ -3155,6 +3167,7 @@
       "Pringle Bay"
     ],
     "Riebeek Valley": [
+      "Esterhof",
       "Riebeek Kasteel",
       "Riebeek West"
     ],
