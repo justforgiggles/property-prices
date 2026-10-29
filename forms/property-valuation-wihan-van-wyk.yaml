@@ -358,6 +358,7 @@ sections:
             - Actonville
             - Airfield
             - Alliance
+            - Alphen Park
             - Benoni AH
             - Benoni Central
             - Benoni North
@@ -612,6 +613,7 @@ sections:
             - Fishers Hill
             - Gerdview
             - Germiston Central
+            - Germiston North
             - Germiston South
             - Gosforth Park
             - Harmelia
@@ -710,6 +712,7 @@ sections:
             - Brixton
             - Bruma
             - Casey Park
+            - Cheltondale
             - Chrisville
             - City & Suburban
             - Claremont
@@ -1703,6 +1706,7 @@ sections:
             - Westonaria Rural
           Wonderboom:
             - Bultfontein AH
+            - Dinokeng Game Reserve
             - Grootvlei AH
             - Haakdoornboom AH
             - Mont Lorraine AH
@@ -2369,6 +2373,7 @@ sections:
             - Lotusville
             - Mount Moreland
             - Mount View
+            - Oaklands
             - Parkgate
             - Riet River
             - Riverview Park
@@ -3351,6 +3356,7 @@ sections:
             - Pearl Marina
             - Pearlrise
             - Rome Glen
+            - Roundhay
             - Schonenberg
             - Sir Lowrys Pass
             - Sitari Country Estate
