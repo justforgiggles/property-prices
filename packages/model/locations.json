@@ -77,6 +77,7 @@
       "Crystal Park",
       "Danie Taljaard Park",
       "Daveyton",
+      "Dewald Hattingh Park",
       "Eastlands Mature Lifestyle Estate",
       "Ebotse Golf Estate",
       "Etwatwa",
@@ -306,6 +307,7 @@
     ],
     "Ga-Rankuwa": [
       "Ga-Rankuwa",
+      "Ga-rankuwa Industrial",
       "Ga-rankuwa View",
       "Hebron"
     ],
@@ -606,6 +608,7 @@
       "Siluma View",
       "Spruit View",
       "Tsolo",
+      "Twala",
       "Zama Zama",
       "Zonkezizwe"
     ],
@@ -627,6 +630,7 @@
       "Elandsfontein SH",
       "Esselen Park",
       "Esther Park",
+      "Glen Eagle Estate",
       "Glen Erasmia",
       "Glen Marais",
       "Kempton Park AH",
@@ -1060,6 +1064,7 @@
       "Randfontein South",
       "Randgate",
       "Randpoort",
+      "Randridge AH",
       "Robin Park",
       "Toekomsrus",
       "West Porges",
@@ -1225,6 +1230,7 @@
       "Soshanguve PP1",
       "Soshanguve PP2",
       "Soshanguve R",
+      "Soshanguve S",
       "Soshanguve SS",
       "Soshanguve South",
       "Soshanguve T",
@@ -1317,6 +1323,7 @@
       "Wright Park"
     ],
     "Temba": [
+      "Kudube",
       "Majaneng",
       "Stinkwater",
       "Temba Central",
@@ -1891,7 +1898,8 @@
       "Richview",
       "Schuinshoogte",
       "Signal Hill",
-      "Sunnyridge"
+      "Sunnyridge",
+      "Sunset View"
     ],
     "Nkandla": [
       "Nkandla Rural"
@@ -2090,6 +2098,7 @@
     "Scottburgh": [
       "Freeland Park",
       "Park Rynie",
+      "Renishaw Hills",
       "Scottburgh Central",
       "Scottburgh South"
     ],
@@ -3388,7 +3397,8 @@
     "Tulbagh": [
       "Gouda",
       "Saron",
-      "Tulbagh"
+      "Tulbagh",
+      "Tulbagh Rural"
     ],
     "Vanrhynsdorp": [
       "Nuwerus",
