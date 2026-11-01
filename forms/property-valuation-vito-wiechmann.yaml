@@ -613,6 +613,7 @@ sections:
             - Elspark
             - Estera
             - Fishers Hill
+            - Georgetown
             - Gerdview
             - Germiston Central
             - Germiston North
@@ -1428,6 +1429,7 @@ sections:
             - Beverley
             - Bramley North
             - Bramley Park
+            - Brendavere
             - Broadacres
             - Bryanston
             - Buccleuch
@@ -1555,6 +1557,7 @@ sections:
             - Molapo
             - Moletsane
             - Moroka
+            - Moroka North
             - Naledi
             - Orlando
             - Phiri
@@ -2156,6 +2159,7 @@ sections:
             - Whetstone
             - Woodview
           Pietermaritzburg:
+            - Albert Falls
             - Allandale
             - Ambleton
             - Ashburton
@@ -2796,6 +2800,7 @@ sections:
             - Oubaai
             - Pacaltsdorp
             - Parkdene
+            - Rooi Rivier Rif
             - Thembalethu
             - Victoria Bay
             - Welgelegen
@@ -3257,6 +3262,7 @@ sections:
           Plettenberg Bay:
             - Baron View
             - Bowtie
+            - Brackenridge Estate
             - Cutty Sark
             - Goose Valley
             - Harkerville AH
