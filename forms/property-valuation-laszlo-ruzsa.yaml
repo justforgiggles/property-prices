@@ -525,6 +525,7 @@ sections:
             - Heuwelsig Estate
             - Highveld
             - Irene
+            - Irene Glen Estate
             - Kloofsig
             - Kosmosdal
             - Laudium
@@ -618,6 +619,7 @@ sections:
             - Germiston Central
             - Germiston North
             - Germiston South
+            - Germiston West
             - Gosforth Park
             - Harmelia
             - Hazeldene
@@ -1217,6 +1219,7 @@ sections:
             - Pretoria North
             - Pretoria West
             - Pretoriuspark
+            - Prinshof
             - Proclamation Hill
             - Queenswood
             - Rietfontein
@@ -1319,6 +1322,7 @@ sections:
             - President Ridge
             - Randburg Central
             - Randpark
+            - Randpark Ext 3
             - Randpark Ridge
             - Risidale
             - Riverbend AH
@@ -1704,7 +1708,9 @@ sections:
             - Golf View
             - Hartzenbergfontein
             - Homestead Apple Orchards
+            - Ironsyde AH
             - Kanana Park
+            - Ohenimuri
             - Savanna City
             - Walker Fruit Farms
             - Walkerville Central
@@ -1960,6 +1966,7 @@ sections:
             - Cotswold Fenns
             - Crestholme
             - Crestview
+            - Drummond
             - Hillcrest Central
             - Hillcrest Park
             - Hilldene
@@ -2787,6 +2794,8 @@ sections:
             - George Industrial
             - George South
             - Glenwood
+            - Glenwood Ridge
+            - Groeneweide Park
             - Groenkloof Retirement Village
             - Hansmoeskraal AH
             - Heather Park
@@ -2815,6 +2824,7 @@ sections:
             - Glenwood
             - Goodwood Central
             - Goodwood Estate
+            - Goodwood Park
             - Leonsdale
             - Monte Vista
             - Plattekloof Glen
@@ -2856,6 +2866,7 @@ sections:
             - Glentana
             - Greenhaven
             - Groot Brakrivier Central
+            - Groot Brakrivier Rural
             - Grootbrakhoogte
             - Hersham
             - Island Cove
@@ -3129,6 +3140,7 @@ sections:
             - Colorado Park
             - Eastridge
             - Harmony Village
+            - Highlands Estate
             - Lentegeur
             - Mandalay
             - Mitchells Plain Central
@@ -3287,6 +3299,7 @@ sections:
           Porterville:
             - Porterville
           Prince Albert:
+            - Leeu Gamka
             - Prince Albert
           Pringle Bay:
             - Pringle Bay
@@ -3334,6 +3347,7 @@ sections:
             - Glen Marine
             - Glencairn
             - Glencairn Heights
+            - Harbour Heights
             - Murdock Valley
             - Simons Kloof
             - Simons Town Central
@@ -3366,6 +3380,7 @@ sections:
             - Kelderhof Country Village
             - La Concorde
             - La Montagne
+            - La Sandra
             - Land & Zeezicht
             - Longdown
             - Montclair
